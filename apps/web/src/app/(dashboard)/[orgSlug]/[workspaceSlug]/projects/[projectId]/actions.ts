@@ -66,9 +66,11 @@ export async function createTask(
   const supabase = createClient()
 
   try {
-    const { label_ids, ...task } = parsed.data
+    const { label_ids, description, ...task } = parsed.data
     const created = await taskService.createTask(supabase, {
       ...task,
+      // §13.1: rich text is sanitized before storage, never on render.
+      ...(description ? { description: sanitizeTiptapJson(description) as never } : {}),
       orgId: auth.orgId,
       userId: auth.userId,
       labelIds: label_ids,

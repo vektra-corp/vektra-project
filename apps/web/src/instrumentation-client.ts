@@ -1,29 +1,20 @@
-// This file configures the initialization of Sentry on the client.
-// The added config here will be used whenever a users loads a page in their browser.
-// https://docs.sentry.io/platforms/javascript/guides/nextjs/
-
-import * as Sentry from "@sentry/nextjs";
+/**
+ * Sentry initialization for the browser.
+ *
+ * Session replay is deliberately NOT enabled. This app renders one tenant's
+ * data, and a replay — even with text masked — puts that recording in front of
+ * whoever triages the issue. Enable it only with an explicit customer agreement.
+ *
+ * The DSN comes from the environment rather than being hardcoded, so staging
+ * and production report to their own projects.
+ */
+import * as Sentry from '@sentry/nextjs'
 
 Sentry.init({
-  dsn: "https://35e3cf690b1ff347dfce17d045b27e98@o4512018061328384.ingest.us.sentry.io/4512018142789632",
-
-  // Add optional integrations for additional features
-  integrations: [Sentry.replayIntegration()],
-
-  // Define how likely Replay events are sampled.
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
-  replaysSessionSampleRate: 0.1,
-
-  // Define how likely Replay events are sampled when an error occurs.
-  replaysOnErrorSampleRate: 1.0,
-
-  dataCollection: {
-    // To disable sending user data and HTTP bodies, uncomment the lines below. For more info visit:
-    // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#dataCollection
-    // userInfo: false,
-    // httpBodies: [],
-  },
-});
-
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
+  tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+  sendDefaultPii: false,
+  // Locally there is no Sentry project to talk to.
+  enabled: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
+})

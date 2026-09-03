@@ -58,6 +58,20 @@ export async function createUploadUrl(
   assertCan(auth, 'tasks', 'update')
 
   const supabase = createClient()
+
+  // Only issue an upload URL for a task the caller can actually reach. RLS
+  // returns nothing for a task in another tenant, so this doubles as the
+  // tenancy check — without it, any task id would mint a valid signed URL.
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('id')
+    .eq('id', taskId)
+    .maybeSingle()
+
+  if (!task) {
+    return { ok: false, code: 'NOT_FOUND', message: 'Task not found' }
+  }
+
   const plan = await planFor(supabase, auth.orgId)
 
   const verdict = validateUpload(file, plan)
