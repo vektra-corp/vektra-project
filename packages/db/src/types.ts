@@ -3046,6 +3046,12 @@ export interface Database {
         }
         Returns: Database['public']['Tables']['organizations']['Row']
       }
+      current_auth_context: {
+        Args: {
+          p_org_slug?: string
+        }
+        Returns: unknown
+      }
       current_org_role: {
         Args: Record<PropertyKey, never>
         Returns: string

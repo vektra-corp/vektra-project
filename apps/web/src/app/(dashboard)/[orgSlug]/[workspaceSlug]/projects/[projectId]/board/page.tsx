@@ -40,7 +40,7 @@ export default async function BoardPage({
 
   // Four queries rather than one deep join: the counts are grouped client-side,
   // which avoids a correlated subquery per card.
-  const [{ data: columns }, { data: tasks }, { data: org }] = await Promise.all([
+  const [{ data: columns }, { data: tasks }] = await Promise.all([
     supabase
       .from('kanban_columns')
       .select('id, name, color, position, wip_limit, is_done_column, status')
@@ -55,7 +55,6 @@ export default async function BoardPage({
       )
       .eq('project_id', params.projectId)
       .order('position'),
-    supabase.from('organizations').select('timezone').eq('id', auth.orgId).maybeSingle(),
   ])
 
   const taskIds = (tasks ?? []).map((task) => task.id)
@@ -114,7 +113,7 @@ export default async function BoardPage({
       cards={cards}
       scope={params}
       // "Overdue" is decided in the org's timezone, not the server's (§21.6).
-      today={todayIn(org?.timezone ?? 'UTC')}
+      today={todayIn(auth.orgTimezone)}
       canCreate={can(auth, 'tasks', 'create')}
     />
   )

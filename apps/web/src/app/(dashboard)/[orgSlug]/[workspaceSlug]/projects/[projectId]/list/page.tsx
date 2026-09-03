@@ -17,7 +17,7 @@ export default async function ListPage({
   const auth = await requireAuthPage(params.orgSlug)
   const supabase = createClient()
 
-  const [{ data: tasks }, { data: org }] = await Promise.all([
+  const [{ data: tasks }] = await Promise.all([
     supabase
       .from('tasks')
       .select(
@@ -27,10 +27,9 @@ export default async function ListPage({
       .eq('project_id', params.projectId)
       .order('status')
       .order('position'),
-    supabase.from('organizations').select('timezone').eq('id', auth.orgId).maybeSingle(),
   ])
 
-  const today = todayIn(org?.timezone ?? 'UTC')
+  const today = todayIn(auth.orgTimezone)
   const base = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}`
 
   return (

@@ -44,7 +44,7 @@ export default async function TaskDetailPage({
 
   if (!task) notFound()
 
-  const [{ data: subtasks }, { data: comments }, { data: members }, { data: attachments }, { data: org }] =
+  const [{ data: subtasks }, { data: comments }, { data: members }, { data: attachments }] =
     await Promise.all([
       supabase
         .from('subtasks')
@@ -69,7 +69,6 @@ export default async function TaskDetailPage({
         .select('id, file_name, file_size, mime_type, created_at, uploaded_by')
         .eq('task_id', params.taskId)
         .order('created_at', { ascending: false }),
-      supabase.from('organizations').select('timezone').eq('id', auth.orgId).maybeSingle(),
     ])
 
   // PostgREST returns to-one embeds as objects; the generated types permit an
@@ -205,7 +204,7 @@ export default async function TaskDetailPage({
                 <dd>
                   <DueDate
                     dueDate={task.due_date}
-                    today={todayIn(org?.timezone ?? 'UTC')}
+                    today={todayIn(auth.orgTimezone)}
                     isClosed={task.status === 'done' || task.status === 'cancelled'}
                   />
                   {!task.due_date ? <span className="text-muted-foreground">—</span> : null}

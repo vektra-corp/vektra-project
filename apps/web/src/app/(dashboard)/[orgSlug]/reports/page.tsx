@@ -78,18 +78,15 @@ export default async function ReportsPage({
   // ask for all of them in one request (§23.1 rule 3).
   const { data: tasks } = await query.order(orderBy, { ascending: sortAsc }).limit(100)
 
-  const [{ data: members }, { data: org }] = await Promise.all([
-    supabase
-      .from('org_members')
-      .select('profile:profiles!inner(id, full_name, avatar_url)')
-      .eq('organization_id', auth.orgId),
-    supabase.from('organizations').select('timezone').eq('id', auth.orgId).maybeSingle(),
-  ])
+  const { data: members } = await supabase
+    .from('org_members')
+    .select('profile:profiles!inner(id, full_name, avatar_url)')
+    .eq('organization_id', auth.orgId)
 
   const one = <T,>(value: T | T[] | null): T | null =>
     Array.isArray(value) ? (value[0] ?? null) : value
 
-  const today = todayIn(org?.timezone ?? 'UTC')
+  const today = todayIn(auth.orgTimezone)
 
   const assignableMembers = (members ?? [])
     .flatMap((row) => {
