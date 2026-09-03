@@ -1,0 +1,105 @@
+import { PLAN_LIMITS, type PlanName } from '../constants/plans'
+
+/**
+ * File upload rules (claude.md §13.9).
+ *
+ * Every check here is duplicated server-side. Client-side validation exists to
+ * give a fast, clear error — it is never the thing that keeps a bad file out.
+ */
+
+/** Executable types are rejected outright, whatever the declared MIME type. */
+export const BLOCKED_EXTENSIONS = [
+  'exe', 'sh', 'bat', 'cmd', 'ps1', 'js', 'mjs', 'cjs', 'py', 'rb', 'php',
+  'jsp', 'asp', 'aspx', 'jar', 'com', 'scr', 'msi', 'dll', 'app', 'deb', 'rpm',
+  'vbs', 'wsf', 'hta',
+] as const
+
+export const ALLOWED_MIME_PREFIXES = [
+  'image/',
+  'video/',
+  'audio/',
+  'text/',
+] as const
+
+export const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'application/json',
+  'application/zip',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.oasis.opendocument.text',
+  'application/vnd.oasis.opendocument.spreadsheet',
+] as const
+
+export function extensionOf(fileName: string): string {
+  const index = fileName.lastIndexOf('.')
+  return index === -1 ? '' : fileName.slice(index + 1).toLowerCase()
+}
+
+export type FileRejection =
+  | { ok: true }
+  | { ok: false; code: 'UNSUPPORTED_FILE_TYPE' | 'FILE_TOO_LARGE'; message: string }
+
+/**
+ * Validate a file against the org's plan.
+ *
+ * Extension is checked as well as MIME type: the browser-supplied Content-Type
+ * is attacker-controlled, so `evil.exe` renamed with `image/png` must still be
+ * refused. The server additionally sniffs magic bytes (§13.9).
+ */
+export function validateUpload(
+  file: { name: string; size: number; type: string },
+  plan: PlanName,
+): FileRejection {
+  const extension = extensionOf(file.name)
+
+  if ((BLOCKED_EXTENSIONS as readonly string[]).includes(extension)) {
+    return {
+      ok: false,
+      code: 'UNSUPPORTED_FILE_TYPE',
+      message: `.${extension} files are not allowed`,
+    }
+  }
+
+  const mimeAllowed =
+    ALLOWED_MIME_PREFIXES.some((prefix) => file.type.startsWith(prefix)) ||
+    (ALLOWED_MIME_TYPES as readonly string[]).includes(file.type)
+
+  if (!mimeAllowed) {
+    return {
+      ok: false,
+      code: 'UNSUPPORTED_FILE_TYPE',
+      message: `${file.type || 'That file type'} is not allowed`,
+    }
+  }
+
+  const maxSize = PLAN_LIMITS[plan].max_file_size_bytes
+  if (file.size > maxSize) {
+    return {
+      ok: false,
+      code: 'FILE_TOO_LARGE',
+      message: `Files must be under ${Math.round(maxSize / 1_048_576)} MB on this plan`,
+    }
+  }
+
+  return { ok: true }
+}
+
+/**
+ * Storage path for an attachment.
+ *
+ * The org id is the FIRST segment, which is what the storage RLS policies match
+ * on (§13.9). A leaked signed URL therefore cannot be edited to walk into
+ * another tenant's files, and the uuid segment stops two uploads of the same
+ * filename colliding.
+ */
+export function attachmentPath(orgId: string, fileId: string, safeFileName: string): string {
+  return `${orgId}/attachments/${fileId}/${safeFileName}`
+}
+
+/** Signed URL lifetime. Short by design — links get forwarded (§13.9). */
+export const SIGNED_URL_TTL_SECONDS = 60 * 60

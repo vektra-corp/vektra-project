@@ -1,0 +1,147 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "create": "Create",
+    "edit": "Edit",
+    "confirm": "Are you sure?",
+    "loading": "Loading...",
+    "no_results": "No results found",
+    "search": "Search...",
+    "back": "Back",
+    "next": "Next",
+    "close": "Close",
+    "required": "Required",
+    "optional": "Optional",
+    "none": "None",
+    "unassigned": "Unassigned"
+  },
+  "auth": {
+    "sign_in": "Sign in",
+    "sign_up": "Sign up",
+    "sign_out": "Sign out",
+    "email": "Email",
+    "password": "Password",
+    "confirm_password": "Confirm password",
+    "full_name": "Full name",
+    "organization_name": "Organization name",
+    "login_title": "Welcome back",
+    "login_subtitle": "Sign in to your account to continue",
+    "signup_title": "Create your account",
+    "signup_subtitle": "Start your {days}-day free trial. No card required.",
+    "forgot_password": "Forgot your password?",
+    "forgot_password_title": "Reset your password",
+    "forgot_password_subtitle": "We will email you a link to choose a new password.",
+    "send_reset_link": "Send reset link",
+    "reset_link_sent": "If an account exists for that address, a reset link is on its way.",
+    "no_account": "Don't have an account?",
+    "have_account": "Already have an account?",
+    "accept_terms": "I agree to the Terms of Service and Privacy Policy",
+    "verify_title": "Check your email",
+    "verify_subtitle": "We sent a confirmation link to {email}. Open it to activate your account.",
+    "verify_resend": "Resend the email",
+    "continue_with": "Or continue with",
+    "invalid_credentials": "That email and password combination is not correct.",
+    "email_not_confirmed": "Confirm your email address before signing in.",
+    "rate_limited": "Too many attempts. Try again in {minutes} minutes."
+  },
+  "errors": {
+    "UNAUTHORIZED": "You need to sign in to do that.",
+    "FORBIDDEN": "You do not have permission to do that.",
+    "CSRF_VIOLATION": "That request could not be verified. Reload and try again.",
+    "SESSION_EXPIRED": "Your session expired. Sign in again.",
+    "MFA_REQUIRED": "Two-factor authentication is required.",
+    "VALIDATION_ERROR": "Please check the highlighted fields.",
+    "INVALID_STATUS": "That action is not allowed from the current status.",
+    "PAYLOAD_TOO_LARGE": "That request was too large.",
+    "NOT_FOUND": "We could not find that.",
+    "CONFLICT": "That conflicts with an existing record.",
+    "ALREADY_EXISTS": "That already exists.",
+    "RATE_LIMITED": "Too many requests. Try again shortly.",
+    "PLAN_LIMIT": "You have reached your plan's limit. Upgrade to continue.",
+    "WIP_LIMIT": "That column has reached its work-in-progress limit.",
+    "FEATURE_NOT_AVAILABLE": "That feature is not included in your plan.",
+    "SUBSCRIPTION_REQUIRED": "An active subscription is required.",
+    "PAYMENT_FAILED": "That payment did not go through.",
+    "UNSUPPORTED_FILE_TYPE": "That file type is not allowed.",
+    "FILE_TOO_LARGE": "That file is too large.",
+    "INTERNAL_ERROR": "Something went wrong on our end. Please try again."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "tasks": "Tasks",
+    "reports": "Reports",
+    "members": "Members",
+    "settings": "Settings",
+    "billing": "Billing",
+    "workspaces": "Workspaces",
+    "notifications": "Notifications"
+  },
+  "onboarding": {
+    "title": "Create your organization",
+    "subtitle": "This is the workspace your whole team will share.",
+    "org_name_label": "What is your company called?",
+    "slug_label": "Workspace address",
+    "slug_help": "Letters, numbers and hyphens only.",
+    "slug_taken": "That address is taken. Try another.",
+    "create": "Create organization"
+  },
+  "projects": {
+    "title": "Projects",
+    "create": "New project",
+    "empty_title": "No projects yet",
+    "empty_body": "Create your first project to start tracking work.",
+    "name": "Project name",
+    "description": "Description",
+    "status": {
+      "active": "Active",
+      "on_hold": "On hold",
+      "completed": "Completed",
+      "archived": "Archived"
+    },
+    "task_count": "{count, plural, =0 {No tasks} one {# task} other {# tasks}}",
+    "completion": "{percent} complete"
+  },
+  "tasks": {
+    "title": "Tasks",
+    "create": "Create task",
+    "status": {
+      "todo": "To Do",
+      "in_progress": "In Progress",
+      "in_review": "In Review",
+      "done": "Done",
+      "cancelled": "Cancelled"
+    },
+    "priority": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "due_in": "Due {relativeTime}",
+    "overdue_by": "Overdue by {days, plural, one {# day} other {# days}}",
+    "assigned_to": "Assigned to {name}",
+    "subtask_count": "{count, plural, =0 {No subtasks} one {# subtask} other {# subtasks}}",
+    "wip_limit_reached": "\"{column}\" is at its limit of {limit}"
+  },
+  "billing": {
+    "title": "Billing",
+    "current_plan": "Current plan",
+    "trial_ends": "Your trial ends {date}",
+    "upgrade": "Upgrade",
+    "manage": "Manage subscription",
+    "usage": "Usage",
+    "seats": "{count, plural, one {# seat} other {# seats}}",
+    "plans": {
+      "starter": "Starter",
+      "growth": "Growth",
+      "enterprise": "Enterprise"
+    }
+  },
+  "commercial": {
+    "invoice": { "title": "Invoice", "number": "Invoice #{number}" },
+    "quotation": { "title": "Quotation", "valid_until": "Valid until {date}" }
+  }
+}

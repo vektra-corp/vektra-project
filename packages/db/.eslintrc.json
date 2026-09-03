@@ -1,0 +1,6 @@
+{
+  "root": true,
+  "extends": ["@pm/eslint-config"],
+  "parserOptions": { "project": "./tsconfig.json" },
+  "ignorePatterns": ["src/types.ts"]
+}

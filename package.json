@@ -1,0 +1,46 @@
+{
+  "name": "project-management",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=@pm/web",
+    "dev:admin": "turbo run dev --filter=@pm/admin",
+    "build": "turbo run build --concurrency=2",
+    "lint": "turbo run lint --concurrency=2",
+    "typecheck": "turbo run typecheck --concurrency=2",
+    "test": "turbo run test --concurrency=2",
+    "test:rls": "vitest run --config vitest.rls.config.ts",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
+    "db:diff": "supabase db diff",
+    "db:push": "supabase db push",
+    "db:types": "supabase gen types typescript --linked > packages/db/src/types.ts",
+    "db:types:offline": "node scripts/gen-types.mjs \"${SUPABASE_DB_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}\" > packages/db/src/types.ts",
+    "i18n:check": "node scripts/check-translations.mjs",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "verify": "turbo run lint typecheck test build --concurrency=1",
+    "db:link": "supabase link",
+    "db:pull": "supabase db diff --linked",
+    "db:seed": "psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -f supabase/seed.sql",
+    "db:reset:local": "supabase db reset",
+    "db:local": "supabase start",
+    "db:local:stop": "supabase stop",
+    "db:check": "node scripts/check-cloud-setup.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@types/pg": "^8.11.6",
+    "pg": "^8.12.0",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.6",
+    "supabase": "^1.187.10",
+    "turbo": "^2.1.2",
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}
