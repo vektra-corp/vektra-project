@@ -1,16 +1,75 @@
 'use client'
 
 import { cn } from '@pm/ui'
-import { ChevronDown } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import {
+  ChevronDown,
+  CalendarRange,
+  CircleDot,
+  Columns3,
+  Contact,
+  FileSignature,
+  FileText,
+  Files,
+  Gauge,
+  Inbox,
+  Layers,
+  LayoutDashboard,
+  ListTodo,
+  Receipt,
+  ScrollText,
+  Settings,
+  ShoppingCart,
+  Split,
+  Table2,
+  Timer,
+  TrendingUp,
+  Users,
+  Wallet,
+} from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 
+/**
+ * Icons are addressed by NAME, not by component.
+ *
+ * The sidebar is a server component and these rows cross into a client one. A
+ * Lucide icon is a function, and functions cannot be serialized across that
+ * boundary — passing one throws "Functions cannot be passed directly to Client
+ * Components" at request time, which no type check catches. A string crosses
+ * fine and is resolved here.
+ */
+const ICONS = {
+  CalendarRange,
+  CircleDot,
+  Columns3,
+  Contact,
+  FileSignature,
+  FileText,
+  Files,
+  Gauge,
+  Inbox,
+  Layers,
+  LayoutDashboard,
+  ListTodo,
+  Receipt,
+  ScrollText,
+  Settings,
+  ShoppingCart,
+  Split,
+  Table2,
+  Timer,
+  TrendingUp,
+  Users,
+  Wallet,
+} as const
+
+export type IconName = keyof typeof ICONS
+
 export interface NavItem {
   key: string
   label: string
-  icon: LucideIcon
+  icon: IconName
   /** Absent for a destination that is not built yet — see `SidebarItem`. */
   href?: string
   count?: number | null
@@ -37,7 +96,7 @@ const rowClass =
 export function SidebarItem({ item, indent = false }: { item: NavItem; indent?: boolean }) {
   const isActive = useIsActive()
   const active = item.href ? isActive(item.href, item.exact) : false
-  const Icon = item.icon
+  const Icon = ICONS[item.icon]
 
   const body = (
     <>

@@ -1,29 +1,5 @@
 import type { OrgRole } from '@pm/shared/constants'
 import { Kbd, Separator } from '@pm/ui'
-import {
-  CalendarRange,
-  CircleDot,
-  Contact,
-  FileSignature,
-  Columns3,
-  FileText,
-  Files,
-  Gauge,
-  Inbox,
-  LayoutDashboard,
-  ListTodo,
-  Layers,
-  Receipt,
-  ScrollText,
-  Settings,
-  ShoppingCart,
-  Split,
-  Table2,
-  Timer,
-  TrendingUp,
-  Users,
-  Wallet,
-} from 'lucide-react'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { BrandMark } from './brand-mark'
@@ -81,20 +57,20 @@ export async function Sidebar({
     {
       key: 'dashboard',
       label: t('dashboard'),
-      icon: LayoutDashboard,
+      icon: 'LayoutDashboard',
       href: `/${orgSlug}/dashboard`,
     },
     {
       key: 'inbox',
       label: t('inbox'),
-      icon: Inbox,
+      icon: 'Inbox',
       href: `/${orgSlug}/notifications`,
       count: inboxCount,
     },
     {
       key: 'my-tasks',
       label: t('myTasks'),
-      icon: CircleDot,
+      icon: 'CircleDot',
       href: `/${orgSlug}/my-tasks`,
       count: myTaskCount,
     },
@@ -103,12 +79,12 @@ export async function Sidebar({
   // Views the project layout actually serves. Backlog planning and workload are
   // later phases, so they render as unavailable rather than as links into a 404.
   const projectViews = (): NavItem[] => [
-    { key: 'board', label: t('board'), icon: Columns3 },
-    { key: 'list', label: t('list'), icon: Table2 },
-    { key: 'timeline', label: t('timeline'), icon: CalendarRange },
-    { key: 'planning', label: t('planning'), icon: Layers },
-    { key: 'documents', label: t('documents'), icon: FileText },
-    { key: 'workload', label: t('workload'), icon: Gauge },
+    { key: 'board', label: t('board'), icon: 'Columns3' },
+    { key: 'list', label: t('list'), icon: 'Table2' },
+    { key: 'timeline', label: t('timeline'), icon: 'CalendarRange' },
+    { key: 'planning', label: t('planning'), icon: 'Layers' },
+    { key: 'documents', label: t('documents'), icon: 'FileText' },
+    { key: 'workload', label: t('workload'), icon: 'Gauge' },
   ]
 
   // Commercial lives inside a workspace, so its links need one. The first
@@ -120,12 +96,12 @@ export async function Sidebar({
     commercialBase && atLeast('manager') ? `${commercialBase}/${segment}` : undefined
 
   const commercial: NavItem[] = [
-    { key: 'quotations', label: t('quotations'), icon: FileSignature, href: commercialHref('quotations') },
-    { key: 'invoices', label: t('invoices'), icon: Receipt, href: commercialHref('invoices') },
-    { key: 'sales-orders', label: t('salesOrders'), icon: ScrollText, href: commercialHref('sales-orders') },
-    { key: 'purchase-orders', label: t('purchaseOrders'), icon: ShoppingCart, href: commercialHref('purchase-orders') },
-    { key: 'bills', label: t('bills'), icon: Wallet, href: commercialHref('bills') },
-    { key: 'contacts', label: t('contacts'), icon: Contact, href: commercialHref('contacts') },
+    { key: 'quotations', label: t('quotations'), icon: 'FileSignature', href: commercialHref('quotations') },
+    { key: 'invoices', label: t('invoices'), icon: 'Receipt', href: commercialHref('invoices') },
+    { key: 'sales-orders', label: t('salesOrders'), icon: 'ScrollText', href: commercialHref('sales-orders') },
+    { key: 'purchase-orders', label: t('purchaseOrders'), icon: 'ShoppingCart', href: commercialHref('purchase-orders') },
+    { key: 'bills', label: t('bills'), icon: 'Wallet', href: commercialHref('bills') },
+    { key: 'contacts', label: t('contacts'), icon: 'Contact', href: commercialHref('contacts') },
   ]
 
   const projectsByWorkspace = workspaces.map((workspace) => ({
@@ -175,7 +151,7 @@ export async function Sidebar({
               item={{
                 key: `${workspace.id}-projects`,
                 label: t('projects'),
-                icon: Columns3,
+                icon: 'Columns3',
                 href: `/${orgSlug}/${workspace.slug}/projects`,
                 count: wsProjects.length,
                 exact: true,
@@ -205,7 +181,7 @@ export async function Sidebar({
               item={{
                 key: `${workspace.id}-workflows`,
                 label: t('workflows'),
-                icon: Split,
+                icon: 'Split',
                 href: atLeast('manager')
                   ? `/${orgSlug}/${workspace.slug}/workflows`
                   : undefined,
@@ -231,25 +207,25 @@ export async function Sidebar({
             item={{
               key: 'team',
               label: t('team'),
-              icon: Users,
+              icon: 'Users',
               href: `/${orgSlug}/team`,
               exact: true,
             }}
           />
           <SidebarItem
-            item={{ key: 'leave', label: t('leave'), icon: CalendarRange, href: `/${orgSlug}/team/leave` }}
+            item={{ key: 'leave', label: t('leave'), icon: 'CalendarRange', href: `/${orgSlug}/team/leave` }}
           />
           <SidebarItem
             item={{
               key: 'timesheets',
               label: t('timesheets'),
-              icon: Timer,
+              icon: 'Timer',
               href: `/${orgSlug}/timesheets`,
             }}
           />
           {atLeast('manager') ? (
             <SidebarItem
-              item={{ key: 'members', label: t('members'), icon: Users, href: `/${orgSlug}/members` }}
+              item={{ key: 'members', label: t('members'), icon: 'Users', href: `/${orgSlug}/members` }}
             />
           ) : null}
         </SidebarSection>
@@ -260,7 +236,7 @@ export async function Sidebar({
               item={{
                 key: 'reports',
                 label: t('reports'),
-                icon: ListTodo,
+                icon: 'ListTodo',
                 href: `/${orgSlug}/reports`,
               }}
             />
@@ -268,11 +244,11 @@ export async function Sidebar({
               item={{
                 key: 'revenue',
                 label: t('revenue'),
-                icon: TrendingUp,
+                icon: 'TrendingUp',
                 href: `/${orgSlug}/revenue`,
               }}
             />
-            <SidebarItem item={{ key: 'docs', label: t('documents'), icon: Files }} />
+            <SidebarItem item={{ key: 'docs', label: t('documents'), icon: 'Files' }} />
           </SidebarSection>
         ) : null}
       </nav>
@@ -285,7 +261,7 @@ export async function Sidebar({
               item={{
                 key: 'settings',
                 label: t('settings'),
-                icon: Settings,
+                icon: 'Settings',
                 href: `/${orgSlug}/settings`,
               }}
             />
