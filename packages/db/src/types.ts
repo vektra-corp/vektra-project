@@ -3836,6 +3836,14 @@ export interface Database {
         }
         Returns: boolean
       }
+      finish_transfer_job: {
+        Args: {
+          p_job: string
+          p_status: string
+          p_result: Json
+        }
+        Returns: undefined
+      }
       grant_columns_except: {
         Args: {
           p_table: string
@@ -3911,6 +3919,12 @@ export interface Database {
       org_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      org_member_ids_for_emails: {
+        Args: {
+          p_emails: string[]
+        }
+        Returns: unknown
       }
       org_role: {
         Args: Record<PropertyKey, never>

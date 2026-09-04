@@ -40,6 +40,7 @@ export default async function SettingsLayout({
       ? [
           { segment: 'portal', label: 'Portal access' },
           { segment: 'automation', label: 'Automation' },
+          { segment: 'data', label: 'Import & export' },
         ]
       : []),
     ...(isAdmin ? [{ segment: 'billing', label: 'Billing' }] : []),
