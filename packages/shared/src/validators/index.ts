@@ -1,5 +1,6 @@
 export * from './common'
 export * from './auth'
+export * from './commercial'
 export * from './document'
 export * from './hr'
 export * from './organization'
