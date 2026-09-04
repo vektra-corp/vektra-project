@@ -974,6 +974,54 @@ export interface Database {
           },
         ]
       }
+      dashboard_configs: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          name: string
+          is_default: boolean
+          layout: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          name?: string
+          is_default?: boolean
+          layout?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          name?: string
+          is_default?: boolean
+          layout?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'dashboard_configs_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'dashboard_configs_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       document_versions: {
         Row: {
           id: string

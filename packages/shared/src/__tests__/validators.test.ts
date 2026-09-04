@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { DASHBOARD_COLUMNS, WIDGET_SPECS, parseLayout } from '../constants/dashboard'
 import { AppError } from '../errors'
 import { loginSchema, signupSchema } from '../validators/auth'
 import { projectCreateSchema } from '../validators/project'
@@ -136,5 +137,42 @@ describe('validateInput', () => {
       expect((error as AppError).code).toBe('VALIDATION_ERROR')
       expect((error as AppError).status).toBe(400)
     }
+  })
+})
+
+describe('parseLayout', () => {
+  it('drops entries whose widget type is not in the catalogue', () => {
+    const layout = parseLayout([
+      { widget_id: 'a', type: 'my_open_tasks', x: 0, y: 0, w: 6, h: 5 },
+      { widget_id: 'b', type: 'a_widget_that_was_removed', x: 0, y: 5, w: 6, h: 5 },
+    ])
+
+    expect(layout).toHaveLength(1)
+    expect(layout[0]?.type).toBe('my_open_tasks')
+  })
+
+  it('clamps a widget that would sit outside the grid', () => {
+    const [item] = parseLayout([
+      { widget_id: 'a', type: 'my_open_tasks', x: 99, y: -4, w: 99, h: 1 },
+    ])
+
+    expect(item?.x).toBeLessThan(DASHBOARD_COLUMNS)
+    expect(item?.y).toBe(0)
+    expect(item?.w).toBeLessThanOrEqual(DASHBOARD_COLUMNS)
+    // Below the widget's own minimum height, so it is raised to it.
+    expect(item?.h).toBe(WIDGET_SPECS.my_open_tasks.minH)
+  })
+
+  it('falls back to the spec when a dimension is missing or not a number', () => {
+    const [item] = parseLayout([{ widget_id: 'a', type: 'overdue_tasks' }])
+
+    expect(item?.w).toBe(WIDGET_SPECS.overdue_tasks.w)
+    expect(item?.h).toBe(WIDGET_SPECS.overdue_tasks.h)
+  })
+
+  it('returns an empty layout for anything that is not an array', () => {
+    expect(parseLayout(null)).toEqual([])
+    expect(parseLayout({})).toEqual([])
+    expect(parseLayout('[]')).toEqual([])
   })
 })

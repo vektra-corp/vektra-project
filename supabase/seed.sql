@@ -278,6 +278,63 @@ VALUES ('a4a4a4a4-0000-0000-0000-000000000001', 'a2a2a2a2-0000-0000-0000-0000000
         '11111111-1111-1111-1111-111111111111')
 ON CONFLICT (portal_user_id, project_id) DO NOTHING;
 
+
+-- -----------------------------------------------------------------------------
+-- Documents
+--
+-- One published and one draft in Acme, so the portal policy (published only)
+-- has both cases to discriminate between, plus one in Globex for isolation.
+-- -----------------------------------------------------------------------------
+
+INSERT INTO documents (id, organization_id, project_id, title, content, status, created_by) VALUES
+('a5a5a5a5-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ 'a2a2a2a2-0000-0000-0000-000000000001', 'Acme published spec',
+ '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Visible to the portal."}]}]}'::jsonb,
+ 'published', '11111111-1111-1111-1111-111111111111'),
+('a5a5a5a5-0000-0000-0000-000000000002', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ 'a2a2a2a2-0000-0000-0000-000000000001', 'Acme internal draft',
+ '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Internal only."}]}]}'::jsonb,
+ 'draft', '11111111-1111-1111-1111-111111111111'),
+('b5b5b5b5-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+ 'b2b2b2b2-0000-0000-0000-000000000001', 'Globex spec',
+ '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Other tenant."}]}]}'::jsonb,
+ 'published', '44444444-4444-4444-4444-444444444444')
+ON CONFLICT (id) DO NOTHING;
+
+-- -----------------------------------------------------------------------------
+-- Employees and leave
+--
+-- Acme has a manager and a member so the "read your own balance, or anyone's if
+-- you manage people" policy has both sides. Globex has one, for isolation.
+-- -----------------------------------------------------------------------------
+
+INSERT INTO employees (id, organization_id, user_id, employee_code, department,
+                       date_of_joining, status) VALUES
+('a6a6a6a6-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ '22222222-2222-2222-2222-222222222222', 'ACME-002', 'Delivery', '2024-02-01', 'active'),
+('a6a6a6a6-0000-0000-0000-000000000002', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ '33333333-3333-3333-3333-333333333333', 'ACME-003', 'Delivery', '2024-06-15', 'active'),
+('b6b6b6b6-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+ '44444444-4444-4444-4444-444444444444', 'GLBX-001', 'Ops', '2023-11-01', 'active')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO leave_types (id, organization_id, name, default_days, is_paid) VALUES
+('a7a7a7a7-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Annual', 20, true),
+('b7b7b7b7-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Annual', 25, true)
+ON CONFLICT (organization_id, name) DO NOTHING;
+
+-- The sync_leave_balance trigger creates and maintains the matching
+-- leave_balances rows, so the seed deliberately does not write them by hand.
+INSERT INTO leave_requests (id, organization_id, employee_id, leave_type_id,
+                            start_date, end_date, duration_days, status, reason) VALUES
+('a8a8a8a8-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ 'a6a6a6a6-0000-0000-0000-000000000002', 'a7a7a7a7-0000-0000-0000-000000000001',
+ '2030-03-04', '2030-03-08', 5, 'pending', 'Seeded pending request'),
+('b8b8b8b8-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+ 'b6b6b6b6-0000-0000-0000-000000000001', 'b7b7b7b7-0000-0000-0000-000000000001',
+ '2030-04-01', '2030-04-03', 3, 'pending', 'Other tenant request')
+ON CONFLICT (id) DO NOTHING;
+
 -- -----------------------------------------------------------------------------
 -- Platform admin
 -- -----------------------------------------------------------------------------

@@ -51,11 +51,22 @@ export const FIXTURES = {
     owner: '11111111-1111-1111-1111-111111111111',
     manager: '22222222-2222-2222-2222-222222222222',
     member: '33333333-3333-3333-3333-333333333333',
+    publishedDocId: 'a5a5a5a5-0000-0000-0000-000000000001',
+    draftDocId: 'a5a5a5a5-0000-0000-0000-000000000002',
+    // The manager's own employee record, and the member's.
+    managerEmployeeId: 'a6a6a6a6-0000-0000-0000-000000000001',
+    memberEmployeeId: 'a6a6a6a6-0000-0000-0000-000000000002',
+    leaveTypeId: 'a7a7a7a7-0000-0000-0000-000000000001',
+    memberLeaveRequestId: 'a8a8a8a8-0000-0000-0000-000000000001',
   },
   globex: {
     orgId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
     projectId: 'b2b2b2b2-0000-0000-0000-000000000001',
     owner: '44444444-4444-4444-4444-444444444444',
+    docId: 'b5b5b5b5-0000-0000-0000-000000000001',
+    employeeId: 'b6b6b6b6-0000-0000-0000-000000000001',
+    leaveTypeId: 'b7b7b7b7-0000-0000-0000-000000000001',
+    leaveRequestId: 'b8b8b8b8-0000-0000-0000-000000000001',
   },
   portal: {
     userId: '55555555-5555-5555-5555-555555555555',

@@ -1,10 +1,19 @@
+import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
+import {
+  DEFAULT_DASHBOARD,
+  WIDGET_SPECS,
+  parseLayout,
+  type DashboardWidgetType,
+} from '@pm/shared/constants'
 import { formatRelativeTime, initials, todayIn } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@pm/ui'
 import { addDays, format } from 'date-fns'
-import { AlertTriangle, CalendarClock, CircleDot, FolderKanban } from 'lucide-react'
+import { AlertTriangle, CalendarClock, FolderKanban } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getLocale, getTranslations } from 'next-intl/server'
+import type * as React from 'react'
+import { DashboardGrid } from '@/components/dashboard/dashboard-grid'
 import { ProjectProgressList, type ProjectProgressRow } from '@/components/dashboard/project-progress'
 import { StatTile } from '@/components/dashboard/stat-tile'
 import { Widget, WidgetEmpty } from '@/components/dashboard/widget'
@@ -129,122 +138,248 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
 
   const projectSlugs = new Map(progressRows.map((row) => [row.id, row.workspaceSlug]))
 
+  // The viewer's own employee record, if they have one — the leave widgets are
+  // meaningless without it and are simply omitted rather than shown empty.
+  const { data: me } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('organization_id', auth.orgId)
+    .eq('user_id', auth.userId)
+    .maybeSingle()
+
+  // The saved layout is per person per org; absence means "never customised",
+  // which is what makes DEFAULT_DASHBOARD the single definition of the default.
+  const { data: config } = await supabase
+    .from('dashboard_configs')
+    .select('layout')
+    .eq('organization_id', auth.orgId)
+    .eq('user_id', auth.userId)
+    .eq('is_default', true)
+    .maybeSingle()
+
+  const saved = parseLayout(config?.layout)
+  const layout = saved.length > 0 ? saved : DEFAULT_DASHBOARD
+
+  const isManager = (ORG_MANAGER_ROLES as readonly string[]).includes(auth.orgRole)
+  const availableTypes = (Object.keys(WIDGET_SPECS) as DashboardWidgetType[]).filter(
+    (type) => !WIDGET_SPECS[type].managerOnly || isManager,
+  )
+
+  const leaveBalances = me
+    ? await supabase
+        .from('leave_balances')
+        .select(
+          'id, remaining_days, total_days, carried_over, leave_type:leave_types!leave_balances_leave_type_id_fkey(name)',
+        )
+        .eq('employee_id', me.id)
+        .eq('year', new Date().getFullYear())
+    : { data: [] as never[] }
+
+  const pendingApprovals = isManager
+    ? await supabase
+        .from('leave_requests')
+        .select(
+          'id, start_date, end_date, duration_days, employee:employees!leave_requests_employee_id_fkey(profile:profiles!employees_user_id_fkey(full_name))',
+        )
+        .eq('organization_id', auth.orgId)
+        .eq('status', 'pending')
+        .order('start_date')
+        .limit(8)
+    : { data: [] as never[] }
+
+  const widgets: Partial<Record<DashboardWidgetType, React.ReactNode>> = {
+    tasks_due_soon: (
+      <StatTile
+        label="Due this week"
+        value={dueThisWeek.length}
+        icon={CalendarClock}
+        tone="warning"
+        caption={`Through ${weekEnd}`}
+      />
+    ),
+    overdue_tasks: (
+      <StatTile
+        label="Overdue"
+        value={overdue.length}
+        icon={AlertTriangle}
+        tone="critical"
+        caption={overdue.length > 0 ? 'Needs attention' : 'Nothing overdue'}
+      />
+    ),
+    active_projects: <StatTile label="Active projects" value={activeProjects ?? 0} icon={FolderKanban} />,
+    my_open_tasks: (
+      <Widget
+        title="My open tasks"
+        className="h-full"
+        action={{ label: 'All', href: `/${params.orgSlug}/my-tasks` }}
+      >
+        {mine.length === 0 ? (
+          <WidgetEmpty>Nothing assigned to you right now.</WidgetEmpty>
+        ) : (
+          <ul className="divide-y divide-border-subtle overflow-y-auto">
+            {mine.slice(0, 12).map((task) => {
+              const slug = projectSlugs.get(task.project_id)
+              const href = slug
+                ? `/${params.orgSlug}/${slug}/projects/${task.project_id}/tasks/${task.id}`
+                : null
+
+              return (
+                <li key={task.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <TaskPriorityIcon priority={task.priority as never} />
+                  {href ? (
+                    <Link
+                      href={href}
+                      className="min-w-0 flex-1 truncate text-[13px] transition-colors hover:text-primary"
+                    >
+                      {task.title}
+                    </Link>
+                  ) : (
+                    <span className="min-w-0 flex-1 truncate text-[13px]">{task.title}</span>
+                  )}
+                  <DueDate dueDate={task.due_date} today={today} isClosed={false} />
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Widget>
+    ),
+    project_progress: (
+      <Widget title="Project progress" className="h-full">
+        {progressRows.length === 0 ? (
+          <WidgetEmpty>No active projects yet.</WidgetEmpty>
+        ) : (
+          <div className="overflow-y-auto">
+            <ProjectProgressList orgSlug={params.orgSlug} projects={progressRows} />
+          </div>
+        )}
+      </Widget>
+    ),
+    recent_activity: (
+      <Widget title="Recent activity" className="h-full">
+        {activity.length === 0 ? (
+          <WidgetEmpty>Nothing has changed yet.</WidgetEmpty>
+        ) : (
+          <ul className="divide-y divide-border-subtle overflow-y-auto">
+            {activity.map((task) => {
+              const slug = projectSlugs.get(task.project_id)
+              const href = slug
+                ? `/${params.orgSlug}/${slug}/projects/${task.project_id}/tasks/${task.id}`
+                : null
+
+              return (
+                <li key={task.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <Avatar className="h-5 w-5 shrink-0">
+                    {task.assignee?.avatar_url ? (
+                      <AvatarImage src={task.assignee.avatar_url} alt="" />
+                    ) : null}
+                    <AvatarFallback className="bg-surface-hover text-[9px] font-medium uppercase text-muted-foreground">
+                      {initials(task.assignee?.full_name ?? '?')}
+                    </AvatarFallback>
+                  </Avatar>
+                  {href ? (
+                    <Link
+                      href={href}
+                      className="min-w-0 flex-1 truncate text-[13px] transition-colors hover:text-primary"
+                    >
+                      {task.title}
+                    </Link>
+                  ) : (
+                    <span className="min-w-0 flex-1 truncate text-[13px]">{task.title}</span>
+                  )}
+                  <span className="label-meta shrink-0 text-faint">
+                    {formatRelativeTime(task.updated_at, locale)}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Widget>
+    ),
+    my_leave: (
+      <Widget
+        title="My leave"
+        className="h-full"
+        action={{ label: 'Request', href: `/${params.orgSlug}/team/leave` }}
+      >
+        {!leaveBalances.data?.length ? (
+          <WidgetEmpty>{me ? 'No leave allocated yet.' : 'No employee record.'}</WidgetEmpty>
+        ) : (
+          <ul className="divide-y divide-border-subtle overflow-y-auto">
+            {leaveBalances.data.map((balance) => {
+              const type = Array.isArray(balance.leave_type)
+                ? balance.leave_type[0]
+                : balance.leave_type
+              return (
+                <li key={balance.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <span className="min-w-0 flex-1 truncate text-[13px]">
+                    {type?.name ?? 'Leave'}
+                  </span>
+                  <span className="label-meta tabular-nums text-faint">
+                    <span className="text-foreground">{balance.remaining_days}</span> left of{' '}
+                    {Number(balance.total_days) + Number(balance.carried_over)}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Widget>
+    ),
+    pending_approvals: (
+      <Widget
+        title="Leave approvals"
+        className="h-full"
+        action={{ label: 'All', href: `/${params.orgSlug}/team/leave` }}
+      >
+        {!pendingApprovals.data?.length ? (
+          <WidgetEmpty>Nothing to approve.</WidgetEmpty>
+        ) : (
+          <ul className="divide-y divide-border-subtle overflow-y-auto">
+            {pendingApprovals.data.map((request) => {
+              const employee = Array.isArray(request.employee)
+                ? request.employee[0]
+                : request.employee
+              const profile = employee
+                ? Array.isArray(employee.profile)
+                  ? employee.profile[0]
+                  : employee.profile
+                : null
+
+              return (
+                <li key={request.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <span className="min-w-0 flex-1 truncate text-[13px]">
+                    {profile?.full_name ?? 'Unknown'}
+                  </span>
+                  <span className="label-meta text-faint">
+                    {request.start_date} · {request.duration_days}d
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Widget>
+    ),
+    team_workload: (
+      <Widget title="Team workload" className="h-full">
+        <WidgetEmpty>Workload analytics arrive with timesheets in Phase 3.</WidgetEmpty>
+      </Widget>
+    ),
+  }
+
   return (
     <>
       <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: t('nav.dashboard') }]} />
 
       <PageBody className="pt-1">
-        <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatTile
-              label="Assigned to me"
-              value={mine.length}
-              icon={CircleDot}
-              href={`/${params.orgSlug}/my-tasks`}
-            />
-            <StatTile
-              label="Due this week"
-              value={dueThisWeek.length}
-              icon={CalendarClock}
-              tone="warning"
-              caption={`Through ${weekEnd}`}
-            />
-            <StatTile
-              label="Overdue"
-              value={overdue.length}
-              icon={AlertTriangle}
-              tone="critical"
-              caption={overdue.length > 0 ? 'Needs attention' : 'Nothing overdue'}
-            />
-            <StatTile label="Active projects" value={activeProjects ?? 0} icon={FolderKanban} />
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Widget title="My open tasks" action={{ label: 'All', href: `/${params.orgSlug}/reports` }}>
-              {mine.length === 0 ? (
-                <WidgetEmpty>Nothing assigned to you right now.</WidgetEmpty>
-              ) : (
-                <ul className="divide-y divide-border-subtle">
-                  {mine.slice(0, 7).map((task) => {
-                    const slug = projectSlugs.get(task.project_id)
-                    const href = slug
-                      ? `/${params.orgSlug}/${slug}/projects/${task.project_id}/tasks/${task.id}`
-                      : null
-
-                    return (
-                      <li key={task.id} className="flex items-center gap-3 px-4 py-2.5">
-                        <TaskPriorityIcon priority={task.priority as never} />
-                        {href ? (
-                          <Link
-                            href={href}
-                            className="min-w-0 flex-1 truncate text-[13px] transition-colors hover:text-primary"
-                          >
-                            {task.title}
-                          </Link>
-                        ) : (
-                          <span className="min-w-0 flex-1 truncate text-[13px]">{task.title}</span>
-                        )}
-                        <DueDate dueDate={task.due_date} today={today} isClosed={false} />
-                      </li>
-                    )
-                  })}
-                </ul>
-              )}
-            </Widget>
-
-            <Widget
-              title="Project progress"
-              action={{ label: 'Projects', href: `/${params.orgSlug}/settings/workspaces` }}
-            >
-              {progressRows.length === 0 ? (
-                <WidgetEmpty>No active projects yet.</WidgetEmpty>
-              ) : (
-                <ProjectProgressList orgSlug={params.orgSlug} projects={progressRows} />
-              )}
-            </Widget>
-          </div>
-
-          <Widget title="Recent activity">
-            {activity.length === 0 ? (
-              <WidgetEmpty>Nothing has changed yet.</WidgetEmpty>
-            ) : (
-              <ul className="divide-y divide-border-subtle">
-                {activity.map((task) => {
-                  const slug = projectSlugs.get(task.project_id)
-                  const href = slug
-                    ? `/${params.orgSlug}/${slug}/projects/${task.project_id}/tasks/${task.id}`
-                    : null
-
-                  return (
-                    <li key={task.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <Avatar className="h-5 w-5 shrink-0">
-                        {task.assignee?.avatar_url ? (
-                          <AvatarImage src={task.assignee.avatar_url} alt="" />
-                        ) : null}
-                        <AvatarFallback className="bg-surface-hover text-[9px] font-medium uppercase text-muted-foreground">
-                          {initials(task.assignee?.full_name ?? '?')}
-                        </AvatarFallback>
-                      </Avatar>
-                      {href ? (
-                        <Link
-                          href={href}
-                          className="min-w-0 flex-1 truncate text-[13px] transition-colors hover:text-primary"
-                        >
-                          {task.title}
-                        </Link>
-                      ) : (
-                        <span className="min-w-0 flex-1 truncate text-[13px]">{task.title}</span>
-                      )}
-                      <span className="label-meta shrink-0 text-faint">
-                        {formatRelativeTime(task.updated_at, locale)}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </Widget>
-        </div>
+        <DashboardGrid
+          orgSlug={params.orgSlug}
+          initialLayout={layout}
+          widgets={widgets}
+          availableTypes={availableTypes}
+        />
       </PageBody>
     </>
   )

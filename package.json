@@ -26,14 +26,15 @@
     "verify": "turbo run lint typecheck test build --concurrency=1",
     "db:link": "supabase link",
     "db:pull": "supabase db diff --db-url \"$(node scripts/session-db-url.mjs)\"",
-    "db:seed": "psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -f supabase/seed.sql",
+    "db:seed": "node scripts/seed.mjs",
     "db:reset:local": "supabase db reset",
     "db:local": "supabase start",
     "db:local:stop": "supabase stop",
     "db:check": "node scripts/check-cloud-setup.mjs",
     "db:push:dry": "supabase db push --db-url \"$(node scripts/session-db-url.mjs)\" --dry-run",
     "db:migrations": "supabase migration list --db-url \"$(node scripts/session-db-url.mjs)\"",
-    "db:repair": "supabase migration repair --db-url \"$(node scripts/session-db-url.mjs)\" --status applied"
+    "db:repair": "supabase migration repair --db-url \"$(node scripts/session-db-url.mjs)\" --status applied",
+    "db:seed:psql": "psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -f supabase/seed.sql"
   },
   "devDependencies": {
     "@types/node": "^20.14.10",

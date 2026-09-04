@@ -6,8 +6,8 @@ run what exists today.
 
 ## Status
 
-**Phases 0 (Foundations) and 1 (MVP) are complete. Phase 2 (V1) is all but done** —
-only the configurable dashboard grid remains. See [Build order](#build-order).
+**Phases 0 (Foundations), 1 (MVP) and 2 (V1) are complete.**
+See [Build order](#build-order).
 
 The UI follows the Vektra design system: dark-first tokens in
 `packages/ui/src/styles.css`, a monospace "meta" type treatment for every id,
@@ -16,8 +16,8 @@ count and status label, and a four-step surface elevation ladder.
 | Area | State |
 |---|---|
 | Monorepo, Turborepo, TypeScript strict | Done |
-| Database schema (56 tables, 16 migrations) | Done |
-| RLS policies (132) | Done, 31 isolation tests passing |
+| Database schema (57 tables, 17 migrations) | Done |
+| RLS policies (133) | Done, 51 isolation tests passing |
 | Auth: signup, login, reset, callback, onboarding | Done |
 | Event bus (`emit_event` triggers) | Done |
 | Stripe billing skeleton + webhook | Done |
@@ -40,7 +40,7 @@ count and status label, and a four-step surface elevation ladder.
 | External portal (`/portal/{org}`) + access management | Done |
 | Gantt timeline: zoom, dependencies, drag to reschedule | Done |
 | Employees, leave requests, balances, approvals | Done |
-| Configurable dashboard grid (§19.10) | Remaining Phase 2 item |
+| Configurable dashboard grid (§19.10) | Done |
 | Commercial, timesheets, leads, workflows | Not started — Phase 3 |
 
 ### Database scripts
