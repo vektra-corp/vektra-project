@@ -14,27 +14,21 @@ started.
 |---|---|---|
 | 0 — Foundations | Auth, tenancy, RLS, CI, billing skeleton, event bus | **Complete** |
 | 1 — MVP | Design system, board, tasks, comments, attachments, notifications, reports, settings, members, admin console | **Complete** |
-| 2 — V1 | Documents, external portal, Gantt, employees & leave, configurable dashboard | **Incomplete** — two spec items missing, below |
+| 2 — V1 | Documents, external portal, Gantt, employees & leave, configurable dashboard, subtask Kanban, import/export | **Complete** |
 | 3 — V2 | Commercial, timesheets, revenue, auto-assignment, custom fields, workflows, PDF, Slack | **Complete** |
 | 4 — Hardening | Security review, load test, E2E, DR, go-live | **Not started** — plan below |
 
-### Phase 2 — what is actually missing
+### Phase 2 detail
 
-Audited against CLAUDE.md §20, which lists for Phase 2: *"Subtask Kanban, Gantt
-chart, documents, import/export, external portal, customizable dashboard (grid
-layout + widget catalog), email integration, contacts, employee management,
-leave tracking."*
+Audited against §20 and completed afterwards. Two items had never been built,
+and this file wrongly claimed the phase was finished — worth keeping visible,
+because neither is a foundation and Phase 3 sat on top of them without noticing:
 
-Eight of ten are built. Two are not, and this file previously claimed the phase
-was complete, which was wrong:
-
-| Missing item | State |
+| Item | State |
 |---|---|
-| **Subtask Kanban** | Subtasks render as a checklist (`components/tasks/subtask-list.tsx`). The schema supports a subtask-level board — `kanban_boards.task_id` exists with a CHECK making it exclusive with `project_id` — and `PLAN_LIMITS.subtask_kanban` gates it as a Growth feature, but nothing reads or writes those rows. §4 and §10 both name a `subtask-board.tsx` that does not exist. |
-| **Import / export** | Nothing at all. `import_export_jobs` (00007) has never been read or written; there is no CSV surface anywhere in either app. §14 and §20 both call for it, and §13.7 already defines an `export` rate limiter for it. |
-
-Neither blocks Phase 3, which is why it went unnoticed: both are self-contained
-features rather than foundations anything else builds on.
+| Subtask Kanban | **Done.** Board provisioned on demand by `ensure_task_board` (00028); existing checklist subtasks are adopted into the column their status implies. |
+| Import / export | **Done.** CSV both ways, `import_export_jobs` finally written to (00029), assignee resolution via `org_member_ids_for_emails` (00030). |
+| Gantt, documents, portal, contacts, employees, leave, configurable dashboard, email | Were already done |
 
 ### Phase 3 detail
 
@@ -67,12 +61,13 @@ set -a; source apps/web/.env.local; set +a
 ALLOW_DESTRUCTIVE_TESTS=true pnpm test:rls
 ```
 
-Current counts: **342 unit tests, 70 RLS tests, 62 tables, 139 RLS policies
-across all 62, 27 migrations, 9 background jobs.**
+Current counts: **404 unit tests, 70 RLS tests, 63 tables, 30 migrations,
+9 background jobs.**
 
-The RLS suite has NOT been re-run since migrations 00025-00027. Do that before
-trusting the isolation guarantees — 00025 changed the comments INSERT policies
-and 00027 added a table.
+The RLS suite has NOT been re-run since migration 00024. Do that before trusting
+the isolation guarantees — 00025 rewrote the comments INSERT policies, 00027 and
+00029 added tables and policies, and 00028/00030 added SECURITY DEFINER
+functions callable by end users.
 
 ---
 
@@ -330,6 +325,11 @@ asserted by reading the SQL, not by a test. Add coverage for:
 - `workflows.webhook_token_hash` — a member can read the row; confirm the hash
   is useless to them (it is, but the test documents the intent).
 - `pdf_templates` — manager-gated, no cross-tenant read.
+- `import_export_jobs` — a person reads their own and an admin reads all;
+  UPDATE and DELETE must affect zero rows (checked by hand, not by a test).
+- `ensure_task_board` and `org_member_ids_for_emails` — both SECURITY DEFINER
+  and callable by end users, so both check the tenant themselves. Each was
+  verified by hand against another org; neither has a test.
 
 ### 2. E2E tests (Playwright)  *(blocking)*
 
@@ -371,13 +371,7 @@ this.
 worth testing are the ones where RLS calls a `SECURITY DEFINER` helper per row:
 `is_project_member`, `portal_can_access_task`.
 
-### 6. Finish Phase 2 first
-
-Two Phase 2 items are unbuilt (see "Phase 2 — what is actually missing" above):
-subtask Kanban and import/export. They are product scope, not hardening, so
-they belong before Phase 4 rather than inside it.
-
-### 7. Not blocking, but wanted
+### 6. Not blocking, but wanted
 
 - **Only `en.json`.** Nine locales specified in §21; the scaffolding is there
   and `pnpm i18n:check` guards completeness once a second file exists.
