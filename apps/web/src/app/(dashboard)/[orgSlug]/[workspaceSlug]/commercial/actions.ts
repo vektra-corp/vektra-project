@@ -513,3 +513,22 @@ export async function deleteCommercialDoc(
     return toActionError(error)
   }
 }
+
+/**
+ * Create or update, behind one signature.
+ *
+ * The form binds this once rather than switching between two actions with
+ * different success payloads — which otherwise forces a cast at the call site
+ * for no gain. Both paths return the document's id so the caller can navigate.
+ */
+export async function saveCommercialDoc(
+  scope: Scope,
+  documentId: string | null,
+  prevState: ActionResult<{ id: string }> | null,
+  formData: FormData,
+): Promise<ActionResult<{ id: string }>> {
+  if (!documentId) return createCommercialDoc(scope, prevState, formData)
+
+  const result = await updateCommercialDoc(scope, documentId, null, formData)
+  return result.ok ? { ok: true, data: { id: documentId } } : result
+}

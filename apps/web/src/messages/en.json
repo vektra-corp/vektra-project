@@ -100,7 +100,9 @@
     "noWorkspaces": "No workspaces yet",
     "people": "People",
     "team": "Team",
-    "leave": "Leave"
+    "leave": "Leave",
+    "quotations": "Quotations",
+    "contacts": "Contacts"
   },
   "onboarding": {
     "title": "Create your organization",

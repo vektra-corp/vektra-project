@@ -3,6 +3,8 @@ import { Kbd, Separator } from '@pm/ui'
 import {
   CalendarRange,
   CircleDot,
+  Contact,
+  FileSignature,
   Columns3,
   FileText,
   Files,
@@ -107,18 +109,21 @@ export async function Sidebar({
     { key: 'workload', label: t('workload'), icon: Gauge },
   ]
 
+  // Commercial lives inside a workspace, so its links need one. The first
+  // workspace is the sensible default; a member with none sees them inert.
+  const commercialBase = workspaces[0]
+    ? `/${orgSlug}/${workspaces[0].slug}/commercial`
+    : null
+  const commercialHref = (segment: string) =>
+    commercialBase && atLeast('manager') ? `${commercialBase}/${segment}` : undefined
+
   const commercial: NavItem[] = [
-    { key: 'purchase-orders', label: t('purchaseOrders'), icon: ShoppingCart },
-    { key: 'sales-orders', label: t('salesOrders'), icon: ScrollText },
-    { key: 'invoices', label: t('invoices'), icon: Receipt },
-    { key: 'bills', label: t('bills'), icon: Wallet },
-    {
-      key: 'contacts',
-      label: t('teamAndClients'),
-      icon: Users,
-      href: atLeast('manager') ? `/${orgSlug}/members` : undefined,
-      count: null,
-    },
+    { key: 'quotations', label: t('quotations'), icon: FileSignature, href: commercialHref('quotations') },
+    { key: 'invoices', label: t('invoices'), icon: Receipt, href: commercialHref('invoices') },
+    { key: 'sales-orders', label: t('salesOrders'), icon: ScrollText, href: commercialHref('sales-orders') },
+    { key: 'purchase-orders', label: t('purchaseOrders'), icon: ShoppingCart, href: commercialHref('purchase-orders') },
+    { key: 'bills', label: t('bills'), icon: Wallet, href: commercialHref('bills') },
+    { key: 'contacts', label: t('contacts'), icon: Contact, href: commercialHref('contacts') },
   ]
 
   const projectsByWorkspace = workspaces.map((workspace) => ({
