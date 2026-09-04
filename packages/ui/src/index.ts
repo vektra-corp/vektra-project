@@ -47,6 +47,7 @@ export {
 export { Input, type InputProps } from './components/input'
 export { Kbd } from './components/kbd'
 export { Label } from './components/label'
+export { PasswordInput, type PasswordInputProps } from './components/password-input'
 export { Progress, type ProgressProps } from './components/progress'
 export {
   SegmentedGroup,

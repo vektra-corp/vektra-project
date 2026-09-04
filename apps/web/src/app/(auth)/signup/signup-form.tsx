@@ -1,8 +1,10 @@
 'use client'
 
-import { Alert, AlertDescription, Button, Input, Label } from '@pm/ui'
-import { AlertCircle, MailCheck } from 'lucide-react'
+import { Alert, AlertDescription, Button, Input, Label, PasswordInput } from '@pm/ui'
+import { AlertCircle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { useEffect } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { signUp } from '../actions'
 
@@ -17,17 +19,24 @@ function SubmitButton({ label }: { label: string }) {
 
 export function SignupForm() {
   const t = useTranslations('auth')
+  const tCommon = useTranslations('common')
   const [state, formAction] = useFormState(signUp, null)
+  const router = useRouter()
 
+  // Navigating from an effect rather than redirecting inside the action keeps
+  // the validation errors renderable when the submit fails.
+  useEffect(() => {
+    if (state?.ok) {
+      router.push(`/verify?email=${encodeURIComponent(state.data.email)}`)
+    }
+  }, [state, router])
+
+  // Straight to the code entry — an interstitial saying "we sent a code" is a
+  // step that only exists to be clicked through. /verify says the same thing
+  // above the input it wants filled in.
   if (state?.ok) {
     return (
-      <Alert variant="success">
-        <MailCheck aria-hidden />
-        <AlertDescription>
-          <p className="font-medium">{t('verify_title')}</p>
-          <p className="mt-1">{t('verify_subtitle', { email: state.data.email })}</p>
-        </AlertDescription>
-      </Alert>
+      <p className="py-8 text-center text-[13px] text-muted-foreground">{tCommon('loading')}</p>
     )
   }
 
@@ -76,13 +85,14 @@ export function SignupForm() {
 
       <div className="space-y-2">
         <Label htmlFor="password">{t('password')}</Label>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="new-password"
           minLength={8}
           required
+          showLabel={t('show_password')}
+          hideLabel={t('hide_password')}
         />
         {fieldError('password') ? (
           <p className="text-xs text-destructive">{fieldError('password')}</p>
@@ -91,12 +101,13 @@ export function SignupForm() {
 
       <div className="space-y-2">
         <Label htmlFor="confirm_password">{t('confirm_password')}</Label>
-        <Input
+        <PasswordInput
           id="confirm_password"
           name="confirm_password"
-          type="password"
           autoComplete="new-password"
           required
+          showLabel={t('show_password')}
+          hideLabel={t('hide_password')}
         />
         {fieldError('confirm_password') ? (
           <p className="text-xs text-destructive">{fieldError('confirm_password')}</p>

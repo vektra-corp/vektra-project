@@ -1,6 +1,6 @@
 'use client'
 
-import { Alert, AlertDescription, Button, Input, Label } from '@pm/ui'
+import { Alert, AlertDescription, Button, Input, Label, PasswordInput } from '@pm/ui'
 import { AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
@@ -75,13 +75,14 @@ export function LoginForm({ next }: { next?: string }) {
             {t('forgot_password')}
           </Link>
         </div>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
-          type="password"
           autoComplete="current-password"
           required
           aria-invalid={Boolean(fieldError('password'))}
+          showLabel={t('show_password')}
+          hideLabel={t('hide_password')}
         />
         {fieldError('password') ? (
           <p className="text-xs text-destructive">{fieldError('password')}</p>

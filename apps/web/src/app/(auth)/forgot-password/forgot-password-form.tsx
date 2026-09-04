@@ -1,8 +1,9 @@
 'use client'
 
-import { Alert, AlertDescription, Button, Input, Label } from '@pm/ui'
-import { MailCheck } from 'lucide-react'
+import { Button, Input, Label } from '@pm/ui'
+import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { useEffect } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { requestPasswordReset } from '../actions'
 
@@ -17,17 +18,20 @@ function SubmitButton({ label }: { label: string }) {
 
 export function ForgotPasswordForm() {
   const t = useTranslations('auth')
+  const tCommon = useTranslations('common')
   const [state, formAction] = useFormState(requestPasswordReset, null)
+  const router = useRouter()
+
+  useEffect(() => {
+    if (state?.ok) {
+      router.push(`/verify?type=recovery&email=${encodeURIComponent(state.data.email)}`)
+    }
+  }, [state, router])
 
   // Success is reported whether or not the address is registered, so this screen
   // cannot be used to enumerate accounts.
   if (state?.ok) {
-    return (
-      <Alert variant="success">
-        <MailCheck aria-hidden />
-        <AlertDescription>{t('reset_link_sent')}</AlertDescription>
-      </Alert>
-    )
+    return <p className="py-8 text-center text-[13px] text-muted-foreground">{tCommon('loading')}</p>
   }
 
   const emailError = state && !state.ok ? state.fieldErrors?.email?.[0] : undefined
