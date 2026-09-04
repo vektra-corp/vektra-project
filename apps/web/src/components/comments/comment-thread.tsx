@@ -1,10 +1,12 @@
 'use client'
 
 import { formatRelativeTime, initials } from '@pm/shared/utils'
-import { Avatar, AvatarFallback, AvatarImage, Badge, Button } from '@pm/ui'
+import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Checkbox } from '@pm/ui'
 import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
 import { createComment } from '@/app/(dashboard)/[orgSlug]/[workspaceSlug]/projects/[projectId]/actions'
+import { RichTextView } from '@/components/editor/rich-text'
+import { RichTextEditor } from '@/components/editor/rich-text-editor'
 import type { KanbanScope } from '@/components/kanban/types'
 
 export interface CommentRow {
@@ -14,20 +16,6 @@ export interface CommentRow {
   is_edited: boolean
   created_at: string
   author: { id: string; full_name: string; avatar_url: string | null } | null
-}
-
-/**
- * Render a Tiptap document as plain paragraphs.
- *
- * Bodies are sanitized before storage (§13.1) and rendered through React here,
- * which escapes text — so no `dangerouslySetInnerHTML` is needed or wanted.
- */
-function renderBody(body: unknown): string[] {
-  const doc = body as { content?: { content?: { text?: string }[] }[] } | null
-  if (!doc?.content) return []
-  return doc.content.map((block) =>
-    (block.content ?? []).map((node) => node.text ?? '').join(''),
-  )
 }
 
 export function CommentThread({
@@ -45,23 +33,24 @@ export function CommentThread({
 }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const internalRef = useRef<HTMLInputElement>(null)
+  // Remounting the editor is the simplest reliable way to clear it after a
+  // successful post — Tiptap owns its own document state.
+  const [composerKey, setComposerKey] = useState(0)
+  const formRef = useRef<HTMLFormElement>(null)
   const router = useRouter()
 
   function submit() {
-    const text = textareaRef.current?.value.trim()
-    if (!text) return
+    const form = formRef.current
+    if (!form) return
 
-    const formData = new FormData()
-    formData.set('body', text)
-    if (internalRef.current?.checked) formData.set('is_internal', 'on')
+    const formData = new FormData(form)
+    if (!String(formData.get('body') ?? '').trim()) return
 
     startTransition(async () => {
       const result = await createComment(scope, taskId, null, formData)
       if (result.ok) {
         setError(null)
-        if (textareaRef.current) textareaRef.current.value = ''
+        setComposerKey((key) => key + 1)
         router.refresh()
       } else {
         setError(result.message)
@@ -103,14 +92,7 @@ export function CommentThread({
                   </Badge>
                 ) : null}
               </div>
-              <div className="mt-1 space-y-2 text-sm">
-                {renderBody(comment.body).map((paragraph, index) => (
-                  // eslint-disable-next-line react/no-array-index-key -- paragraphs have no stable id
-                  <p key={index} className="whitespace-pre-wrap break-words">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
+              <RichTextView doc={comment.body} className="mt-1" />
             </div>
           </li>
         ))}
@@ -120,33 +102,32 @@ export function CommentThread({
       </ul>
 
       {canComment ? (
-        <div className="space-y-2 rounded-md border p-3">
-          <textarea
-            ref={textareaRef}
-            rows={3}
-            placeholder="Write a comment..."
-            aria-label="Comment"
-            disabled={pending}
-            className="w-full resize-y bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            onKeyDown={(event) => {
-              // Cmd/Ctrl+Enter submits; plain Enter is a newline in a comment.
-              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                event.preventDefault()
-                submit()
-              }
-            }}
+        <form
+          ref={formRef}
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            submit()
+          }}
+        >
+          <RichTextEditor
+            key={composerKey}
+            name="body"
+            placeholder="Write a comment…"
+            minHeight="min-h-[84px]"
+            onSubmit={submit}
           />
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
           <div className="flex items-center justify-between gap-3">
-            <label className="flex items-center gap-2 text-xs text-muted-foreground">
-              <input ref={internalRef} type="checkbox" className="h-3.5 w-3.5 rounded border-input" />
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+              <Checkbox name="is_internal" size="sm" />
               Internal only (hidden from portal users)
             </label>
-            <Button size="sm" loading={pending} onClick={submit}>
+            <Button type="submit" size="sm" loading={pending}>
               Comment
             </Button>
           </div>
-        </div>
+        </form>
       ) : null}
     </section>
   )

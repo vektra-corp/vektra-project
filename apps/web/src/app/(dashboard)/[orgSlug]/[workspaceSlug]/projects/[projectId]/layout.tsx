@@ -1,15 +1,17 @@
 import { Badge } from '@pm/ui'
+import { differenceInCalendarDays } from 'date-fns'
 import { notFound } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { ProjectTabs } from '@/components/projects/project-tabs'
+import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
 
 /**
- * Project shell: header plus the view switcher.
+ * Project shell: the section header.
  *
- * Fetching the project here rather than in each view means the four tabs share
- * one round trip and a missing project 404s once instead of per view.
+ * Fetching the project here rather than in each view means the views share one
+ * round trip and a missing project 404s once instead of per view. The view
+ * switcher lives in each view's own toolbar, beside that view's controls.
  */
 export default async function ProjectLayout({
   children,
@@ -23,7 +25,9 @@ export default async function ProjectLayout({
 
   const { data: project } = await supabase
     .from('projects')
-    .select('id, name, description, status, priority')
+    .select(
+      'id, name, status, priority, end_date, workspace:workspaces!projects_workspace_id_fkey(name)',
+    )
     .eq('id', params.projectId)
     .maybeSingle()
 
@@ -31,29 +35,45 @@ export default async function ProjectLayout({
   // observable outcome as one that does not exist. That is deliberate.
   if (!project) notFound()
 
-  const base = `/${params.orgSlug}/${params.workspaceSlug}/projects/${project.id}`
+  const workspace = Array.isArray(project.workspace) ? project.workspace[0] : project.workspace
+
+  // Days remaining is a plain calendar-day difference, so a project ending today
+  // reads as "today" rather than as a fractional day.
+  const daysLeft = project.end_date
+    ? differenceInCalendarDays(new Date(project.end_date), new Date())
+    : null
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold">{project.name}</h1>
-          <Badge variant="outline" className="capitalize">
+    <>
+      <Topbar
+        orgSlug={params.orgSlug}
+        breadcrumb={[
+          {
+            label: workspace?.name ?? 'Projects',
+            href: `/${params.orgSlug}/${params.workspaceSlug}/projects`,
+          },
+          {
+            label: project.name,
+            href: `/${params.orgSlug}/${params.workspaceSlug}/projects/${project.id}/board`,
+          },
+        ]}
+        meta={
+          <Badge
+            variant={project.status === 'active' ? 'success' : 'secondary'}
+            shape="meta"
+            className="ms-1"
+          >
             {project.status.replace('_', ' ')}
+            {daysLeft !== null ? (
+              <>
+                <span className="px-0.5 opacity-50">·</span>
+                {daysLeft >= 0 ? `${daysLeft}d left` : `${Math.abs(daysLeft)}d over`}
+              </>
+            ) : null}
           </Badge>
-          {project.priority ? (
-            <Badge variant="secondary" className="capitalize">
-              {project.priority}
-            </Badge>
-          ) : null}
-        </div>
-        {project.description ? (
-          <p className="max-w-3xl text-sm text-muted-foreground">{project.description}</p>
-        ) : null}
-        <ProjectTabs base={base} />
-      </header>
-
-      <div className="min-h-0 flex-1">{children}</div>
-    </div>
+        }
+      />
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+    </>
   )
 }

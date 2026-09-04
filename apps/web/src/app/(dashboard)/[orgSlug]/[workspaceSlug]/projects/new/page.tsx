@@ -1,6 +1,8 @@
 import { can } from '@pm/auth/rbac'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@pm/ui'
 import type { Metadata } from 'next'
+import { PageBody } from '@/components/layout/page-body'
+import { Topbar } from '@/components/layout/topbar'
 import { ProjectForm } from '@/components/projects/project-form'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
@@ -17,18 +19,29 @@ export default async function NewProjectPage({
   if (!can(auth, 'projects', 'create')) forbidden()
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>New project</CardTitle>
-          <CardDescription>
-            A board with To Do, In Progress, In Review and Done is created for you.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ProjectForm orgSlug={params.orgSlug} workspaceSlug={params.workspaceSlug} />
-        </CardContent>
-      </Card>
-    </div>
+    <>
+      <Topbar
+        orgSlug={params.orgSlug}
+        breadcrumb={[
+          { label: 'Projects', href: `/${params.orgSlug}/${params.workspaceSlug}/projects` },
+          { label: 'New project' },
+        ]}
+      />
+      <PageBody>
+        <div className="mx-auto max-w-2xl">
+          <Card>
+            <CardHeader>
+              <CardTitle>New project</CardTitle>
+              <CardDescription>
+                A board with To Do, In Progress, In Review and Done is created for you.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ProjectForm orgSlug={params.orgSlug} workspaceSlug={params.workspaceSlug} />
+            </CardContent>
+          </Card>
+        </div>
+      </PageBody>
+    </>
   )
 }

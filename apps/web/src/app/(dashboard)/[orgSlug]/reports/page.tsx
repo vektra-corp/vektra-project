@@ -11,6 +11,8 @@ import { Avatar, AvatarFallback, Badge, Card, CardContent } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getLocale } from 'next-intl/server'
+import { PageBody } from '@/components/layout/page-body'
+import { Topbar } from '@/components/layout/topbar'
 import { ReportFilters } from '@/components/reports/report-filters'
 import { DueDate, TaskPriorityIcon, TaskStatusBadge } from '@/components/tasks/task-badges'
 import { requireAuthPage } from '@/lib/auth/context'
@@ -136,7 +138,11 @@ export default async function ReportsPage({
         return project ? project.name : <span className="text-muted-foreground">—</span>
       }
       case 'labels': {
-        const labels = ((task.task_labels ?? []) as { label: { id: string; name: string; color: string } | null }[])
+        const labels = (
+          (task.task_labels ?? []) as {
+            label: { id: string; name: string; color: string } | null
+          }[]
+        )
           .map((row) => one(row.label))
           .filter(Boolean)
         if (labels.length === 0) return <span className="text-muted-foreground">—</span>
@@ -173,69 +179,78 @@ export default async function ReportsPage({
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Task report</h1>
-        <p className="text-sm text-muted-foreground">
-          {tasks?.length ?? 0} tasks{(tasks?.length ?? 0) === 100 ? ' (first 100)' : ''}
-        </p>
-      </div>
-
-      <ReportFilters
-        statuses={TASK_STATUSES}
-        priorities={PRIORITIES}
-        members={assignableMembers}
-        selectedColumns={columns}
-      />
-
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <caption className="sr-only">Tasks across all projects</caption>
-              <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  {columns.map((column) => (
-                    <th key={column} scope="col" className="whitespace-nowrap px-4 py-3 font-medium">
-                      {TASK_REPORT_COLUMNS[column].label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(tasks ?? []).map((task) => (
-                  <tr key={task.id} className="border-b last:border-0 hover:bg-muted/40">
-                    {columns.map((column) => (
-                      <td key={column} className="px-4 py-3 align-middle">
-                        {column === 'task_name' ? (
-                          <Link
-                            href={`/${params.orgSlug}/reports?task=${task.id}`}
-                            className="font-medium hover:underline"
-                          >
-                            {task.title}
-                          </Link>
-                        ) : (
-                          cell(task as never, column)
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-                {!tasks?.length ? (
-                  <tr>
-                    <td
-                      colSpan={columns.length}
-                      className="px-4 py-10 text-center text-muted-foreground"
-                    >
-                      No tasks match these filters.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
+    <>
+      <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: 'Task report' }]} />
+      <PageBody>
+        <div className="space-y-4">
+          <div>
+            <h1 className="text-2xl font-semibold">Task report</h1>
+            <p className="text-muted-foreground text-sm">
+              {tasks?.length ?? 0} tasks{(tasks?.length ?? 0) === 100 ? ' (first 100)' : ''}
+            </p>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+
+          <ReportFilters
+            statuses={TASK_STATUSES}
+            priorities={PRIORITIES}
+            members={assignableMembers}
+            selectedColumns={columns}
+          />
+
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <caption className="sr-only">Tasks across all projects</caption>
+                  <thead className="text-muted-foreground border-b text-left text-xs uppercase tracking-wide">
+                    <tr>
+                      {columns.map((column) => (
+                        <th
+                          key={column}
+                          scope="col"
+                          className="whitespace-nowrap px-4 py-3 font-medium"
+                        >
+                          {TASK_REPORT_COLUMNS[column].label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(tasks ?? []).map((task) => (
+                      <tr key={task.id} className="hover:bg-muted/40 border-b last:border-0">
+                        {columns.map((column) => (
+                          <td key={column} className="px-4 py-3 align-middle">
+                            {column === 'task_name' ? (
+                              <Link
+                                href={`/${params.orgSlug}/reports?task=${task.id}`}
+                                className="font-medium hover:underline"
+                              >
+                                {task.title}
+                              </Link>
+                            ) : (
+                              cell(task as never, column)
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                    {!tasks?.length ? (
+                      <tr>
+                        <td
+                          colSpan={columns.length}
+                          className="text-muted-foreground px-4 py-10 text-center"
+                        >
+                          No tasks match these filters.
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </PageBody>
+    </>
   )
 }

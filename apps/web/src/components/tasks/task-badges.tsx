@@ -1,39 +1,66 @@
 import type { Priority, TaskStatus } from '@pm/shared/constants'
 import { cn } from '@pm/ui'
-import { AlertTriangle, ArrowDown, ArrowUp, Minus } from 'lucide-react'
+import { ChevronDown, ChevronsUp, ChevronUp, Minus } from 'lucide-react'
 
-/** Priority indicator. Colour alone never carries the meaning — each has an icon. */
-const PRIORITY_STYLES: Record<Priority, { icon: typeof ArrowUp; className: string; label: string }> = {
-  critical: { icon: AlertTriangle, className: 'text-[hsl(var(--priority-critical))]', label: 'Critical' },
-  high: { icon: ArrowUp, className: 'text-[hsl(var(--priority-high))]', label: 'High' },
-  medium: { icon: Minus, className: 'text-[hsl(var(--priority-medium))]', label: 'Medium' },
-  low: { icon: ArrowDown, className: 'text-[hsl(var(--priority-low))]', label: 'Low' },
+/**
+ * Priority indicator. Colour alone never carries the meaning — each level has a
+ * distinct glyph and a text label, so it survives greyscale and colour blindness.
+ */
+const PRIORITY_STYLES: Record<
+  Priority,
+  { icon: typeof ChevronUp; className: string; label: string }
+> = {
+  critical: {
+    icon: ChevronsUp,
+    className: 'text-[hsl(var(--priority-critical))]',
+    label: 'Urgent',
+  },
+  high: { icon: ChevronUp, className: 'text-[hsl(var(--priority-high))]', label: 'High' },
+  medium: { icon: Minus, className: 'text-muted-foreground', label: 'Med' },
+  low: { icon: ChevronDown, className: 'text-faint', label: 'Low' },
 }
 
-export function TaskPriorityIcon({ priority, showLabel = false }: { priority: Priority; showLabel?: boolean }) {
+export function TaskPriorityIcon({
+  priority,
+  showLabel = false,
+}: {
+  priority: Priority
+  showLabel?: boolean
+}) {
   const style = PRIORITY_STYLES[priority]
   const Icon = style.icon
 
   return (
-    <span className={cn('inline-flex items-center gap-1 text-xs', style.className)}>
-      <Icon className="h-3.5 w-3.5" aria-hidden />
-      <span className={showLabel ? '' : 'sr-only'}>{style.label} priority</span>
+    <span className={cn('label-meta inline-flex items-center gap-1', style.className)}>
+      <Icon className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+      <span className={showLabel ? '' : 'sr-only'}>
+        {style.label}
+        {showLabel ? '' : ' priority'}
+      </span>
     </span>
   )
 }
 
+/** Left edge stripe colour, keyed to priority (§19.8 card_color_by). */
+export const PRIORITY_STRIPE: Record<Priority, string> = {
+  critical: 'hsl(var(--priority-critical))',
+  high: 'hsl(var(--priority-high))',
+  medium: 'hsl(var(--priority-medium))',
+  low: 'hsl(var(--priority-low))',
+}
+
 const STATUS_STYLES: Record<TaskStatus, { className: string; label: string }> = {
-  todo: { className: 'bg-muted text-muted-foreground', label: 'To Do' },
-  in_progress: { className: 'bg-blue-500/15 text-blue-700 dark:text-blue-300', label: 'In Progress' },
-  in_review: { className: 'bg-purple-500/15 text-purple-700 dark:text-purple-300', label: 'In Review' },
-  done: { className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300', label: 'Done' },
-  cancelled: { className: 'bg-muted text-muted-foreground line-through', label: 'Cancelled' },
+  todo: { className: 'bg-surface-hover text-muted-foreground', label: 'To Do' },
+  in_progress: { className: 'bg-status-progress/15 text-status-progress', label: 'In Progress' },
+  in_review: { className: 'bg-status-review/15 text-status-review', label: 'In Review' },
+  done: { className: 'bg-status-done/15 text-status-done', label: 'Done' },
+  cancelled: { className: 'bg-surface-hover text-faint line-through', label: 'Cancelled' },
 }
 
 export function TaskStatusBadge({ status }: { status: TaskStatus }) {
   const style = STATUS_STYLES[status]
   return (
-    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', style.className)}>
+    <span className={cn('label-meta inline-flex rounded px-1.5 py-1', style.className)}>
       {style.label}
     </span>
   )
@@ -62,12 +89,12 @@ export function DueDate({
   return (
     <span
       className={cn(
-        'text-xs tabular-nums',
-        overdue ? 'font-medium text-destructive' : dueToday ? 'font-medium text-amber-600' : 'text-muted-foreground',
+        'label-meta tabular-nums',
+        overdue ? 'text-destructive' : dueToday ? 'text-warning' : 'text-faint',
       )}
     >
       {overdue ? 'Overdue ' : ''}
-      {dueDate}
+      {dueDate.slice(5)}
     </span>
   )
 }

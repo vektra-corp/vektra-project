@@ -2,33 +2,59 @@
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { isCardFieldVisible, type KanbanViewConfig } from '@pm/shared/constants'
 import { initials } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage, cn } from '@pm/ui'
-import { MessageSquare, ListChecks } from 'lucide-react'
+import { ListChecks, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
-import { DueDate, TaskPriorityIcon } from '@/components/tasks/task-badges'
-import type { KanbanCardData } from './types'
+import { useRouter } from 'next/navigation'
+import { useTransition } from 'react'
+import { setTaskDone } from '@/app/(dashboard)/[orgSlug]/[workspaceSlug]/projects/[projectId]/actions'
+import { DueDate, PRIORITY_STRIPE, TaskPriorityIcon } from '@/components/tasks/task-badges'
+import type { KanbanCardData, KanbanScope } from './types'
 
 export function KanbanCard({
   card,
   href,
   today,
+  scope,
+  view,
   isOverlay = false,
 }: {
   card: KanbanCardData
   href: string
   today: string
+  /** Absent in the drag overlay, where the completion toggle is not interactive. */
+  scope?: KanbanScope
+  /** Which fields this board's saved view shows (§19.8). */
+  view: Pick<KanbanViewConfig, 'card_fields' | 'compact_mode'>
   /** Rendered inside the drag overlay rather than in a column. */
   isOverlay?: boolean
 }) {
+  const shows = (field: Parameters<typeof isCardFieldVisible>[1]) =>
+    isCardFieldVisible(view, field)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
     data: { type: 'card', card },
   })
+  const [pending, startTransition] = useTransition()
+  const router = useRouter()
 
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
+  }
+
+  const done = card.status === 'done'
+  const closed = done || card.status === 'cancelled'
+  const points = card.estimated_hours
+
+  function toggleDone(next: boolean) {
+    if (!scope) return
+    startTransition(async () => {
+      await setTaskDone(scope, card.id, next)
+      router.refresh()
+    })
   }
 
   return (
@@ -36,76 +62,133 @@ export function KanbanCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'rounded-md border bg-card p-3 shadow-sm',
+        // The stripe is the card's own left border, so it never shifts the
+        // content box the way an absolutely positioned bar would on wrap.
+        'border-border-subtle bg-surface-raised shadow-card group relative overflow-hidden rounded-lg border transition-colors',
+        'hover:border-border',
         // The original stays in place as a placeholder while the overlay follows
         // the cursor; hiding it entirely would make the list jump.
         isDragging && !isOverlay && 'opacity-40',
-        isOverlay && 'rotate-2 shadow-lg',
+        isOverlay && 'border-border shadow-drag rotate-1',
+        pending && 'opacity-60',
       )}
       {...attributes}
       {...listeners}
     >
-      <div className="flex items-start justify-between gap-2">
+      <span
+        aria-hidden
+        className="absolute inset-y-0 start-0 w-[3px]"
+        style={{ backgroundColor: PRIORITY_STRIPE[card.priority] }}
+      />
+
+      <div className="py-2.5 pe-3 ps-3.5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="label-meta text-faint">
+            {shows('task_number') ? `${card.task_prefix}-${card.task_number}` : null}
+          </span>
+          {shows('priority') ? <TaskPriorityIcon priority={card.priority} showLabel /> : null}
+        </div>
+
         <Link
           href={href}
-          className="text-sm font-medium leading-snug hover:underline"
+          className={cn(
+            'hover:text-foreground mt-1.5 block text-[13px] leading-snug transition-colors',
+            closed ? 'text-faint line-through' : 'text-foreground',
+          )}
           // Let a click through to the link without the drag sensor stealing it.
           onPointerDown={(event) => event.stopPropagation()}
         >
           {card.title}
         </Link>
-        <TaskPriorityIcon priority={card.priority} />
-      </div>
 
-      {card.labels.length > 0 ? (
-        <ul className="mt-2 flex flex-wrap gap-1">
-          {card.labels.map((label) => (
-            <li
-              key={label.id}
-              className="rounded-full px-2 py-0.5 text-[11px] font-medium"
-              style={{ backgroundColor: `${label.color}22`, color: label.color }}
+        {shows('labels') && card.labels.length > 0 ? (
+          <ul className="mt-2 flex flex-wrap gap-1">
+            {card.labels.map((label) => (
+              <li
+                key={label.id}
+                className="label-meta rounded px-1.5 py-1"
+                style={{ backgroundColor: `${label.color}1f`, color: label.color }}
+              >
+                {label.name}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <div className={cn('flex items-center gap-2', view.compact_mode ? 'mt-1.5' : 'mt-2.5')}>
+          {scope ? (
+            <label
+              className="inline-flex shrink-0 cursor-pointer"
+              onPointerDown={(event) => event.stopPropagation()}
             >
-              {label.name}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="tabular-nums">#{card.task_number}</span>
-          {card.subtask_total > 0 ? (
-            <span className="inline-flex items-center gap-1">
-              <ListChecks className="h-3.5 w-3.5" aria-hidden />
-              <span className="tabular-nums">
-                {card.subtask_done}/{card.subtask_total}
+              <input
+                type="checkbox"
+                className="peer sr-only"
+                checked={done}
+                disabled={pending}
+                onChange={(event) => toggleDone(event.target.checked)}
+              />
+              <span
+                aria-hidden
+                className={cn(
+                  'flex h-[18px] w-[18px] items-center justify-center rounded-full border transition-colors',
+                  done
+                    ? 'border-success bg-success/20 text-success'
+                    : 'border-input hover:border-muted-foreground text-transparent',
+                  'peer-focus-visible:ring-ring/60 peer-focus-visible:ring-2',
+                )}
+              >
+                <svg viewBox="0 0 12 12" className="h-2.5 w-2.5" fill="none" aria-hidden>
+                  <path
+                    d="m2.5 6.2 2.3 2.3 4.7-5"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </span>
-            </span>
+              <span className="sr-only">
+                {done ? 'Mark as not done' : 'Mark as done'}: {card.title}
+              </span>
+            </label>
           ) : null}
-          {card.comment_count > 0 ? (
-            <span className="inline-flex items-center gap-1">
-              <MessageSquare className="h-3.5 w-3.5" aria-hidden />
-              <span className="tabular-nums">{card.comment_count}</span>
-            </span>
-          ) : null}
-        </div>
 
-        <div className="flex items-center gap-2">
-          <DueDate
-            dueDate={card.due_date}
-            today={today}
-            isClosed={card.status === 'done' || card.status === 'cancelled'}
-          />
-          {card.assignee ? (
-            <Avatar className="h-6 w-6">
+          {shows('assignee') && card.assignee ? (
+            <Avatar className="h-5 w-5" title={card.assignee.full_name}>
               {card.assignee.avatar_url ? (
                 <AvatarImage src={card.assignee.avatar_url} alt="" />
               ) : null}
-              <AvatarFallback className="text-[10px]">
+              <AvatarFallback className="bg-surface-hover text-muted-foreground text-[9px] font-medium uppercase">
                 {initials(card.assignee.full_name)}
               </AvatarFallback>
             </Avatar>
           ) : null}
+
+          {shows('estimated_hours') && points ? (
+            <span className="label-meta text-faint">{points} pts</span>
+          ) : null}
+
+          {shows('subtask_progress') && card.subtask_total > 0 ? (
+            <span className="label-meta text-faint inline-flex items-center gap-1">
+              <ListChecks className="h-3 w-3" aria-hidden />
+              {card.subtask_done}/{card.subtask_total}
+            </span>
+          ) : null}
+
+          {card.comment_count > 0 ? (
+            <span className="label-meta text-faint inline-flex items-center gap-1">
+              <MessageSquare className="h-3 w-3" aria-hidden />
+              {card.comment_count}
+            </span>
+          ) : null}
+
+          <span className="ms-auto flex items-center gap-2">
+            {shows('due_date') ? (
+              <DueDate dueDate={card.due_date} today={today} isClosed={closed} />
+            ) : null}
+            {card.is_blocked ? <span className="label-meta text-destructive">Blocked</span> : null}
+          </span>
         </div>
       </div>
     </li>

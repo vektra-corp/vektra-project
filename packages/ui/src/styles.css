@@ -3,82 +3,126 @@
 @tailwind utilities;
 
 /*
- * Design tokens. Every colour is an HSL triple so Tailwind can apply opacity
- * modifiers (bg-primary/90). Dark mode redefines the same names, so no
- * component needs a dark: variant for colour.
+ * Vektra design tokens.
+ *
+ * The product is dark-first: `:root` carries the dark palette so the app paints
+ * correctly before any theme class is applied and there is no light flash on
+ * first render. `[data-theme='light']` opts back out. Every colour is an HSL
+ * triple so Tailwind's opacity modifiers (bg-surface/60) keep working.
  */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    /* Canvas and panels, darkest to lightest. */
+    --background: 240 10% 3.9%;
+    --surface: 240 9% 5.1%;
+    --surface-raised: 240 7% 8.6%;
+    --surface-hover: 240 7% 11%;
+    --surface-overlay: 240 7% 10%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --foreground: 240 9% 91%;
+    --muted: 240 6% 14%;
+    --muted-foreground: 240 5% 62%;
+    --faint: 240 5% 42%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --card: 240 7% 8.6%;
+    --card-foreground: 240 9% 91%;
 
-    --primary: 243 75% 59%;
-    --primary-foreground: 0 0% 100%;
+    --popover: 240 7% 10%;
+    --popover-foreground: 240 9% 91%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --primary: 252 95% 70%;
+    --primary-foreground: 240 10% 6%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --secondary: 240 6% 14%;
+    --secondary-foreground: 240 9% 91%;
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 240 6% 14%;
+    --accent-foreground: 240 9% 91%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 350 89% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 243 75% 59%;
+    --border: 240 6% 14.5%;
+    --border-subtle: 240 6% 11%;
+    --input: 240 6% 16%;
+    --ring: 252 95% 70%;
 
-    --priority-critical: 0 72% 51%;
-    --priority-high: 25 95% 53%;
-    --priority-medium: 45 93% 47%;
-    --priority-low: 215 16% 47%;
+    /* Brand mark gradient. */
+    --brand: 252 95% 70%;
+    --brand-from: 220 95% 68%;
+    --brand-to: 282 88% 68%;
 
-    --radius: 0.5rem;
+    /* Column / workflow status accents. */
+    --status-backlog: 240 5% 52%;
+    --status-progress: 158 74% 52%;
+    --status-review: 330 82% 68%;
+    --status-done: 258 90% 74%;
+
+    /* Priority stripe + label colours. */
+    --priority-critical: 340 85% 62%;
+    --priority-high: 40 92% 58%;
+    --priority-medium: 240 5% 38%;
+    --priority-low: 240 5% 30%;
+
+    --success: 158 74% 46%;
+    --warning: 40 92% 58%;
+    --danger: 350 89% 60%;
+
+    --track: 240 6% 16%;
+
+    --radius: 0.625rem;
   }
 
-  .dark,
-  [data-theme='dark'] {
-    --background: 222 47% 7%;
-    --foreground: 210 40% 98%;
+  [data-theme='light'] {
+    --background: 240 20% 99%;
+    --surface: 0 0% 100%;
+    --surface-raised: 0 0% 100%;
+    --surface-hover: 240 20% 96%;
+    --surface-overlay: 0 0% 100%;
 
-    --card: 222 47% 10%;
-    --card-foreground: 210 40% 98%;
+    --foreground: 240 20% 12%;
+    --muted: 240 20% 96%;
+    --muted-foreground: 240 6% 45%;
+    --faint: 240 6% 58%;
 
-    --popover: 222 47% 10%;
-    --popover-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 20% 12%;
 
-    --primary: 243 75% 68%;
-    --primary-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 20% 12%;
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --primary: 252 82% 58%;
+    --primary-foreground: 0 0% 100%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --secondary: 240 20% 96%;
+    --secondary-foreground: 240 20% 12%;
 
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 240 20% 96%;
+    --accent-foreground: 240 20% 12%;
 
-    --destructive: 0 63% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 350 78% 48%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 243 75% 68%;
+    --border: 240 15% 90%;
+    --border-subtle: 240 15% 94%;
+    --input: 240 15% 88%;
+    --ring: 252 82% 58%;
 
-    --priority-critical: 0 84% 60%;
-    --priority-high: 25 95% 60%;
-    --priority-medium: 45 93% 55%;
-    --priority-low: 215 20% 65%;
+    --status-backlog: 240 5% 55%;
+    --status-progress: 158 64% 38%;
+    --status-review: 330 72% 55%;
+    --status-done: 258 70% 58%;
+
+    --priority-critical: 340 78% 50%;
+    --priority-high: 32 92% 45%;
+    --priority-medium: 240 5% 55%;
+    --priority-low: 240 5% 65%;
+
+    --success: 158 64% 38%;
+    --warning: 32 92% 45%;
+    --danger: 350 78% 48%;
+
+    --track: 240 15% 90%;
   }
 }
 
@@ -87,11 +131,20 @@
     @apply border-border;
   }
 
+  html {
+    color-scheme: dark;
+  }
+
+  [data-theme='light'] {
+    color-scheme: light;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-feature-settings:
       'rlig' 1,
       'calt' 1;
+    -webkit-font-smoothing: antialiased;
   }
 
   /*
@@ -100,5 +153,44 @@
    */
   [dir='rtl'] .rtl-flip {
     transform: scaleX(-1);
+  }
+}
+
+@layer components {
+  /*
+   * The meta typeface. Every id, count, section heading and status label in the
+   * Vektra UI is monospace, uppercase and widely tracked; this is that treatment
+   * in one place so the rhythm cannot drift between components.
+   */
+  .label-meta {
+    @apply font-mono text-[10px] font-medium uppercase leading-none tracking-[0.14em];
+  }
+
+  .label-meta-sm {
+    @apply font-mono text-[9px] font-medium uppercase leading-none tracking-[0.16em];
+  }
+
+  /* Thin, dark scrollbars that do not interrupt a dark surface. */
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: hsl(var(--border));
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--input));
   }
 }

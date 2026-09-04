@@ -73,3 +73,24 @@ export function uniqueSlug(input: string, taken: Iterable<string>): string {
   }
   return candidate
 }
+
+/**
+ * Short project key used in task ids — the ATL in ATL-241.
+ *
+ * Takes the first word rather than initials so "Atlas Migration" reads as ATL,
+ * which is what people say out loud. Falls back to the first letters of later
+ * words when the first word is too short to stand alone.
+ */
+export function projectKey(name: string): string {
+  const words = name
+    .toUpperCase()
+    .split(/[^A-Z0-9]+/)
+    .filter(Boolean)
+
+  if (words.length === 0) return 'TSK'
+
+  const first = words[0]!
+  if (first.length >= 3) return first.slice(0, 3)
+
+  return words.join('').slice(0, 3).padEnd(3, 'X')
+}

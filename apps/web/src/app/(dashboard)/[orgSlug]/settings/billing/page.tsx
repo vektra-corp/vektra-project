@@ -3,6 +3,7 @@ import { PLAN_LIMITS, type PlanName } from '@pm/shared/constants'
 import { formatDate } from '@pm/shared/utils'
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@pm/ui'
 import type { Metadata } from 'next'
+import { PageBody } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
 import { createClient } from '@/lib/supabase/server'
@@ -44,112 +45,118 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
   const limits = PLAN_LIMITS[currentPlan]
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Billing</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage your subscription and see what your plan includes.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <CardDescription>Current plan</CardDescription>
-              <CardTitle className="flex items-center gap-2">
-                {planRow?.display_name ?? 'Starter'}
-                <Badge variant={organization?.status === 'active' ? 'secondary' : 'outline'}>
-                  {organization?.status}
-                </Badge>
-              </CardTitle>
-            </div>
-            {organization?.stripe_customer_id ? (
-              <form action={openBillingPortal}>
-                <Button type="submit" variant="outline">
-                  Manage subscription
-                </Button>
-              </form>
-            ) : null}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          {organization?.trial_ends_at && organization.status === 'trial' ? (
-            <p className="text-muted-foreground">
-              Trial ends{' '}
-              {formatDate(organization.trial_ends_at, {
-                locale: 'en',
-                dateFormat: 'YYYY-MM-DD',
-              })}
+    <>
+      <PageBody>
+        <div className="max-w-3xl space-y-6">
+          <div>
+            <h1 className="text-2xl font-semibold">Billing</h1>
+            <p className="text-muted-foreground text-sm">
+              Manage your subscription and see what your plan includes.
             </p>
-          ) : null}
-          <p className="text-muted-foreground">
-            {seatCount.count ?? 0} {seatCount.count === 1 ? 'seat' : 'seats'} in use
-          </p>
-        </CardContent>
-      </Card>
+          </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Included in your plan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <dl className="grid gap-3 sm:grid-cols-2">
-            <Limit label="Projects" value={limits.projects} />
-            <Limit label="Portal users" value={limits.portal_users} />
-            <Limit label="Workflows per workspace" value={limits.workflows_per_workspace} />
-            <Limit label="Workflow runs per month" value={limits.workflow_runs_per_month} />
-            <Feature label="Gantt timeline" enabled={limits.gantt} />
-            <Feature label="Commercial documents" enabled={limits.commercial} />
-            <Feature label="Custom fields" enabled={limits.custom_fields} />
-            <Feature label="Custom roles" enabled={limits.custom_roles} />
-          </dl>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Change plan</CardTitle>
-          <CardDescription>Billed per seat, per month.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-3">
-          {(plans ?? []).map((plan) => (
-            <form key={plan.id} action={startCheckout}>
-              <input type="hidden" name="plan_id" value={plan.id} />
-              <Button
-                type="submit"
-                variant={plan.name === currentPlan ? 'secondary' : 'outline'}
-                className="w-full"
-                disabled={plan.name === currentPlan || !plan.stripe_price_id_monthly}
-              >
-                {plan.name === currentPlan ? `${plan.display_name} (current)` : plan.display_name}
-              </Button>
-            </form>
-          ))}
-        </CardContent>
-      </Card>
-
-      {usage && usage.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Usage this period</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="grid gap-3 sm:grid-cols-2">
-              {usage.map((row) => (
-                <div key={row.metric} className="flex justify-between text-sm">
-                  <dt className="text-muted-foreground">{row.metric}</dt>
-                  <dd className="tabular-nums">
-                    {row.current_value}
-                    {row.limit_value ? ` / ${row.limit_value}` : ''}
-                  </dd>
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <CardDescription>Current plan</CardDescription>
+                  <CardTitle className="flex items-center gap-2">
+                    {planRow?.display_name ?? 'Starter'}
+                    <Badge variant={organization?.status === 'active' ? 'secondary' : 'outline'}>
+                      {organization?.status}
+                    </Badge>
+                  </CardTitle>
                 </div>
+                {organization?.stripe_customer_id ? (
+                  <form action={openBillingPortal}>
+                    <Button type="submit" variant="outline">
+                      Manage subscription
+                    </Button>
+                  </form>
+                ) : null}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {organization?.trial_ends_at && organization.status === 'trial' ? (
+                <p className="text-muted-foreground">
+                  Trial ends{' '}
+                  {formatDate(organization.trial_ends_at, {
+                    locale: 'en',
+                    dateFormat: 'YYYY-MM-DD',
+                  })}
+                </p>
+              ) : null}
+              <p className="text-muted-foreground">
+                {seatCount.count ?? 0} {seatCount.count === 1 ? 'seat' : 'seats'} in use
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Included in your plan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid gap-3 sm:grid-cols-2">
+                <Limit label="Projects" value={limits.projects} />
+                <Limit label="Portal users" value={limits.portal_users} />
+                <Limit label="Workflows per workspace" value={limits.workflows_per_workspace} />
+                <Limit label="Workflow runs per month" value={limits.workflow_runs_per_month} />
+                <Feature label="Gantt timeline" enabled={limits.gantt} />
+                <Feature label="Commercial documents" enabled={limits.commercial} />
+                <Feature label="Custom fields" enabled={limits.custom_fields} />
+                <Feature label="Custom roles" enabled={limits.custom_roles} />
+              </dl>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Change plan</CardTitle>
+              <CardDescription>Billed per seat, per month.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-3">
+              {(plans ?? []).map((plan) => (
+                <form key={plan.id} action={startCheckout}>
+                  <input type="hidden" name="plan_id" value={plan.id} />
+                  <Button
+                    type="submit"
+                    variant={plan.name === currentPlan ? 'secondary' : 'outline'}
+                    className="w-full"
+                    disabled={plan.name === currentPlan || !plan.stripe_price_id_monthly}
+                  >
+                    {plan.name === currentPlan
+                      ? `${plan.display_name} (current)`
+                      : plan.display_name}
+                  </Button>
+                </form>
               ))}
-            </dl>
-          </CardContent>
-        </Card>
-      ) : null}
-    </div>
+            </CardContent>
+          </Card>
+
+          {usage && usage.length > 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Usage this period</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <dl className="grid gap-3 sm:grid-cols-2">
+                  {usage.map((row) => (
+                    <div key={row.metric} className="flex justify-between text-sm">
+                      <dt className="text-muted-foreground">{row.metric}</dt>
+                      <dd className="tabular-nums">
+                        {row.current_value}
+                        {row.limit_value ? ` / ${row.limit_value}` : ''}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+      </PageBody>
+    </>
   )
 }
 
@@ -166,7 +173,9 @@ function Feature({ label, enabled }: { label: string; enabled: boolean }) {
   return (
     <div className="flex justify-between text-sm">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className={enabled ? '' : 'text-muted-foreground'}>{enabled ? 'Included' : 'Not included'}</dd>
+      <dd className={enabled ? '' : 'text-muted-foreground'}>
+        {enabled ? 'Included' : 'Not included'}
+      </dd>
     </div>
   )
 }

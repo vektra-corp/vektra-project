@@ -1,6 +1,7 @@
 import {
   DEFAULT_KANBAN_VIEW,
   PRIORITIES,
+  PRIORITY_WEIGHT,
   type KanbanCardField,
   type KanbanViewConfig,
 } from '@pm/shared/constants'
@@ -239,4 +240,51 @@ export function patchForDrop(
     default:
       return null
   }
+}
+
+/** The minimum a card must expose to be ordered by a view's sort. */
+export interface SortableTask {
+  position: number
+  priority: string
+  due_date: string | null
+  title: string
+  task_number: number
+}
+
+/**
+ * Order cards within their column, per the view's sort.
+ *
+ * Undated work always sorts last, in both directions: a task with no due date
+ * is not "infinitely far in the future", it simply has nothing to compare, and
+ * floating it to the top of a due-date sort would bury the work that is due.
+ */
+export function sortForView<T extends SortableTask>(
+  cards: readonly T[],
+  view: Pick<KanbanViewConfig, 'sort_by' | 'sort_order'>,
+): T[] {
+  const direction = view.sort_order === 'desc' ? -1 : 1
+
+  return [...cards].sort((a, b) => {
+    switch (view.sort_by) {
+      case 'priority':
+        return (
+          ((PRIORITY_WEIGHT[a.priority as keyof typeof PRIORITY_WEIGHT] ?? 99) -
+            (PRIORITY_WEIGHT[b.priority as keyof typeof PRIORITY_WEIGHT] ?? 99)) *
+          direction
+        )
+      case 'due_date':
+        if (!a.due_date && !b.due_date) return 0
+        if (!a.due_date) return 1
+        if (!b.due_date) return -1
+        return a.due_date.localeCompare(b.due_date) * direction
+      case 'title':
+        return a.title.localeCompare(b.title) * direction
+      case 'created_at':
+        // task_number is assigned in creation order per project, so it is a
+        // stable proxy that needs no extra column on the card payload.
+        return (a.task_number - b.task_number) * direction
+      default:
+        return (a.position - b.position) * direction
+    }
+  })
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { RESERVED_SLUGS, isValidSlug, slugify, uniqueSlug } from '../utils/slug'
+import { RESERVED_SLUGS, isValidSlug, projectKey, slugify, uniqueSlug } from '../utils/slug'
 
 describe('slugify', () => {
   it('lowercases and hyphenates', () => {
@@ -63,5 +63,22 @@ describe('uniqueSlug', () => {
 
   it('falls back for input with no usable characters', () => {
     expect(uniqueSlug('!!!', [])).toBe('untitled')
+  })
+})
+
+describe('projectKey', () => {
+  it('takes the first three letters of a single leading word', () => {
+    expect(projectKey('Atlas Migration')).toBe('ATL')
+    expect(projectKey('Platform')).toBe('PLA')
+  })
+
+  it('combines short words rather than emitting a one-letter key', () => {
+    expect(projectKey('Go Live')).toBe('GOL')
+    expect(projectKey('R D')).toBe('RDX')
+  })
+
+  it('ignores punctuation and falls back for an empty name', () => {
+    expect(projectKey('  @@@ ')).toBe('TSK')
+    expect(projectKey('web-app rewrite')).toBe('WEB')
   })
 })

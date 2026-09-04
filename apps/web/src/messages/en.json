@@ -77,7 +77,27 @@
     "settings": "Settings",
     "billing": "Billing",
     "workspaces": "Workspaces",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "inbox": "Inbox",
+    "myTasks": "My tasks",
+    "jumpTo": "Jump to…",
+    "workspaceCaption": "Delivery · Workspace",
+    "work": "Work",
+    "commercial": "Commercial",
+    "insights": "Insights",
+    "board": "Board",
+    "list": "List",
+    "timeline": "Timeline",
+    "planning": "Backlog & planning",
+    "documents": "Documents",
+    "workload": "Workload",
+    "workflows": "Workflows",
+    "purchaseOrders": "Purchase orders",
+    "salesOrders": "Sales orders",
+    "invoices": "Invoices",
+    "bills": "Bills",
+    "teamAndClients": "Team & clients",
+    "noWorkspaces": "No workspaces yet"
   },
   "onboarding": {
     "title": "Create your organization",
@@ -141,7 +161,13 @@
     }
   },
   "commercial": {
-    "invoice": { "title": "Invoice", "number": "Invoice #{number}" },
-    "quotation": { "title": "Quotation", "valid_until": "Valid until {date}" }
+    "invoice": {
+      "title": "Invoice",
+      "number": "Invoice #{number}"
+    },
+    "quotation": {
+      "title": "Quotation",
+      "valid_until": "Valid until {date}"
+    }
   }
 }

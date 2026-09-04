@@ -1594,6 +1594,7 @@ export interface Database {
           is_read: boolean
           read_at: string | null
           created_at: string
+          emailed_at: string | null
         }
         Insert: {
           id?: string
@@ -1606,6 +1607,7 @@ export interface Database {
           is_read?: boolean
           read_at?: string | null
           created_at?: string
+          emailed_at?: string | null
         }
         Update: {
           id?: string
@@ -1618,6 +1620,7 @@ export interface Database {
           is_read?: boolean
           read_at?: string | null
           created_at?: string
+          emailed_at?: string | null
         }
         Relationships: [
           {
@@ -3198,6 +3201,12 @@ export interface Database {
           org: string
         }
         Returns: boolean
+      }
+      user_id_for_email: {
+        Args: {
+          p_email: string
+        }
+        Returns: string
       }
     }
     Enums: { [_ in never]: never }

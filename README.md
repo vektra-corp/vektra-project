@@ -6,40 +6,43 @@ run what exists today.
 
 ## Status
 
-**Phase 0 (Foundations) is complete and verified against a live Supabase stack.**
-See [Build order](#build-order).
+**Phase 0 (Foundations) and Phase 1 (MVP) are complete.** See [Build order](#build-order).
 
-Verified end to end, not just built:
-
-- All 9 migrations apply to real Supabase; 51 tables, 119 policies, no table without RLS
-- All 5 seeded accounts log in through GoTrue
-- `custom_access_token_hook` injects `org_id` / `org_role` into real JWTs, and
-  correctly injects neither for a portal user
-- Tenant isolation holds through PostgREST with real tokens: cross-tenant reads
-  return `[]`, cross-tenant writes return `42501`
-- 31 RLS tests + 57 unit tests pass; lint, typecheck and build are clean
+The UI follows the Vektra design system: dark-first tokens in
+`packages/ui/src/styles.css`, a monospace "meta" type treatment for every id,
+count and status label, and a four-step surface elevation ladder.
 
 | Area | State |
 |---|---|
 | Monorepo, Turborepo, TypeScript strict | Done |
-| Database schema (52 tables, 12 modules) | Done |
+| Database schema (52 tables, 15 migrations) | Done |
 | RLS policies (121) | Done, 31 isolation tests passing |
 | Auth: signup, login, reset, callback, onboarding | Done |
 | Event bus (`emit_event` triggers) | Done |
 | Stripe billing skeleton + webhook | Done |
-| Admin portal shell | Done |
+| Design system (`packages/ui`, 24 components) | Done |
+| App shell: sidebar, topbar, search, theme toggle | Done |
 | Projects, tasks, subtasks | Done |
 | Kanban board + drag-drop + WIP limits | Done |
-| Customizable Kanban views (§19.8) | Done |
-| Comments | Done (plain composer; Tiptap editor deferred) |
+| Saved Kanban views (§19.8) — group, sort, card fields | Done |
+| Quick capture (`@user #label !priority ~pts fri`) | Done |
+| Board filters (URL-driven), blocked detection, points meter | Done |
+| Comments + task descriptions (Tiptap) | Done |
 | Attachments (Storage, signed URLs) | Done |
-| Notifications (triggers + bell) | Done |
+| Notifications: in-app + email (Resend) + digests | Done |
+| Background jobs (Inngest): delivery, digests, overdue scan | Done |
 | Task report (§19.7 columns, filters) | Done |
-| Dashboard | Counts only — widget catalogue is V1 |
+| Dashboard widgets, My tasks, cross-project search | Done |
+| Org settings, workspaces, members + invites, roles matrix | Done |
+| Admin console: orgs, users, subscriptions, notices, flags, audit, health | Done |
 | Gantt, documents, portal, commercial, workflows | Not started — Phase 2+ |
 
-Everything above runs against a hosted Supabase project. Local Docker is
-optional and no longer the default.
+### Configuration added in Phase 1
+
+`RESEND_API_KEY` and `RESEND_FROM_EMAIL` enable notification email; without them
+the app degrades to in-app notifications only rather than erroring.
+`INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY` enable the background jobs served at
+`/api/inngest`.
 
 ## Prerequisites
 

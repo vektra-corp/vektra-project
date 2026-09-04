@@ -4,6 +4,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
+import { PageBody } from '@/components/layout/page-body'
+import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
 
@@ -53,76 +55,84 @@ export default async function ProjectsPage({
   const base = `/${params.orgSlug}/${params.workspaceSlug}/projects`
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t('title')}</h1>
-          <p className="text-sm text-muted-foreground">{workspace.name}</p>
-        </div>
-        <Button asChild>
-          <Link href={`${base}/new`}>{t('create')}</Link>
-        </Button>
-      </div>
-
-      {projects && projects.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => {
-            const stat = stats.get(project.id) ?? { total: 0, done: 0 }
-            const percent = stat.total === 0 ? 0 : Math.round((stat.done / stat.total) * 100)
-
-            return (
-              <Link key={project.id} href={`${base}/${project.id}/board`} className="group">
-                <Card className="h-full transition-colors group-hover:border-primary/50">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="text-base leading-tight">{project.name}</CardTitle>
-                      {project.priority ? (
-                        <Badge variant="outline" className="shrink-0 capitalize">
-                          {project.priority}
-                        </Badge>
-                      ) : null}
-                    </div>
-                    {project.description ? (
-                      <CardDescription className="line-clamp-2">
-                        {project.description}
-                      </CardDescription>
-                    ) : null}
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{t('task_count', { count: stat.total })}</span>
-                      <span>{t('completion', { percent: `${percent}%` })}</span>
-                    </div>
-                    <div
-                      className="h-1.5 overflow-hidden rounded-full bg-muted"
-                      role="progressbar"
-                      aria-valuenow={percent}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-label={`${project.name} progress`}
-                    >
-                      <div className="h-full bg-primary" style={{ width: `${percent}%` }} />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            )
-          })}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
-            <FolderPlus className="h-8 w-8 text-muted-foreground" aria-hidden />
+    <>
+      <Topbar
+        orgSlug={params.orgSlug}
+        breadcrumb={[{ label: workspace.name }, { label: t('title') }]}
+      />
+      <PageBody>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="font-medium">{t('empty_title')}</p>
-              <p className="text-sm text-muted-foreground">{t('empty_body')}</p>
+              <h1 className="text-2xl font-semibold">{t('title')}</h1>
+              <p className="text-muted-foreground text-sm">{workspace.name}</p>
             </div>
             <Button asChild>
               <Link href={`${base}/new`}>{t('create')}</Link>
             </Button>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          </div>
+
+          {projects && projects.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {projects.map((project) => {
+                const stat = stats.get(project.id) ?? { total: 0, done: 0 }
+                const percent = stat.total === 0 ? 0 : Math.round((stat.done / stat.total) * 100)
+
+                return (
+                  <Link key={project.id} href={`${base}/${project.id}/board`} className="group">
+                    <Card className="group-hover:border-primary/50 h-full transition-colors">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <CardTitle className="text-base leading-tight">{project.name}</CardTitle>
+                          {project.priority ? (
+                            <Badge variant="outline" className="shrink-0 capitalize">
+                              {project.priority}
+                            </Badge>
+                          ) : null}
+                        </div>
+                        {project.description ? (
+                          <CardDescription className="line-clamp-2">
+                            {project.description}
+                          </CardDescription>
+                        ) : null}
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="text-muted-foreground flex items-center justify-between text-xs">
+                          <span>{t('task_count', { count: stat.total })}</span>
+                          <span>{t('completion', { percent: `${percent}%` })}</span>
+                        </div>
+                        <div
+                          className="bg-muted h-1.5 overflow-hidden rounded-full"
+                          role="progressbar"
+                          aria-valuenow={percent}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-label={`${project.name} progress`}
+                        >
+                          <div className="bg-primary h-full" style={{ width: `${percent}%` }} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                )
+              })}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
+                <FolderPlus className="text-muted-foreground h-8 w-8" aria-hidden />
+                <div>
+                  <p className="font-medium">{t('empty_title')}</p>
+                  <p className="text-muted-foreground text-sm">{t('empty_body')}</p>
+                </div>
+                <Button asChild>
+                  <Link href={`${base}/new`}>{t('create')}</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </PageBody>
+    </>
   )
 }

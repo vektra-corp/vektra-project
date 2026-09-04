@@ -13,6 +13,7 @@ import {
   taskUpdateSchema,
 } from '@pm/shared/validators'
 import { revalidatePath } from 'next/cache'
+import { toActionError } from '@/lib/action-error'
 import { requireAuth } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
 
@@ -245,6 +246,73 @@ export async function toggleSubtask(scope: Scope, subtaskId: string, done: boole
   revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
 }
 
+/**
+ * Completion toggle on a Kanban card.
+ *
+ * §18 rule 3: the column is the source of truth for status, so this moves the
+ * card to the board's done column rather than writing `status` on its own —
+ * otherwise a card could read "done" while still sitting in In Progress.
+ */
+export async function setTaskDone(
+  scope: Scope,
+  taskId: string,
+  done: boolean,
+): Promise<ActionResult<null>> {
+  const auth = await requireAuth(scope.orgSlug)
+  assertCan(auth, 'tasks', 'update')
+
+  const supabase = createClient()
+
+  const { data: board } = await supabase
+    .from('kanban_boards')
+    .select('id')
+    .eq('project_id', scope.projectId)
+    .eq('is_default', true)
+    .maybeSingle()
+
+  if (!board) {
+    return { ok: false, code: 'NOT_FOUND', message: 'This project has no board.' }
+  }
+
+  const { data: columns } = await supabase
+    .from('kanban_columns')
+    .select('id, is_done_column')
+    .eq('board_id', board.id)
+    .order('position')
+
+  // Re-opening returns the card to the first open column, which is where an
+  // un-started task belongs on every default board.
+  const target = done
+    ? columns?.find((column) => column.is_done_column)
+    : columns?.find((column) => !column.is_done_column)
+
+  if (!target) {
+    return {
+      ok: false,
+      code: 'NO_TARGET_COLUMN',
+      message: done ? 'This board has no done column.' : 'This board has no open column.',
+    }
+  }
+
+  // Append rather than insert: a card that changes column should land at the
+  // end of its new column, not silently take another card's slot.
+  const { data: last } = await supabase
+    .from('tasks')
+    .select('position')
+    .eq('kanban_column_id', target.id)
+    .order('position', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  try {
+    await taskService.moveTask(supabase, taskId, target.id, (last?.position ?? 0) + 1000)
+    revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
+    return { ok: true, data: null }
+  } catch (error) {
+    return toActionError(error)
+  }
+}
+
 // --- Comments ----------------------------------------------------------------
 
 export async function createComment(
@@ -255,19 +323,25 @@ export async function createComment(
 ): Promise<ActionResult<null>> {
   const auth = await requireAuth(scope.orgSlug)
 
-  const text = String(formData.get('body') ?? '').trim()
-  if (!text) {
+  const raw = String(formData.get('body') ?? '').trim()
+  if (!raw) {
     return { ok: false, code: 'VALIDATION_ERROR', message: 'Comment cannot be empty' }
   }
 
-  // Stored as a Tiptap document from day one, so switching the composer to the
-  // real editor later needs no data migration.
-  const body = {
-    type: 'doc',
-    content: text.split(/\n{2,}/).map((paragraph) => ({
-      type: 'paragraph',
-      content: [{ type: 'text', text: paragraph }],
-    })),
+  // The composer posts a Tiptap document. A body that is not JSON is treated as
+  // plain text rather than rejected, so a comment still lands if the editor
+  // failed to hydrate.
+  let body: unknown
+  try {
+    body = JSON.parse(raw)
+  } catch {
+    body = {
+      type: 'doc',
+      content: raw.split(/\n{2,}/).map((paragraph) => ({
+        type: 'paragraph',
+        content: [{ type: 'text', text: paragraph }],
+      })),
+    }
   }
 
   const parsed = commentCreateSchema.safeParse({
@@ -293,16 +367,4 @@ export async function createComment(
 
   revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
   return { ok: true, data: null }
-}
-
-// --- shared -------------------------------------------------------------------
-
-function toActionError(error: unknown): ActionResult<never> {
-  const code = (error as { code?: string })?.code
-  const message = error instanceof Error ? error.message : 'Something went wrong'
-  return {
-    ok: false,
-    code: typeof code === 'string' ? code : 'INTERNAL_ERROR',
-    message,
-  }
 }
