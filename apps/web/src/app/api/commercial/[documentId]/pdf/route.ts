@@ -1,5 +1,9 @@
 import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
-import { COMMERCIAL_DOC_TYPES, type CommercialDocType } from '@pm/shared/constants'
+import {
+  COMMERCIAL_DOC_TYPES,
+  parsePdfTemplate,
+  type CommercialDocType,
+} from '@pm/shared/constants'
 import { formatCurrency, formatDate } from '@pm/shared/utils'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { NextResponse, type NextRequest } from 'next/server'
@@ -9,6 +13,7 @@ import {
   type PdfDocumentData,
   type PdfLineItem,
 } from '@/lib/pdf/commercial-document'
+import { fetchLogoDataUri } from '@/lib/pdf/logo'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -66,6 +71,7 @@ export async function GET(
       .select(
         `id, doc_type, doc_number, status, issue_date, due_date, valid_until, currency,
          subtotal, tax_total, discount_total, grand_total, amount_paid, notes, terms,
+         pdf_template_id,
          contact:contacts!commercial_documents_contact_id_fkey(contact_name, company_name, email, address)`,
       )
       .eq('id', params.documentId)
@@ -78,7 +84,7 @@ export async function GET(
       .order('position'),
     supabase
       .from('organizations')
-      .select('name, address, tax_id, billing_email')
+      .select('name, address, tax_id, billing_email, logo_url')
       .eq('id', auth.orgId)
       .maybeSingle(),
   ])
@@ -93,6 +99,25 @@ export async function GET(
   if (!(COMMERCIAL_DOC_TYPES as readonly string[]).includes(docType)) {
     return NextResponse.json({ error: 'Not found', code: 'NOT_FOUND' }, { status: 404 })
   }
+
+  // The document's own template, else this doc type's default for the org,
+  // else the built-in. A second round trip, but only after the document has
+  // been confirmed to exist and belong to the caller.
+  const templateQuery = supabase
+    .from('pdf_templates')
+    .select('template_data')
+    .eq('organization_id', auth.orgId)
+    .limit(1)
+
+  const { data: templateRow } = doc.pdf_template_id
+    ? await templateQuery.eq('id', doc.pdf_template_id).maybeSingle()
+    : await templateQuery.eq('doc_type', docType).eq('is_default', true).maybeSingle()
+
+  const template = parsePdfTemplate(templateRow?.template_data)
+
+  // Fetched here, never by the renderer: an `Image src` the renderer resolves
+  // would be an outbound request to a customer-controlled URL on every PDF.
+  const logo = template.showLogo ? await fetchLogoDataUri(organization.logo_url) : null
 
   const locale = 'en'
   const money = (value: unknown) => formatCurrency(Number(value ?? 0), doc.currency, locale)
@@ -122,6 +147,7 @@ export async function GET(
       address: joinAddress(organization.address),
       taxId: organization.tax_id,
       email: organization.billing_email,
+      logo,
     },
     contact: contact
       ? {
@@ -144,7 +170,7 @@ export async function GET(
     currency: doc.currency,
   }
 
-  const buffer = await renderToBuffer(CommercialDocumentPdf({ data }))
+  const buffer = await renderToBuffer(CommercialDocumentPdf({ data, template }))
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

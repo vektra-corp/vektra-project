@@ -103,6 +103,7 @@ export async function Sidebar({
     { key: 'purchase-orders', label: t('purchaseOrders'), icon: 'ShoppingCart', href: commercialHref('purchase-orders') },
     { key: 'bills', label: t('bills'), icon: 'Wallet', href: commercialHref('bills') },
     { key: 'contacts', label: t('contacts'), icon: 'Contact', href: commercialHref('contacts') },
+    { key: 'templates', label: t('pdfTemplates'), icon: 'FileText', href: commercialHref('templates') },
   ]
 
   const projectsByWorkspace = workspaces.map((workspace) => ({
