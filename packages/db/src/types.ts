@@ -444,6 +444,86 @@ export interface Database {
           },
         ]
       }
+      auto_assignment_rules: {
+        Row: {
+          id: string
+          organization_id: string
+          project_id: string | null
+          workspace_id: string | null
+          name: string
+          is_active: boolean
+          trigger_event: string
+          conditions: Json
+          method: string
+          assignee_pool: string[]
+          config: Json
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          project_id?: string | null
+          workspace_id?: string | null
+          name: string
+          is_active?: boolean
+          trigger_event?: string
+          conditions?: Json
+          method?: string
+          assignee_pool?: string[]
+          config?: Json
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          project_id?: string | null
+          workspace_id?: string | null
+          name?: string
+          is_active?: boolean
+          trigger_event?: string
+          conditions?: Json
+          method?: string
+          assignee_pool?: string[]
+          config?: Json
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'auto_assignment_rules_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'auto_assignment_rules_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'auto_assignment_rules_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'auto_assignment_rules_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       branches: {
         Row: {
           id: string
@@ -843,6 +923,12 @@ export interface Database {
           created_by: string | null
           created_at: string
           updated_at: string
+          lead_id: string | null
+          lifecycle_stage: string
+          tags: string[]
+          last_contacted_at: string | null
+          default_hourly_rate: number | null
+          total_revenue: number
         }
         Insert: {
           id?: string
@@ -858,6 +944,12 @@ export interface Database {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          lead_id?: string | null
+          lifecycle_stage?: string
+          tags?: string[]
+          last_contacted_at?: string | null
+          default_hourly_rate?: number | null
+          total_revenue?: number
         }
         Update: {
           id?: string
@@ -873,6 +965,12 @@ export interface Database {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          lead_id?: string | null
+          lifecycle_stage?: string
+          tags?: string[]
+          last_contacted_at?: string | null
+          default_hourly_rate?: number | null
+          total_revenue?: number
         }
         Relationships: [
           {
@@ -880,6 +978,13 @@ export interface Database {
             columns: ['created_by']
             isOneToOne: false
             referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'contacts_lead_id_fkey'
+            columns: ['lead_id']
+            isOneToOne: false
+            referencedRelation: 'leads'
             referencedColumns: ['id']
           },
           {
@@ -1660,6 +1765,190 @@ export interface Database {
             columns: ['project_id']
             isOneToOne: false
             referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      lead_activities: {
+        Row: {
+          id: string
+          lead_id: string
+          organization_id: string
+          type: string
+          subject: string
+          body: string | null
+          activity_date: string
+          duration_minutes: number | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          lead_id: string
+          organization_id: string
+          type: string
+          subject: string
+          body?: string | null
+          activity_date?: string
+          duration_minutes?: number | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          lead_id?: string
+          organization_id?: string
+          type?: string
+          subject?: string
+          body?: string | null
+          activity_date?: string
+          duration_minutes?: number | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'lead_activities_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'lead_activities_lead_id_fkey'
+            columns: ['lead_id']
+            isOneToOne: false
+            referencedRelation: 'leads'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'lead_activities_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          id: string
+          organization_id: string
+          workspace_id: string
+          contact_name: string
+          company_name: string | null
+          email: string | null
+          phone: string | null
+          website: string | null
+          source: string
+          status: string
+          estimated_value: number | null
+          currency: string
+          expected_close: string | null
+          lost_reason: string | null
+          assigned_to: string | null
+          assigned_at: string | null
+          converted_to_contact_id: string | null
+          converted_at: string | null
+          notes: string | null
+          tags: string[]
+          last_contacted_at: string | null
+          next_follow_up: string | null
+          position: number
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          workspace_id: string
+          contact_name: string
+          company_name?: string | null
+          email?: string | null
+          phone?: string | null
+          website?: string | null
+          source?: string
+          status?: string
+          estimated_value?: number | null
+          currency?: string
+          expected_close?: string | null
+          lost_reason?: string | null
+          assigned_to?: string | null
+          assigned_at?: string | null
+          converted_to_contact_id?: string | null
+          converted_at?: string | null
+          notes?: string | null
+          tags?: string[]
+          last_contacted_at?: string | null
+          next_follow_up?: string | null
+          position?: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          workspace_id?: string
+          contact_name?: string
+          company_name?: string | null
+          email?: string | null
+          phone?: string | null
+          website?: string | null
+          source?: string
+          status?: string
+          estimated_value?: number | null
+          currency?: string
+          expected_close?: string | null
+          lost_reason?: string | null
+          assigned_to?: string | null
+          assigned_at?: string | null
+          converted_to_contact_id?: string | null
+          converted_at?: string | null
+          notes?: string | null
+          tags?: string[]
+          last_contacted_at?: string | null
+          next_follow_up?: string | null
+          position?: number
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'leads_assigned_to_fkey'
+            columns: ['assigned_to']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'leads_converted_to_contact_id_fkey'
+            columns: ['converted_to_contact_id']
+            isOneToOne: false
+            referencedRelation: 'contacts'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'leads_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'leads_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'leads_workspace_id_fkey'
+            columns: ['workspace_id']
+            isOneToOne: false
+            referencedRelation: 'workspaces'
             referencedColumns: ['id']
           },
         ]
@@ -2476,6 +2765,72 @@ export interface Database {
           },
         ]
       }
+      saved_reports: {
+        Row: {
+          id: string
+          organization_id: string
+          created_by: string
+          name: string
+          entity_type: string
+          columns: string[]
+          filters: Json
+          sort_by: string | null
+          sort_order: string
+          group_by: string | null
+          is_shared: boolean
+          is_default: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          created_by: string
+          name: string
+          entity_type?: string
+          columns?: string[]
+          filters?: Json
+          sort_by?: string | null
+          sort_order?: string
+          group_by?: string | null
+          is_shared?: boolean
+          is_default?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          created_by?: string
+          name?: string
+          entity_type?: string
+          columns?: string[]
+          filters?: Json
+          sort_by?: string | null
+          sort_order?: string
+          group_by?: string | null
+          is_shared?: boolean
+          is_default?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'saved_reports_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'saved_reports_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       subtasks: {
         Row: {
           id: string
@@ -2818,6 +3173,172 @@ export interface Database {
             columns: ['project_id']
             isOneToOne: false
             referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      time_entries: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          project_id: string
+          task_id: string | null
+          subtask_id: string | null
+          description: string | null
+          start_time: string
+          end_time: string | null
+          duration_minutes: number
+          is_running: boolean
+          is_billable: boolean
+          hourly_rate: number | null
+          total_amount: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          project_id: string
+          task_id?: string | null
+          subtask_id?: string | null
+          description?: string | null
+          start_time: string
+          end_time?: string | null
+          duration_minutes?: number
+          is_running?: boolean
+          is_billable?: boolean
+          hourly_rate?: number | null
+          total_amount?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          project_id?: string
+          task_id?: string | null
+          subtask_id?: string | null
+          description?: string | null
+          start_time?: string
+          end_time?: string | null
+          duration_minutes?: number
+          is_running?: boolean
+          is_billable?: boolean
+          hourly_rate?: number | null
+          total_amount?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'time_entries_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'time_entries_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'time_entries_subtask_id_fkey'
+            columns: ['subtask_id']
+            isOneToOne: false
+            referencedRelation: 'subtasks'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'time_entries_task_id_fkey'
+            columns: ['task_id']
+            isOneToOne: false
+            referencedRelation: 'tasks'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'time_entries_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      timesheet_periods: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          period_start: string
+          period_end: string
+          total_hours: number
+          billable_hours: number
+          status: string
+          submitted_at: string | null
+          approved_by: string | null
+          approved_at: string | null
+          rejection_note: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          period_start: string
+          period_end: string
+          total_hours?: number
+          billable_hours?: number
+          status?: string
+          submitted_at?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          rejection_note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          period_start?: string
+          period_end?: string
+          total_hours?: number
+          billable_hours?: number
+          status?: string
+          submitted_at?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          rejection_note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'timesheet_periods_approved_by_fkey'
+            columns: ['approved_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'timesheet_periods_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'timesheet_periods_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
             referencedColumns: ['id']
           },
         ]
@@ -3334,7 +3855,22 @@ export interface Database {
         ]
       }
     }
-    Views: { [_ in never]: never }
+    Views: {
+      revenue_summary: {
+        Row: {
+          organization_id: string | null
+          month: string | null
+          currency: string | null
+          invoiced_revenue: number | null
+          outstanding_invoices: number | null
+          overdue_invoices: number | null
+          pipeline_quotations: number | null
+          accepted_quotations: number | null
+        }
+        Relationships: [
+        ]
+      }
+    }
     Functions: {
       active_notices_for_org: {
         Args: {
@@ -3494,6 +4030,16 @@ export interface Database {
           proj_id: string
         }
         Returns: boolean
+      }
+      refresh_revenue_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      revenue_for_org: {
+        Args: {
+          p_months?: number
+        }
+        Returns: unknown
       }
       shares_org_with: {
         Args: {
