@@ -20,6 +20,7 @@
     "@pm/db": "workspace:*",
     "@pm/shared": "workspace:*",
     "@pm/ui": "workspace:*",
+    "@react-pdf/renderer": "^4",
     "@sentry/nextjs": "^10",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.114.0",

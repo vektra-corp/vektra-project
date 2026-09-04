@@ -2,7 +2,7 @@ import { can } from '@pm/auth/rbac'
 import type { CommercialDocType } from '@pm/shared/constants'
 import { formatCurrency, formatDate } from '@pm/shared/utils'
 import { Badge, Button } from '@pm/ui'
-import { Pencil } from 'lucide-react'
+import { FileDown, Pencil } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -84,6 +84,19 @@ export default async function CommercialDocPage({
             </Badge>
 
             <div className="ms-auto flex flex-wrap items-center gap-2">
+              <Button asChild variant="subtle" size="sm">
+                {/* Opens in a new tab: the response is a PDF, so navigating the
+                    current tab would replace the page with a file viewer. */}
+                <a
+                  href={`/api/commercial/${doc.id}/pdf?org=${params.orgSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <FileDown className="h-3 w-3" aria-hidden />
+                  PDF
+                </a>
+              </Button>
+
               {editable && can(auth, 'commercial', 'update') ? (
                 <Button asChild variant="subtle" size="sm">
                   <Link href={`${base}/${doc.id}/edit`}>

@@ -30,7 +30,7 @@ cost time. `CLAUDE.md` is the specification; this file is the state of play.
 | Custom fields | **Done** — admin UI at Settings → Custom fields, and rendered on the task detail page. Projects, contacts and commercial documents can define fields but do not yet render them; reuse `CustomFieldInputs` with a different `entityType`. |
 | Workflow builder — **designer** | **Done** — canvas at `/{org}/{workspace}/workflows`, graph model and validation in `@pm/shared/constants/workflows` (21 tests) |
 | Workflow builder — **engine** | **Done for event triggers.** `dispatchWorkflows` polls the event log every 2 min; `planExecution` decides the walk; `runWorkflow` performs actions and logs runs/steps. Gaps below. |
-| PDF templates & generation | `pdf_templates` table only; no renderer |
+| PDF generation | **Done** — `GET /api/commercial/{id}/pdf?org={slug}` renders a commercial document with @react-pdf/renderer. The `pdf_templates` table exists but is unused: the layout is fixed, not template-driven. |
 | Slack integration | `integrations` table only; no OAuth, no dispatch |
 
 ---
@@ -47,7 +47,7 @@ set -a; source apps/web/.env.local; set +a
 ALLOW_DESTRUCTIVE_TESTS=true pnpm test:rls
 ```
 
-Current counts: **212 unit tests, 70 RLS tests, 63 tables, 24 migrations.**
+Current counts: **215 unit tests, 70 RLS tests, 63 tables, 24 migrations.**
 
 ---
 
@@ -210,3 +210,9 @@ arbitrary column name from a config blob is a write primitive.
   array — normalise, never cast.
 - New UI uses the Vektra tokens in `packages/ui/src/styles.css`. Meta text uses
   `.label-meta`. There is no light-mode-only styling.
+- `apps/web/vitest.config.ts` sets `jsx: 'automatic'`. Without it, TSX under
+  test fails with "React is not defined" — the PDF templates are the only TSX
+  currently exercised by a unit test.
+- The PDF route is the sole importer of `@react-pdf/renderer`; keep it that way
+  so the dependency never reaches a page bundle. Money is formatted by the
+  caller and passed in pre-formatted, so the PDF cannot disagree with the UI.
