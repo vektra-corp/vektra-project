@@ -19,6 +19,7 @@ import {
   ShoppingCart,
   Split,
   Table2,
+  Timer,
   Users,
   Wallet,
 } from 'lucide-react'
@@ -229,6 +230,14 @@ export async function Sidebar({
           />
           <SidebarItem
             item={{ key: 'leave', label: t('leave'), icon: CalendarRange, href: `/${orgSlug}/team/leave` }}
+          />
+          <SidebarItem
+            item={{
+              key: 'timesheets',
+              label: t('timesheets'),
+              icon: Timer,
+              href: `/${orgSlug}/timesheets`,
+            }}
           />
           {atLeast('manager') ? (
             <SidebarItem

@@ -498,7 +498,7 @@ export interface Database {
             foreignKeyName: 'auto_assignment_rules_created_by_fkey'
             columns: ['created_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -790,7 +790,7 @@ export interface Database {
             foreignKeyName: 'commercial_documents_approved_by_fkey'
             columns: ['approved_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -811,7 +811,7 @@ export interface Database {
             foreignKeyName: 'commercial_documents_created_by_fkey'
             columns: ['created_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -977,7 +977,7 @@ export interface Database {
             foreignKeyName: 'contacts_created_by_fkey'
             columns: ['created_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -1122,7 +1122,7 @@ export interface Database {
             foreignKeyName: 'dashboard_configs_user_id_fkey'
             columns: ['user_id']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
         ]
@@ -1167,7 +1167,7 @@ export interface Database {
             foreignKeyName: 'document_versions_edited_by_fkey'
             columns: ['edited_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -1314,7 +1314,7 @@ export interface Database {
             foreignKeyName: 'employees_user_id_fkey'
             columns: ['user_id']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
         ]
@@ -1811,7 +1811,7 @@ export interface Database {
             foreignKeyName: 'lead_activities_created_by_fkey'
             columns: ['created_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -1920,7 +1920,7 @@ export interface Database {
             foreignKeyName: 'leads_assigned_to_fkey'
             columns: ['assigned_to']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -1934,7 +1934,7 @@ export interface Database {
             foreignKeyName: 'leads_created_by_fkey'
             columns: ['created_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -2068,7 +2068,7 @@ export interface Database {
             foreignKeyName: 'leave_requests_approved_by_fkey'
             columns: ['approved_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -2539,7 +2539,7 @@ export interface Database {
             foreignKeyName: 'portal_users_invited_by_fkey'
             columns: ['invited_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -2819,7 +2819,7 @@ export interface Database {
             foreignKeyName: 'saved_reports_created_by_fkey'
             columns: ['created_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -3265,7 +3265,7 @@ export interface Database {
             foreignKeyName: 'time_entries_user_id_fkey'
             columns: ['user_id']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
         ]
@@ -3324,7 +3324,7 @@ export interface Database {
             foreignKeyName: 'timesheet_periods_approved_by_fkey'
             columns: ['approved_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -3338,7 +3338,7 @@ export interface Database {
             foreignKeyName: 'timesheet_periods_user_id_fkey'
             columns: ['user_id']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
         ]
