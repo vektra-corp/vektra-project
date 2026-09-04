@@ -6,7 +6,8 @@ run what exists today.
 
 ## Status
 
-**Phase 0 (Foundations) and Phase 1 (MVP) are complete.** See [Build order](#build-order).
+**Phases 0 (Foundations) and 1 (MVP) are complete. Phase 2 (V1) is all but done** —
+only the configurable dashboard grid remains. See [Build order](#build-order).
 
 The UI follows the Vektra design system: dark-first tokens in
 `packages/ui/src/styles.css`, a monospace "meta" type treatment for every id,
@@ -15,8 +16,8 @@ count and status label, and a four-step surface elevation ladder.
 | Area | State |
 |---|---|
 | Monorepo, Turborepo, TypeScript strict | Done |
-| Database schema (52 tables, 15 migrations) | Done |
-| RLS policies (121) | Done, 31 isolation tests passing |
+| Database schema (56 tables, 16 migrations) | Done |
+| RLS policies (132) | Done, 31 isolation tests passing |
 | Auth: signup, login, reset, callback, onboarding | Done |
 | Event bus (`emit_event` triggers) | Done |
 | Stripe billing skeleton + webhook | Done |
@@ -35,7 +36,27 @@ count and status label, and a four-step surface elevation ladder.
 | Dashboard widgets, My tasks, cross-project search | Done |
 | Org settings, workspaces, members + invites, roles matrix | Done |
 | Admin console: orgs, users, subscriptions, notices, flags, audit, health | Done |
-| Gantt, documents, portal, commercial, workflows | Not started — Phase 2+ |
+| Documents + Tiptap editor + version history | Done |
+| External portal (`/portal/{org}`) + access management | Done |
+| Gantt timeline: zoom, dependencies, drag to reschedule | Done |
+| Employees, leave requests, balances, approvals | Done |
+| Configurable dashboard grid (§19.10) | Remaining Phase 2 item |
+| Commercial, timesheets, leads, workflows | Not started — Phase 3 |
+
+### Database scripts
+
+Every `db:*` script runs off `SUPABASE_DB_URL`; no `supabase link` is required.
+Migrations need PREPARED STATEMENTS, which Supavisor's transaction pooler
+(port 6543) does not support — `scripts/session-db-url.mjs` derives the
+session-mode URL automatically, so `pnpm db:push` just works.
+
+```bash
+pnpm db:push:dry     # what would be applied
+pnpm db:push         # apply outstanding migrations
+pnpm db:migrations   # applied vs pending
+pnpm db:types:offline # regenerate packages/db/src/types.ts
+pnpm db:check        # verify the hosted project, including the JWT hook
+```
 
 ### Configuration added in Phase 1
 

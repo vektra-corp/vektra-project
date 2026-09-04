@@ -97,7 +97,10 @@
     "invoices": "Invoices",
     "bills": "Bills",
     "teamAndClients": "Team & clients",
-    "noWorkspaces": "No workspaces yet"
+    "noWorkspaces": "No workspaces yet",
+    "people": "People",
+    "team": "Team",
+    "leave": "Leave"
   },
   "onboarding": {
     "title": "Create your organization",

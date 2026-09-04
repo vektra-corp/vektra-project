@@ -1087,6 +1087,85 @@ export interface Database {
           },
         ]
       }
+      employees: {
+        Row: {
+          id: string
+          organization_id: string
+          user_id: string
+          employee_code: string | null
+          department: string | null
+          designation: string | null
+          employment_type: string
+          date_of_joining: string
+          date_of_exit: string | null
+          manager_id: string | null
+          work_schedule: Json
+          default_hourly_rate: number | null
+          skills: string[]
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          employee_code?: string | null
+          department?: string | null
+          designation?: string | null
+          employment_type?: string
+          date_of_joining: string
+          date_of_exit?: string | null
+          manager_id?: string | null
+          work_schedule?: Json
+          default_hourly_rate?: number | null
+          skills?: string[]
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          user_id?: string
+          employee_code?: string | null
+          department?: string | null
+          designation?: string | null
+          employment_type?: string
+          date_of_joining?: string
+          date_of_exit?: string | null
+          manager_id?: string | null
+          work_schedule?: Json
+          default_hourly_rate?: number | null
+          skills?: string[]
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'employees_manager_id_fkey'
+            columns: ['manager_id']
+            isOneToOne: false
+            referencedRelation: 'employees'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'employees_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'employees_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       events: {
         Row: {
           id: string
@@ -1533,6 +1612,191 @@ export interface Database {
             columns: ['project_id']
             isOneToOne: false
             referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      leave_balances: {
+        Row: {
+          id: string
+          organization_id: string
+          employee_id: string
+          leave_type_id: string
+          year: number
+          total_days: number
+          used_days: number
+          pending_days: number
+          carried_over: number
+          remaining_days: number | null
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          employee_id: string
+          leave_type_id: string
+          year: number
+          total_days?: number
+          used_days?: number
+          pending_days?: number
+          carried_over?: number
+          remaining_days?: number | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          employee_id?: string
+          leave_type_id?: string
+          year?: number
+          total_days?: number
+          used_days?: number
+          pending_days?: number
+          carried_over?: number
+          remaining_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'leave_balances_employee_id_fkey'
+            columns: ['employee_id']
+            isOneToOne: false
+            referencedRelation: 'employees'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'leave_balances_leave_type_id_fkey'
+            columns: ['leave_type_id']
+            isOneToOne: false
+            referencedRelation: 'leave_types'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'leave_balances_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      leave_requests: {
+        Row: {
+          id: string
+          organization_id: string
+          employee_id: string
+          leave_type_id: string
+          start_date: string
+          end_date: string
+          duration_days: number
+          reason: string | null
+          status: string
+          approved_by: string | null
+          approved_at: string | null
+          rejection_note: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          employee_id: string
+          leave_type_id: string
+          start_date: string
+          end_date: string
+          duration_days: number
+          reason?: string | null
+          status?: string
+          approved_by?: string | null
+          approved_at?: string | null
+          rejection_note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          employee_id?: string
+          leave_type_id?: string
+          start_date?: string
+          end_date?: string
+          duration_days?: number
+          reason?: string | null
+          status?: string
+          approved_by?: string | null
+          approved_at?: string | null
+          rejection_note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'leave_requests_approved_by_fkey'
+            columns: ['approved_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'leave_requests_employee_id_fkey'
+            columns: ['employee_id']
+            isOneToOne: false
+            referencedRelation: 'employees'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'leave_requests_leave_type_id_fkey'
+            columns: ['leave_type_id']
+            isOneToOne: false
+            referencedRelation: 'leave_types'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'leave_requests_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      leave_types: {
+        Row: {
+          id: string
+          organization_id: string
+          name: string
+          color: string | null
+          default_days: number
+          is_paid: boolean
+          requires_approval: boolean
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          color?: string | null
+          default_days?: number
+          is_paid?: boolean
+          requires_approval?: boolean
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          color?: string | null
+          default_days?: number
+          is_paid?: boolean
+          requires_approval?: boolean
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'leave_types_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
             referencedColumns: ['id']
           },
         ]

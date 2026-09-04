@@ -1,5 +1,7 @@
 export * from './common'
 export * from './auth'
+export * from './document'
+export * from './hr'
 export * from './organization'
 export * from './project'
 export * from './task'

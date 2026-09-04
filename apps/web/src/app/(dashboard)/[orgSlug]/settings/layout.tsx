@@ -1,4 +1,4 @@
-import { ORG_ADMIN_ROLES } from '@pm/auth/constants'
+import { ORG_ADMIN_ROLES, ORG_MANAGER_ROLES } from '@pm/auth/constants'
 import type { ReactNode } from 'react'
 import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
@@ -20,6 +20,7 @@ export default async function SettingsLayout({
 }) {
   const auth = await requireAuthPage(params.orgSlug)
   const isAdmin = (ORG_ADMIN_ROLES as readonly string[]).includes(auth.orgRole)
+  const isManager = (ORG_MANAGER_ROLES as readonly string[]).includes(auth.orgRole)
 
   const tabs: SettingsTab[] = [
     { segment: 'profile', label: 'Profile' },
@@ -28,9 +29,12 @@ export default async function SettingsLayout({
           { segment: 'general', label: 'General' },
           { segment: 'workspaces', label: 'Workspaces' },
           { segment: 'roles', label: 'Roles' },
-          { segment: 'billing', label: 'Billing' },
         ]
       : []),
+    // Sharing work outside the organization is a manager decision, so this tab
+    // sits one rung lower than the rest of settings.
+    ...(isManager ? [{ segment: 'portal', label: 'Portal access' }] : []),
+    ...(isAdmin ? [{ segment: 'billing', label: 'Billing' }] : []),
   ]
 
   return (

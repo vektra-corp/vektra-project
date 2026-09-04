@@ -8,15 +8,15 @@ import { usePathname } from 'next/navigation'
 /**
  * Project view switcher.
  *
- * Timeline and Documents are later phases. They are shown because the switcher
- * is the map of a project's views, but they are inert until their routes exist —
- * a tab that leads to a 404 is worse than a tab that says "not yet".
+ * Every view listed here has a route. If one is added before its page exists,
+ * mark it `ready: false` — it then renders inert rather than linking into a
+ * 404, which is worse than a tab that says "not yet".
  */
 const VIEWS = [
   { segment: 'board', label: 'Board', icon: Columns3, ready: true },
   { segment: 'list', label: 'List', icon: Table2, ready: true },
-  { segment: 'timeline', label: 'Timeline', icon: CalendarRange, ready: false },
-  { segment: 'documents', label: 'Documents', icon: FileText, ready: false },
+  { segment: 'timeline', label: 'Timeline', icon: CalendarRange, ready: true },
+  { segment: 'documents', label: 'Documents', icon: FileText, ready: true },
 ] as const
 
 export function ProjectViewTabs({ base }: { base: string }) {

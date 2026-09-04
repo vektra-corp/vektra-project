@@ -26,6 +26,9 @@ import { BrandMark } from './brand-mark'
 import { SidebarItem, SidebarProjectGroup, SidebarSection, type NavItem } from './sidebar-nav'
 import { UserMenu } from './user-menu'
 
+/** Project views with a route today; the rest render as "soon". */
+const ROUTED_PROJECT_VIEWS = ['board', 'list', 'timeline', 'documents']
+
 export interface SidebarWorkspace {
   id: string
   name: string
@@ -93,9 +96,8 @@ export async function Sidebar({
     },
   ]
 
-  // Views the project layout actually serves. Timeline, backlog planning,
-  // documents and workload are later phases, so they render as unavailable
-  // rather than as links into a 404.
+  // Views the project layout actually serves. Backlog planning and workload are
+  // later phases, so they render as unavailable rather than as links into a 404.
   const projectViews = (): NavItem[] => [
     { key: 'board', label: t('board'), icon: Columns3 },
     { key: 'list', label: t('list'), icon: Table2 },
@@ -183,7 +185,7 @@ export async function Sidebar({
                   color: project.color,
                 }}
                 views={projectViews().map((view) =>
-                  view.key === 'board' || view.key === 'list'
+                  ROUTED_PROJECT_VIEWS.includes(view.key)
                     ? {
                         ...view,
                         href: `/${orgSlug}/${project.workspace_slug}/projects/${project.id}/${view.key}`,
@@ -208,6 +210,26 @@ export async function Sidebar({
           {commercial.map((item) => (
             <SidebarItem key={item.key} item={item} />
           ))}
+        </SidebarSection>
+
+        <SidebarSection title={t('people')}>
+          <SidebarItem
+            item={{
+              key: 'team',
+              label: t('team'),
+              icon: Users,
+              href: `/${orgSlug}/team`,
+              exact: true,
+            }}
+          />
+          <SidebarItem
+            item={{ key: 'leave', label: t('leave'), icon: CalendarRange, href: `/${orgSlug}/team/leave` }}
+          />
+          {atLeast('manager') ? (
+            <SidebarItem
+              item={{ key: 'members', label: t('members'), icon: Users, href: `/${orgSlug}/members` }}
+            />
+          ) : null}
         </SidebarSection>
 
         {atLeast('manager') ? (

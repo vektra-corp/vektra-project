@@ -17,22 +17,47 @@ export function isProtectedRoute(pathname: string): boolean {
   return !pathname.startsWith('/_next') && pathname !== '/favicon.ico'
 }
 
+/** The external portal is mounted under a literal prefix, not at the root. */
+const PORTAL_PREFIX = 'portal'
+
+const NON_TENANT_SEGMENTS = ['api', 'onboarding', 'select-org']
+
+const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/
+
 /**
  * Extract the org slug from a dashboard or portal URL.
  * `/acme/engineering/projects` -> `acme`
+ * `/portal/acme/projects`      -> `acme`
  * Returns null for non-tenant routes so the caller skips the membership check.
  */
 export function extractOrgSlug(pathname: string): string | null {
   const segments = pathname.split('/').filter(Boolean)
-  const first = segments[0]
-  if (!first) return null
-  if (isPublicRoute(`/${first}`)) return null
-  if (first === 'api' || first === 'onboarding' || first === 'select-org') return null
-  return /^[a-z0-9][a-z0-9-]*$/.test(first) ? first : null
+
+  // Portal URLs carry the org one segment deeper. Without this the guard would
+  // check membership of an organization literally named "portal", find none,
+  // and 403 every external user.
+  const offset = segments[0] === PORTAL_PREFIX ? 1 : 0
+  const candidate = segments[offset]
+
+  if (!candidate) return null
+  if (offset === 0) {
+    if (isPublicRoute(`/${candidate}`)) return null
+    if (NON_TENANT_SEGMENTS.includes(candidate)) return null
+  }
+
+  return SLUG_PATTERN.test(candidate) ? candidate : null
+}
+
+/** True when the path addresses the external portal rather than the app. */
+export function isPortalRoute(pathname: string): boolean {
+  const segments = pathname.split('/').filter(Boolean)
+  return segments[0] === PORTAL_PREFIX
 }
 
 export function extractWorkspaceSlug(pathname: string): string | null {
   const segments = pathname.split('/').filter(Boolean)
+  // The portal has no workspace level — projects are addressed directly.
+  if (segments[0] === PORTAL_PREFIX) return null
   return segments[1] ?? null
 }
 
