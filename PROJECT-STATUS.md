@@ -27,7 +27,7 @@ cost time. `CLAUDE.md` is the specification; this file is the state of play.
 | Revenue widgets + hourly rollup refresh | Done |
 | Auto-assignment (engine, Inngest job, rules UI) | Done |
 | Lead management | **Removed** — built in `00019`, dropped in `00023` at the product owner's direction. See CLAUDE.md §19.3. |
-| Custom fields | **Done** — admin UI at Settings → Custom fields, plus `coerceCustomValue` / `validateCustomValue` in `@pm/shared/constants/custom-fields`. **Not yet rendered on task/project forms** — `saveCustomValues` exists and is unused. |
+| Custom fields | **Done** — admin UI at Settings → Custom fields, and rendered on the task detail page. Projects, contacts and commercial documents can define fields but do not yet render them; reuse `CustomFieldInputs` with a different `entityType`. |
 | Workflow builder — **designer** | **Done** — canvas at `/{org}/{workspace}/workflows`, graph model and validation in `@pm/shared/constants/workflows` (21 tests) |
 | Workflow builder — **engine** | **Done for event triggers.** `dispatchWorkflows` polls the event log every 2 min; `planExecution` decides the walk; `runWorkflow` performs actions and logs runs/steps. Gaps below. |
 | PDF templates & generation | `pdf_templates` table only; no renderer |
@@ -47,7 +47,7 @@ set -a; source apps/web/.env.local; set +a
 ALLOW_DESTRUCTIVE_TESTS=true pnpm test:rls
 ```
 
-Current counts: **207 unit tests, 70 RLS tests, 63 tables, 24 migrations.**
+Current counts: **212 unit tests, 70 RLS tests, 63 tables, 24 migrations.**
 
 ---
 
@@ -93,7 +93,13 @@ pnpm db:migrations      # applied vs pending
 5. **`psql` is keg-only on macOS.** Not on PATH by default; `pnpm db:seed` uses
    a node runner instead so it does not matter.
 
-6. **Migrations are never edited after applying.** Reverse them with a new one
+6. **Seed addresses are `@*.test`, which can never receive mail.** A provider
+   accepts such a message and hard-bounces it later, so the app records a
+   successful send while the sending domain's reputation degrades. `sendEmail`
+   refuses reserved TLDs via `lib/email/address.ts` — do not remove that guard
+   to "test email properly"; point the seed at a real domain instead.
+
+7. **Migrations are never edited after applying.** Reverse them with a new one
    (see `00023` dropping the leads module).
 
 ---
@@ -129,16 +135,24 @@ Registered at `apps/web/src/app/api/inngest/route.ts`:
 
 | Function | Schedule | Purpose |
 |---|---|---|
-| `deliverNotificationEmails` | every 5 min | Emails unsent notifications, honouring quiet hours and digest mode |
+| `deliverNotificationEmails` | every 5 min | Emails unsent notifications, honouring quiet hours and digest mode. Refuses undeliverable domains. |
 | `sendDailyDigests` | hourly | Digest for non-instant subscribers |
 | `flagOverdueTasks` | hourly | Creates overdue notifications, once per task per day |
 | `refreshRevenueSummary` | hourly | `REFRESH MATERIALIZED VIEW CONCURRENTLY` |
 | `applyAutoAssignment` | every 2 min | Applies assignment rules to unassigned tasks |
 
-**None of these have been run.** They need `INNGEST_SIGNING_KEY` /
-`INNGEST_EVENT_KEY` set and the app registered with Inngest. The pure logic they
-call is unit-tested (`auto-assign.test.ts`, `notifications.test.ts`); the jobs
-themselves are not.
+**Local development needs no keys.** Run the app, then
+`npx inngest-cli@latest dev -u http://localhost:3000/api/inngest` and open
+http://127.0.0.1:8288 to invoke functions by hand and inspect each step.
+`/api/inngest` reports `{"mode":"dev","function_count":6}` when it is wired up.
+
+`deliverNotificationEmails` has been observed running against the seeded data,
+and `refresh_revenue_summary` has been verified directly through the
+service-role RPC. The other four have not been exercised end to end.
+
+**In production the signing key is the only thing authenticating
+`/api/inngest`** — that route is excluded from the auth middleware because
+Inngest calls it machine-to-machine. Do not deploy the jobs without it.
 
 ---
 

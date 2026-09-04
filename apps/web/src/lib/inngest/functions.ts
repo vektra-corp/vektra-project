@@ -134,9 +134,10 @@ export const deliverNotificationEmails = inngest.createFunction(
 
         const result = await sendEmail({ to, ...content })
 
-        // Mark on success, and also when email is not configured at all —
-        // otherwise every run would retry the same backlog forever.
-        if (result.ok || result.skipped === 'no_api_key') {
+        // Mark on success, and also when the send was refused for a reason
+        // that will not change — no key, or an address that can never receive
+        // mail. Otherwise every run retries the same backlog forever.
+        if (result.ok || result.skipped) {
           await db
             .from('notifications')
             .update({ emailed_at: new Date().toISOString() })
@@ -241,7 +242,7 @@ export const sendDailyDigests = inngest.createFunction(
 
         const result = await sendEmail({ to, ...content })
 
-        if (result.ok || result.skipped === 'no_api_key') {
+        if (result.ok || result.skipped) {
           await db
             .from('notifications')
             .update({ emailed_at: new Date().toISOString() })

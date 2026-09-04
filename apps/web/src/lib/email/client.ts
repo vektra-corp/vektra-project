@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { Resend } from 'resend'
+import { isUndeliverable } from './address'
 
 /**
  * Resend client (§3).
@@ -23,22 +24,22 @@ export function fromAddress(): string {
 
 export interface SendResult {
   ok: boolean
-  skipped?: 'no_api_key'
+  skipped?: 'no_api_key' | 'undeliverable_domain'
   error?: string
 }
 
-/**
- * Send one transactional email.
- *
- * Returns a result rather than throwing: the caller is a background job
- * processing a batch, and one bad address must not abort the rest.
- */
 export async function sendEmail(input: {
   to: string
   subject: string
   html: string
   text: string
 }): Promise<SendResult> {
+  // Checked before the key so a fixture address is refused even in an
+  // environment that is fully configured.
+  if (isUndeliverable(input.to)) {
+    return { ok: false, skipped: 'undeliverable_domain' }
+  }
+
   const resend = getResend()
   // Without a key, a deploy that has not configured email yet degrades to
   // in-app notifications only rather than erroring on every job run.

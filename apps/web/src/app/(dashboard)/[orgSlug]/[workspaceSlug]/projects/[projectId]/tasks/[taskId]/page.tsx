@@ -1,5 +1,10 @@
 import { can } from '@pm/auth/rbac'
-import { TASK_STATUSES, PRIORITIES } from '@pm/shared/constants'
+import {
+  PRIORITIES,
+  TASK_STATUSES,
+  parseFieldOptions,
+  type CustomFieldDefinition,
+} from '@pm/shared/constants'
 import { formatRelativeTime, initials, todayIn } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage, Card, CardContent } from '@pm/ui'
 import type { Metadata } from 'next'
@@ -8,6 +13,10 @@ import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
 import { AttachmentList, type AttachmentRow } from '@/components/attachments/attachment-list'
 import { CommentThread, type CommentRow } from '@/components/comments/comment-thread'
+import {
+  CustomFieldInputs,
+  type CustomValue,
+} from '@/components/custom-fields/custom-field-inputs'
 import { PageBody } from '@/components/layout/page-body'
 import { SubtaskList, type SubtaskRow } from '@/components/tasks/subtask-list'
 import { DueDate, TaskStatusBadge } from '@/components/tasks/task-badges'
@@ -46,8 +55,14 @@ export default async function TaskDetailPage({
 
   if (!task) notFound()
 
-  const [{ data: subtasks }, { data: comments }, { data: members }, { data: attachments }] =
-    await Promise.all([
+  const [
+    { data: subtasks },
+    { data: comments },
+    { data: members },
+    { data: attachments },
+    { data: customFields },
+    { data: customValues },
+  ] = await Promise.all([
       supabase
         .from('subtasks')
         .select(
@@ -71,6 +86,16 @@ export default async function TaskDetailPage({
         .select('id, file_name, file_size, mime_type, created_at, uploaded_by')
         .eq('task_id', params.taskId)
         .order('created_at', { ascending: false }),
+      supabase
+        .from('custom_fields')
+        .select('id, entity_type, name, field_type, options, is_required, position')
+        .eq('organization_id', auth.orgId)
+        .eq('entity_type', 'task')
+        .order('position'),
+      supabase
+        .from('custom_field_values')
+        .select('custom_field_id, value')
+        .eq('entity_id', params.taskId),
     ])
 
   // PostgREST returns to-one embeds as objects; the generated types permit an
@@ -90,6 +115,23 @@ export default async function TaskDetailPage({
     .sort((a, b) => a.full_name.localeCompare(b.full_name))
 
   const projectBase = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}`
+
+  const fieldDefinitions: CustomFieldDefinition[] = (customFields ?? []).map((field) => ({
+    id: field.id,
+    entity_type: 'task',
+    name: field.name,
+    field_type: field.field_type as CustomFieldDefinition['field_type'],
+    options: parseFieldOptions(field.options),
+    is_required: field.is_required,
+    position: field.position,
+  }))
+
+  // The value column is jsonb, so a stored value arrives as whatever JSON type
+  // its field wrote; the inputs coerce per field_type from here.
+  const fieldValues: Record<string, CustomValue> = {}
+  for (const row of customValues ?? []) {
+    fieldValues[row.custom_field_id] = (row.value ?? null) as CustomValue
+  }
 
   return (
     <PageBody className="pt-4">
@@ -121,6 +163,15 @@ export default async function TaskDetailPage({
                 scope={params}
                 taskId={task.id}
                 description={task.description}
+                canEdit={canEdit}
+              />
+
+              <CustomFieldInputs
+                orgSlug={params.orgSlug}
+                entityType="task"
+                entityId={task.id}
+                fields={fieldDefinitions}
+                values={fieldValues}
                 canEdit={canEdit}
               />
 
