@@ -923,7 +923,6 @@ export interface Database {
           created_by: string | null
           created_at: string
           updated_at: string
-          lead_id: string | null
           lifecycle_stage: string
           tags: string[]
           last_contacted_at: string | null
@@ -944,7 +943,6 @@ export interface Database {
           created_by?: string | null
           created_at?: string
           updated_at?: string
-          lead_id?: string | null
           lifecycle_stage?: string
           tags?: string[]
           last_contacted_at?: string | null
@@ -965,7 +963,6 @@ export interface Database {
           created_by?: string | null
           created_at?: string
           updated_at?: string
-          lead_id?: string | null
           lifecycle_stage?: string
           tags?: string[]
           last_contacted_at?: string | null
@@ -978,13 +975,6 @@ export interface Database {
             columns: ['created_by']
             isOneToOne: false
             referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'contacts_lead_id_fkey'
-            columns: ['lead_id']
-            isOneToOne: false
-            referencedRelation: 'leads'
             referencedColumns: ['id']
           },
           {
@@ -1765,190 +1755,6 @@ export interface Database {
             columns: ['project_id']
             isOneToOne: false
             referencedRelation: 'projects'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      lead_activities: {
-        Row: {
-          id: string
-          lead_id: string
-          organization_id: string
-          type: string
-          subject: string
-          body: string | null
-          activity_date: string
-          duration_minutes: number | null
-          created_by: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          lead_id: string
-          organization_id: string
-          type: string
-          subject: string
-          body?: string | null
-          activity_date?: string
-          duration_minutes?: number | null
-          created_by?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          lead_id?: string
-          organization_id?: string
-          type?: string
-          subject?: string
-          body?: string | null
-          activity_date?: string
-          duration_minutes?: number | null
-          created_by?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'lead_activities_created_by_fkey'
-            columns: ['created_by']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'lead_activities_lead_id_fkey'
-            columns: ['lead_id']
-            isOneToOne: false
-            referencedRelation: 'leads'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'lead_activities_organization_id_fkey'
-            columns: ['organization_id']
-            isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      leads: {
-        Row: {
-          id: string
-          organization_id: string
-          workspace_id: string
-          contact_name: string
-          company_name: string | null
-          email: string | null
-          phone: string | null
-          website: string | null
-          source: string
-          status: string
-          estimated_value: number | null
-          currency: string
-          expected_close: string | null
-          lost_reason: string | null
-          assigned_to: string | null
-          assigned_at: string | null
-          converted_to_contact_id: string | null
-          converted_at: string | null
-          notes: string | null
-          tags: string[]
-          last_contacted_at: string | null
-          next_follow_up: string | null
-          position: number
-          created_by: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          workspace_id: string
-          contact_name: string
-          company_name?: string | null
-          email?: string | null
-          phone?: string | null
-          website?: string | null
-          source?: string
-          status?: string
-          estimated_value?: number | null
-          currency?: string
-          expected_close?: string | null
-          lost_reason?: string | null
-          assigned_to?: string | null
-          assigned_at?: string | null
-          converted_to_contact_id?: string | null
-          converted_at?: string | null
-          notes?: string | null
-          tags?: string[]
-          last_contacted_at?: string | null
-          next_follow_up?: string | null
-          position?: number
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          workspace_id?: string
-          contact_name?: string
-          company_name?: string | null
-          email?: string | null
-          phone?: string | null
-          website?: string | null
-          source?: string
-          status?: string
-          estimated_value?: number | null
-          currency?: string
-          expected_close?: string | null
-          lost_reason?: string | null
-          assigned_to?: string | null
-          assigned_at?: string | null
-          converted_to_contact_id?: string | null
-          converted_at?: string | null
-          notes?: string | null
-          tags?: string[]
-          last_contacted_at?: string | null
-          next_follow_up?: string | null
-          position?: number
-          created_by?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'leads_assigned_to_fkey'
-            columns: ['assigned_to']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'leads_converted_to_contact_id_fkey'
-            columns: ['converted_to_contact_id']
-            isOneToOne: false
-            referencedRelation: 'contacts'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'leads_created_by_fkey'
-            columns: ['created_by']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'leads_organization_id_fkey'
-            columns: ['organization_id']
-            isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'leads_workspace_id_fkey'
-            columns: ['workspace_id']
-            isOneToOne: false
-            referencedRelation: 'workspaces'
             referencedColumns: ['id']
           },
         ]

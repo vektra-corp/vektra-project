@@ -58,6 +58,13 @@ export const FIXTURES = {
     memberEmployeeId: 'a6a6a6a6-0000-0000-0000-000000000002',
     leaveTypeId: 'a7a7a7a7-0000-0000-0000-000000000001',
     memberLeaveRequestId: 'a8a8a8a8-0000-0000-0000-000000000001',
+    memberTimeEntryId: 'a9a9a9a9-0000-0000-0000-000000000001',
+    managerTimeEntryId: 'a9a9a9a9-0000-0000-0000-000000000002',
+    memberTimesheetId: 'aaaa1111-0000-0000-0000-000000000001',
+    privateReportId: 'aaaa4444-0000-0000-0000-000000000001',
+    sharedReportId: 'aaaa4444-0000-0000-0000-000000000002',
+    assignmentRuleId: 'aaaa5555-0000-0000-0000-000000000001',
+    managerDashboardId: 'aaaa6666-0000-0000-0000-000000000001',
   },
   globex: {
     orgId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
@@ -67,6 +74,7 @@ export const FIXTURES = {
     employeeId: 'b6b6b6b6-0000-0000-0000-000000000001',
     leaveTypeId: 'b7b7b7b7-0000-0000-0000-000000000001',
     leaveRequestId: 'b8b8b8b8-0000-0000-0000-000000000001',
+    timeEntryId: 'b9b9b9b9-0000-0000-0000-000000000001',
   },
   portal: {
     userId: '55555555-5555-5555-5555-555555555555',

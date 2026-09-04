@@ -43,9 +43,6 @@ export const EVENT_TYPES = [
   'commercial_document.approved',
   'commercial_document.paid',
   // CRM
-  'lead.created',
-  'lead.status_changed',
-  'lead.converted',
   // HR
   'leave_request.submitted',
   'leave_request.decided',

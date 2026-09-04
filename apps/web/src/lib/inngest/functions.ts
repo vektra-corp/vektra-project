@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { chooseAssignee, ruleFor, type AssignmentRule, type Candidate } from '@pm/db'
 import { todayIn } from '@pm/shared/utils'
 import { sendEmail } from '@/lib/email/client'
 import { digestEmail, notificationEmail } from '@/lib/email/templates'
@@ -332,4 +333,194 @@ export const flagOverdueTasks = inngest.createFunction(
   },
 )
 
-export const functions = [deliverNotificationEmails, sendDailyDigests, flagOverdueTasks]
+/**
+ * Refresh the revenue rollup.
+ *
+ * `revenue_summary` is a materialized view, so it is stale until refreshed.
+ * Hourly rather than on every commercial write: the dashboard tolerates an hour
+ * of lag, and rebuilding on each invoice edit would make a bulk import
+ * quadratic. REFRESH CONCURRENTLY means readers are never blocked.
+ */
+export const refreshRevenueSummary = inngest.createFunction(
+  { id: 'revenue-summary-refresh', retries: 2 },
+  { cron: '25 * * * *' },
+  async ({ step }) => {
+    await step.run('refresh', async () => {
+      const db = createAdminClient()
+      // SECURITY DEFINER and granted to service_role only — an end-user session
+      // cannot trigger a full rebuild.
+      const { error } = await db.rpc('refresh_revenue_summary')
+      if (error) throw error
+    })
+
+    return { refreshed: true }
+  },
+)
+
+/**
+ * Apply auto-assignment rules to unassigned tasks (§19.6).
+ *
+ * Polls rather than reacting to an event: tasks are written by several paths
+ * (the board, quick capture, the API), and `emit_event` fires a database
+ * trigger that cannot reach Inngest. Scanning for unassigned tasks catches all
+ * of them and is naturally idempotent — a task that already has an assignee is
+ * simply not a candidate, so a retry cannot reassign it.
+ */
+export const applyAutoAssignment = inngest.createFunction(
+  { id: 'auto-assignment', retries: 2 },
+  { cron: '*/2 * * * *' },
+  async ({ step }) => {
+    const work = await step.run('scan', async () => {
+      const db = createAdminClient()
+      // Only recent tasks: a rule added today should not retroactively assign
+      // everything that has ever been left unassigned on purpose.
+      const since = new Date(Date.now() - 60 * 60_000).toISOString()
+
+      const { data: rules } = await db
+        .from('auto_assignment_rules')
+        .select('id, name, project_id, method, assignee_pool, conditions, config, organization_id')
+        .eq('is_active', true)
+
+      if (!rules?.length) return { assigned: 0, considered: 0 }
+
+      const orgIds = [...new Set(rules.map((rule) => rule.organization_id))]
+
+      const { data: tasks } = await db
+        .from('tasks')
+        .select('id, project_id, priority, organization_id, task_labels(label:labels(name))')
+        .in('organization_id', orgIds)
+        .is('assignee_id', null)
+        .not('status', 'in', '(done,cancelled)')
+        .gte('created_at', since)
+        .limit(200)
+
+      if (!tasks?.length) return { assigned: 0, considered: 0 }
+
+      let assigned = 0
+
+      for (const orgId of orgIds) {
+        const orgRules: AssignmentRule[] = rules
+          .filter((rule) => rule.organization_id === orgId)
+          .map((rule) => ({
+            id: rule.id,
+            name: rule.name,
+            projectId: rule.project_id,
+            method: rule.method as AssignmentRule['method'],
+            assigneePool: (rule.assignee_pool ?? []) as string[],
+            conditions: (rule.conditions ?? {}) as Record<string, unknown>,
+            config: (rule.config ?? {}) as Record<string, unknown>,
+          }))
+
+        const orgTasks = tasks.filter((task) => task.organization_id === orgId)
+        if (orgTasks.length === 0) continue
+
+        // Everyone any rule in this org could assign to.
+        const poolIds = [...new Set(orgRules.flatMap((rule) => rule.assigneePool))]
+        if (poolIds.length === 0) continue
+
+        const today = new Date().toISOString().slice(0, 10)
+
+        const [{ data: openCounts }, { data: employees }, { data: leave }] = await Promise.all([
+          db
+            .from('tasks')
+            .select('assignee_id')
+            .eq('organization_id', orgId)
+            .in('assignee_id', poolIds)
+            .not('status', 'in', '(done,cancelled)'),
+          db.from('employees').select('user_id, skills').eq('organization_id', orgId),
+          db
+            .from('leave_requests')
+            .select('employee:employees!leave_requests_employee_id_fkey(user_id)')
+            .eq('organization_id', orgId)
+            .eq('status', 'approved')
+            .lte('start_date', today)
+            .gte('end_date', today),
+        ])
+
+        const load = new Map<string, number>()
+        for (const row of openCounts ?? []) {
+          if (!row.assignee_id) continue
+          load.set(row.assignee_id, (load.get(row.assignee_id) ?? 0) + 1)
+        }
+
+        const skills = new Map<string, string[]>()
+        for (const employee of employees ?? []) {
+          skills.set(
+            employee.user_id,
+            (employee.skills ?? []).map((skill) => skill.toLowerCase()),
+          )
+        }
+
+        const away = new Set<string>()
+        for (const row of leave ?? []) {
+          const employee = Array.isArray(row.employee) ? row.employee[0] : row.employee
+          if (employee?.user_id) away.add(employee.user_id)
+        }
+
+        const candidates: Candidate[] = poolIds.map((userId) => ({
+          userId,
+          openTasks: load.get(userId) ?? 0,
+          skills: skills.get(userId) ?? [],
+          onLeave: away.has(userId),
+        }))
+
+        for (const task of orgTasks) {
+          const labelNames = ((task.task_labels ?? []) as { label: { name: string } | null }[])
+            .map((row) => (Array.isArray(row.label) ? row.label[0] : row.label))
+            .map((label) => label?.name)
+            .filter((name): name is string => Boolean(name))
+
+          const candidateTask = {
+            id: task.id,
+            projectId: task.project_id,
+            priority: task.priority,
+            labelNames,
+          }
+
+          const rule = ruleFor(orgRules, candidateTask)
+          if (!rule) continue
+
+          const decision = chooseAssignee(rule, candidateTask, candidates)
+          if (!decision) continue
+
+          const { error } = await db
+            .from('tasks')
+            .update({ assignee_id: decision.userId })
+            .eq('id', task.id)
+            // Re-check emptiness at write time: someone may have assigned it by
+            // hand between the scan and now.
+            .is('assignee_id', null)
+
+          if (error) continue
+
+          assigned += 1
+
+          // Keep the in-memory load current so a batch does not hand every
+          // task to the same person.
+          const chosen = candidates.find((c) => c.userId === decision.userId)
+          if (chosen) chosen.openTasks += 1
+
+          if (decision.nextConfig) {
+            rule.config = decision.nextConfig
+            await db
+              .from('auto_assignment_rules')
+              .update({ config: decision.nextConfig as never })
+              .eq('id', rule.id)
+          }
+        }
+      }
+
+      return { assigned, considered: tasks.length }
+    })
+
+    return work
+  },
+)
+
+export const functions = [
+  deliverNotificationEmails,
+  sendDailyDigests,
+  flagOverdueTasks,
+  refreshRevenueSummary,
+  applyAutoAssignment,
+]

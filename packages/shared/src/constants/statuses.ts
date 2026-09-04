@@ -93,31 +93,6 @@ export type ContactType = (typeof CONTACT_TYPES)[number]
 export const LIFECYCLE_STAGES = ['lead', 'prospect', 'customer', 'churned'] as const
 export type LifecycleStage = (typeof LIFECYCLE_STAGES)[number]
 
-// --- Leads --------------------------------------------------------------------
-export const LEAD_SOURCES = [
-  'manual',
-  'web_form',
-  'referral',
-  'cold_call',
-  'social_media',
-  'advertisement',
-  'event',
-  'other',
-] as const
-export type LeadSource = (typeof LEAD_SOURCES)[number]
-
-export const LEAD_STATUSES = [
-  'new',
-  'contacted',
-  'qualified',
-  'proposal',
-  'negotiation',
-  'won',
-  'lost',
-  'disqualified',
-] as const
-export type LeadStatus = (typeof LEAD_STATUSES)[number]
-
 // --- Workflows ----------------------------------------------------------------
 export const WORKFLOW_TRIGGER_TYPES = [
   'task_event',
@@ -143,6 +118,8 @@ export const WORKFLOW_LIMITS = {
   MAX_STEPS: 50,
   MAX_RUNTIME_MS: 5 * 60 * 1000,
   MAX_RETRIES: 3,
+  /** Editor-side cap. A graph this large is unreadable long before it is slow. */
+  MAX_NODES: 40,
 } as const
 
 // --- HR -----------------------------------------------------------------------

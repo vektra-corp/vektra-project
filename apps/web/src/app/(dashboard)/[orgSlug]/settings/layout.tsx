@@ -29,11 +29,17 @@ export default async function SettingsLayout({
           { segment: 'general', label: 'General' },
           { segment: 'workspaces', label: 'Workspaces' },
           { segment: 'roles', label: 'Roles' },
+          { segment: 'custom-fields', label: 'Custom fields' },
         ]
       : []),
     // Sharing work outside the organization is a manager decision, so this tab
     // sits one rung lower than the rest of settings.
-    ...(isManager ? [{ segment: 'portal', label: 'Portal access' }] : []),
+    ...(isManager
+      ? [
+          { segment: 'portal', label: 'Portal access' },
+          { segment: 'automation', label: 'Automation' },
+        ]
+      : []),
     ...(isAdmin ? [{ segment: 'billing', label: 'Billing' }] : []),
   ]
 

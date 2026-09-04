@@ -2551,85 +2551,22 @@ export async function convertQuotationToInvoice(quotationId: string) {
 }
 ```
 
-### 19.3 Lead management (CRM-lite)
+### 19.3 Lead management — REMOVED
 
-```sql
-CREATE TABLE leads (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  workspace_id    uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+Lead management was specified here and built in migration `00019`, then removed
+in `00023` at the product owner's direction. `leads` and `lead_activities` no
+longer exist and neither does `contacts.lead_id`.
 
-  -- Contact info
-  contact_name    text NOT NULL,
-  company_name    text,
-  email           text,
-  phone           text,
-  website         text,
-
-  -- Lead details
-  source          text NOT NULL DEFAULT 'manual'
-                  CHECK (source IN ('manual', 'web_form', 'referral', 'cold_call',
-                         'social_media', 'advertisement', 'event', 'other')),
-  status          text NOT NULL DEFAULT 'new'
-                  CHECK (status IN ('new', 'contacted', 'qualified', 'proposal',
-                         'negotiation', 'won', 'lost', 'disqualified')),
-  estimated_value numeric(12, 2),
-  currency        text NOT NULL DEFAULT 'USD',
-  expected_close  date,
-  lost_reason     text,
-
-  -- Assignment
-  assigned_to     uuid REFERENCES auth.users(id) ON DELETE SET NULL,
-  assigned_at     timestamptz,
-
-  -- Conversion
-  converted_to_contact_id uuid REFERENCES contacts(id),
-  converted_at    timestamptz,
-
-  -- Meta
-  notes           text,
-  tags            text[],
-  last_contacted_at timestamptz,
-  next_follow_up  date,
-  created_by      uuid REFERENCES auth.users(id),
-  created_at      timestamptz NOT NULL DEFAULT now(),
-  updated_at      timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX idx_leads_org ON leads(organization_id);
-CREATE INDEX idx_leads_status ON leads(organization_id, status);
-CREATE INDEX idx_leads_assigned ON leads(assigned_to);
-
--- Lead activities (calls, emails, meetings logged against a lead)
-CREATE TABLE lead_activities (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  lead_id         uuid NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  type            text NOT NULL CHECK (type IN ('call', 'email', 'meeting', 'note', 'task')),
-  subject         text NOT NULL,
-  body            text,
-  activity_date   timestamptz NOT NULL DEFAULT now(),
-  duration_minutes integer,
-  created_by      uuid REFERENCES auth.users(id),
-  created_at      timestamptz NOT NULL DEFAULT now()
-);
-```
-
-**Lead features:**
-- **Kanban view for leads**: columns = lead statuses (New → Contacted → Qualified → Proposal → Won/Lost). Same drag-drop as task Kanban.
-- **Lead → Contact conversion**: when a lead status changes to "won", auto-create a Contact record from the lead's info. Link via `converted_to_contact_id`.
-- **Lead → Quotation**: from a won lead, one-click to create a quotation pre-filled with the contact info and estimated value.
-- **Pipeline view**: leads grouped by status with total estimated value per stage. A simple revenue pipeline.
-- **Activity log**: calls, emails, meetings logged against each lead with timestamps.
-- **Follow-up reminders**: `next_follow_up` date triggers a notification to the assigned user.
+`contacts.lifecycle_stage` is retained: it happens to include `'lead'` as a
+value, but it describes where a contact sits in its own lifecycle and does not
+depend on a leads table.
 
 ### 19.4 Contact expansion
 
-Update the existing contacts table to support CRM-lite:
+Update the existing contacts table to carry lifecycle and billing data:
 
 ```sql
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS
-  lead_id             uuid REFERENCES leads(id),
   lifecycle_stage     text DEFAULT 'lead'
                       CHECK (lifecycle_stage IN ('lead', 'prospect', 'customer', 'churned')),
   tags                text[],
@@ -2808,7 +2745,7 @@ CREATE TABLE saved_reports (
   created_by      uuid NOT NULL REFERENCES auth.users(id),
   name            text NOT NULL,
   entity_type     text NOT NULL DEFAULT 'task'
-                  CHECK (entity_type IN ('task', 'timesheet', 'lead', 'commercial', 'employee')),
+                  CHECK (entity_type IN ('task', 'timesheet', 'commercial', 'employee')),
   columns         text[] NOT NULL,        -- Ordered list of column keys
   filters         jsonb NOT NULL DEFAULT '{}',
   -- { "status": ["todo", "in_progress"], "priority": ["high"], "assignee_id": ["uuid1"],
@@ -2930,7 +2867,7 @@ CREATE TABLE kanban_view_configs (
 
 ### 19.9 Revenue tracking & dashboard
 
-Revenue tracking is a reporting layer that aggregates data from invoices, timesheets, quotations, and leads. No separate tables — it's computed views and dashboard widgets.
+Revenue tracking is a reporting layer that aggregates data from invoices, timesheets and quotations. No separate tables — it's computed views and dashboard widgets.
 
 ```sql
 -- Materialized view for revenue summary (refreshed periodically via cron)
@@ -2957,13 +2894,12 @@ CREATE UNIQUE INDEX idx_revenue_summary ON revenue_summary(organization_id, mont
 - **Revenue this month / quarter / year**: total from paid invoices
 - **Outstanding**: total from sent but unpaid invoices
 - **Overdue**: total from overdue invoices, with age breakdown (30/60/90 days)
-- **Pipeline**: total estimated value from active quotations + qualified leads
+- **Pipeline**: total estimated value from active quotations
 - **Revenue trend**: line chart, monthly revenue over time
 - **Revenue by client**: bar chart, top 10 clients by paid invoice total
 - **Billable utilization**: percentage of total logged hours that are billable (from timesheets)
 - **Average deal size**: mean of accepted quotation values
 - **Conversion rate**: quotations sent vs accepted (percentage)
-- **Lead pipeline value**: leads grouped by status with estimated value per stage
 
 ### 19.10 Fully customizable dashboard
 
@@ -2999,14 +2935,13 @@ CREATE TABLE dashboard_configs (
 | Invoiced revenue | Revenue | date range, currency |
 | Outstanding invoices | Revenue | age breakdown |
 | Revenue trend (chart) | Revenue | monthly/quarterly, date range |
-| Pipeline value | Revenue | lead + quotation |
+| Pipeline value | Revenue | quotation |
 | Revenue by client | Revenue | top N, date range |
 | Billable utilization | Timesheet | date range, user filter |
 | Hours logged this week | Timesheet | user or team |
 | Timesheet approval pending | Timesheet | manager view |
 | Leave calendar | HR | team/department filter |
 | Upcoming leaves | HR | next N days |
-| Lead pipeline | CRM | workspace filter |
 | Active workflows | Workflow | workspace filter |
 | System notices | Admin | (admin dashboard only) |
 | MRR / ARR | Admin | (admin dashboard only) |
@@ -3030,7 +2965,7 @@ Build in this order. Each phase depends on the previous one.
 | 0. Foundations | 2–3 | Auth, org/workspace/profile tables, RLS skeleton, CI/CD pipeline, staging env, Stripe billing skeleton, event system, type generation |
 | 1. MVP | 6–8 | Projects, tasks (with started_at/completed_at auto-set), subtasks, project-level Kanban (customizable views), comments, attachments, basic notifications, task report (defined columns), basic dashboard, subscription checkout, admin console basics |
 | 2. V1 | 4–6 | Subtask Kanban, Gantt chart, documents, import/export, external portal, customizable dashboard (grid layout + widget catalog), email integration, contacts, employee management, leave tracking |
-| 3. V2 | 6–8 | Quotation/PO/SO/Invoice/Bill, PDF templates, quotation→invoice conversion, timesheet & time tracking, lead management, revenue tracking widgets, auto-assignment engine, workflow builder, custom fields, audit logs, Slack integration |
+| 3. V2 | 6–8 | Quotation/PO/SO/Invoice/Bill, PDF templates, quotation→invoice conversion, timesheet & time tracking, revenue tracking widgets, auto-assignment engine, workflow builder, custom fields, audit logs, Slack integration |
 | 4. Hardening | 3–4 | Security review, pen test, load testing (k6 against RLS-heavy queries), backup/DR test, saved reports, status page, docs, go-live |
 
 ---

@@ -20,6 +20,7 @@ import {
   Split,
   Table2,
   Timer,
+  TrendingUp,
   Users,
   Wallet,
 } from 'lucide-react'
@@ -201,7 +202,14 @@ export async function Sidebar({
               />
             ))}
             <SidebarItem
-              item={{ key: `${workspace.id}-workflows`, label: t('workflows'), icon: Split }}
+              item={{
+                key: `${workspace.id}-workflows`,
+                label: t('workflows'),
+                icon: Split,
+                href: atLeast('manager')
+                  ? `/${orgSlug}/${workspace.slug}/workflows`
+                  : undefined,
+              }}
             />
           </SidebarSection>
         ))}
@@ -254,6 +262,14 @@ export async function Sidebar({
                 label: t('reports'),
                 icon: ListTodo,
                 href: `/${orgSlug}/reports`,
+              }}
+            />
+            <SidebarItem
+              item={{
+                key: 'revenue',
+                label: t('revenue'),
+                icon: TrendingUp,
+                href: `/${orgSlug}/revenue`,
               }}
             />
             <SidebarItem item={{ key: 'docs', label: t('documents'), icon: Files }} />

@@ -335,6 +335,72 @@ INSERT INTO leave_requests (id, organization_id, employee_id, leave_type_id,
  '2030-04-01', '2030-04-03', 3, 'pending', 'Other tenant request')
 ON CONFLICT (id) DO NOTHING;
 
+
+-- -----------------------------------------------------------------------------
+-- Timesheets, reports and automation
+--
+-- Acme has entries for both the manager and the member so the "your own, or
+-- everyone's if you manage people" policies have both sides to discriminate
+-- between. Globex gets one of each, for isolation.
+-- -----------------------------------------------------------------------------
+
+INSERT INTO time_entries (id, organization_id, user_id, project_id, description,
+                          start_time, end_time, is_billable) VALUES
+('a9a9a9a9-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ '33333333-3333-3333-3333-333333333333', 'a2a2a2a2-0000-0000-0000-000000000001',
+ 'Member work', '2030-05-06T09:00:00Z', '2030-05-06T11:00:00Z', true),
+('a9a9a9a9-0000-0000-0000-000000000002', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ '22222222-2222-2222-2222-222222222222', 'a2a2a2a2-0000-0000-0000-000000000001',
+ 'Manager work', '2030-05-06T09:00:00Z', '2030-05-06T10:30:00Z', false),
+('b9b9b9b9-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+ '44444444-4444-4444-4444-444444444444', 'b2b2b2b2-0000-0000-0000-000000000001',
+ 'Other tenant work', '2030-05-06T09:00:00Z', '2030-05-06T12:00:00Z', true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO timesheet_periods (id, organization_id, user_id, period_start, period_end,
+                               total_hours, billable_hours, status) VALUES
+('aaaa1111-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ '33333333-3333-3333-3333-333333333333', '2030-05-06', '2030-05-12', 2, 2, 'submitted'),
+('bbbb1111-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+ '44444444-4444-4444-4444-444444444444', '2030-05-06', '2030-05-12', 3, 3, 'submitted')
+ON CONFLICT (id) DO NOTHING;
+
+-- One private report and one shared, so the "own or shared" policy has both.
+INSERT INTO saved_reports (id, organization_id, created_by, name, entity_type,
+                           columns, is_shared) VALUES
+('aaaa4444-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ '22222222-2222-2222-2222-222222222222', 'Manager private', 'task',
+ ARRAY['task_name','status'], false),
+('aaaa4444-0000-0000-0000-000000000002', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ '22222222-2222-2222-2222-222222222222', 'Team shared', 'task',
+ ARRAY['task_name','assignee'], true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auto_assignment_rules (id, organization_id, project_id, name, method, assignee_pool) VALUES
+('aaaa5555-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ 'a2a2a2a2-0000-0000-0000-000000000001', 'Round robin bugs', 'round_robin',
+ ARRAY['22222222-2222-2222-2222-222222222222'::uuid, '33333333-3333-3333-3333-333333333333'::uuid])
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO dashboard_configs (id, organization_id, user_id, name, is_default, layout) VALUES
+('aaaa6666-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ '22222222-2222-2222-2222-222222222222', 'My Dashboard', true, '[]'::jsonb),
+('aaaa6666-0000-0000-0000-000000000002', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ '33333333-3333-3333-3333-333333333333', 'My Dashboard', true, '[]'::jsonb)
+ON CONFLICT (id) DO NOTHING;
+
+-- Commercial documents so revenue_for_org has something to roll up.
+INSERT INTO commercial_documents (id, organization_id, workspace_id, doc_type, doc_number,
+                                  status, issue_date, currency, subtotal, tax_total,
+                                  discount_total, grand_total, amount_paid) VALUES
+('aaaa7777-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+ 'a1a1a1a1-0000-0000-0000-000000000001', 'invoice', 'SEED-INV-0001',
+ 'paid', '2030-06-01', 'USD', 1000, 0, 0, 1000, 1000),
+('bbbb7777-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+ 'b1b1b1b1-0000-0000-0000-000000000001', 'invoice', 'SEED-INV-0001',
+ 'paid', '2030-06-01', 'USD', 7777, 0, 0, 7777, 7777)
+ON CONFLICT (id) DO NOTHING;
+
 -- -----------------------------------------------------------------------------
 -- Platform admin
 -- -----------------------------------------------------------------------------
