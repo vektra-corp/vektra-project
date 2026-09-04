@@ -54,6 +54,13 @@ export const taskMoveSchema = z.object({
   position: z.number().finite(),
 })
 
+/** Same shape as a task move; the subtask board shares the column semantics. */
+export const subtaskMoveSchema = z.object({
+  subtask_id: uuidSchema,
+  target_column_id: uuidSchema,
+  position: z.number().finite(),
+})
+
 export const subtaskCreateSchema = z.object({
   task_id: uuidSchema,
   kanban_column_id: uuidSchema.nullable().optional(),
@@ -100,5 +107,6 @@ export const commentCreateSchema = z
 export type TaskCreateInput = z.infer<typeof taskCreateSchema>
 export type TaskUpdateInput = z.infer<typeof taskUpdateSchema>
 export type TaskMoveInput = z.infer<typeof taskMoveSchema>
+export type SubtaskMoveInput = z.infer<typeof subtaskMoveSchema>
 export type SubtaskCreateInput = z.infer<typeof subtaskCreateSchema>
 export type CommentCreateInput = z.infer<typeof commentCreateSchema>

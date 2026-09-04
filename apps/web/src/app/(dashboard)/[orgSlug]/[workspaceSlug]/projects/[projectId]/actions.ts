@@ -8,6 +8,7 @@ import {
   commentCreateSchema,
   fieldErrors,
   subtaskCreateSchema,
+  subtaskMoveSchema,
   taskCreateSchema,
   taskMoveSchema,
   taskUpdateSchema,
@@ -200,6 +201,8 @@ export async function createSubtask(
 
   const parsed = subtaskCreateSchema.safeParse({
     task_id: taskId,
+    // Present when created from the subtask board; absent from the checklist.
+    kanban_column_id: formData.get('kanban_column_id') || null,
     title: formData.get('title'),
     priority: formData.get('priority') || 'medium',
     assignee_id: formData.get('assignee_id') || null,
@@ -217,8 +220,40 @@ export async function createSubtask(
 
   const supabase = createClient()
   const { description, ...subtask } = parsed.data
+
+  // The column carries the status (business rule 3), so a subtask created into
+  // a column takes that column's status rather than the default.
+  let status = subtask.status
+  let position = 0
+  if (subtask.kanban_column_id) {
+    const [{ data: column }, { data: last }] = await Promise.all([
+      supabase
+        .from('kanban_columns')
+        .select('status')
+        .eq('id', subtask.kanban_column_id)
+        .eq('organization_id', auth.orgId)
+        .maybeSingle(),
+      supabase
+        .from('subtasks')
+        .select('position')
+        .eq('kanban_column_id', subtask.kanban_column_id)
+        .order('position', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
+
+    if (!column) {
+      return { ok: false, code: 'NOT_FOUND', message: 'That column no longer exists.' }
+    }
+    status = column.status as typeof status
+    // Appended, with room to insert above it later without renumbering.
+    position = (last?.position ?? 0) + 1000
+  }
+
   const { error } = await supabase.from('subtasks').insert({
     ...subtask,
+    status,
+    position,
     // §13.1: rich text is sanitized before storage, never on render.
     description: description ? (sanitizeTiptapJson(description) as never) : null,
     organization_id: auth.orgId,
@@ -229,6 +264,41 @@ export async function createSubtask(
 
   revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
   return { ok: true, data: null }
+}
+
+/**
+ * Move a subtask on its board (§20 Phase 2).
+ *
+ * Goes through the shared `moveCard`, which owns the WIP check and writes
+ * column and status together — the same guarantee the task board has, rather
+ * than a second implementation that could drift from it.
+ */
+export async function moveSubtask(
+  scope: Scope,
+  input: { subtask_id: string; target_column_id: string; position: number },
+): Promise<ActionResult<null>> {
+  const auth = await requireAuth(scope.orgSlug)
+  assertCan(auth, 'tasks', 'update')
+
+  const parsed = subtaskMoveSchema.safeParse(input)
+  if (!parsed.success) {
+    return { ok: false, code: 'VALIDATION_ERROR', message: 'VALIDATION_ERROR' }
+  }
+
+  const supabase = createClient()
+
+  try {
+    await taskService.moveSubtask(
+      supabase,
+      parsed.data.subtask_id,
+      parsed.data.target_column_id,
+      parsed.data.position,
+    )
+    revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
+    return { ok: true, data: null }
+  } catch (error) {
+    return toActionError(error)
+  }
 }
 
 export async function toggleSubtask(scope: Scope, subtaskId: string, done: boolean) {

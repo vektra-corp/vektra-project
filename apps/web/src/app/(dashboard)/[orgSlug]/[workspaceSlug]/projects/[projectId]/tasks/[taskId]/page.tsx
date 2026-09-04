@@ -6,7 +6,8 @@ import {
   type CustomFieldDefinition,
 } from '@pm/shared/constants'
 import { formatRelativeTime, initials, todayIn } from '@pm/shared/utils'
-import { Avatar, AvatarFallback, AvatarImage, Card, CardContent } from '@pm/ui'
+import { Avatar, AvatarFallback, AvatarImage, Button, Card, CardContent } from '@pm/ui'
+import { Columns3 } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -188,6 +189,20 @@ export default async function TaskDetailPage({
                   })) as SubtaskRow[]
                 }
               />
+
+              {/*
+                The checklist stays the default view; the board is the same
+                subtasks arranged by status (§17 subtask_kanban gates it, and
+                that gate lives on the board page so the reason is legible).
+              */}
+              <div className="border-border-subtle border-t pt-4">
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`${projectBase}/tasks/${task.id}/board`}>
+                    <Columns3 className="h-3.5 w-3.5" aria-hidden />
+                    Open subtask board
+                  </Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

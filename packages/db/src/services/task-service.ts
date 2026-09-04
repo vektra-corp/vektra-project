@@ -117,11 +117,17 @@ export async function updateTask(
  * Move a card between columns.
  *
  * Enforces the WIP limit and writes column + status + position together, so the
- * board can never end up showing a card in a column whose status it does not have.
+ * board can never end up showing a card in a column whose status it does not
+ * have (business rule 3).
+ *
+ * Generic over the table because a subtask board is the same board: the same
+ * `kanban_columns` rows, the same WIP semantics, the same coupling of column to
+ * status. Only the table holding the cards differs.
  */
-export async function moveTask(
+export async function moveCard(
   db: Db,
-  taskId: string,
+  table: 'tasks' | 'subtasks',
+  cardId: string,
   targetColumnId: string,
   position: number,
 ) {
@@ -135,11 +141,13 @@ export async function moveTask(
   if (!column) throw appError('NOT_FOUND', 'Target column not found')
 
   if (column.wip_limit !== null) {
+    // Counted on the same table the card lives in — a subtask board's limit
+    // must not be measured against the project's tasks.
     const { count } = await db
-      .from('tasks')
+      .from(table)
       .select('id', { count: 'exact', head: true })
       .eq('kanban_column_id', targetColumnId)
-      .neq('id', taskId)
+      .neq('id', cardId)
 
     if ((count ?? 0) >= column.wip_limit) {
       throw appError('WIP_LIMIT', `Column "${column.name}" has reached its WIP limit`, {
@@ -151,16 +159,36 @@ export async function moveTask(
 
   return unwrap(
     await db
-      .from('tasks')
+      .from(table)
       .update({
         kanban_column_id: targetColumnId,
         status: column.status,
         position,
       })
-      .eq('id', taskId)
+      .eq('id', cardId)
       .select('id, kanban_column_id, status, position')
       .single(),
   )
+}
+
+/** Task-board wrapper, kept so existing callers read the same. */
+export async function moveTask(
+  db: Db,
+  taskId: string,
+  targetColumnId: string,
+  position: number,
+) {
+  return moveCard(db, 'tasks', taskId, targetColumnId, position)
+}
+
+/** Subtask-board equivalent (§20 Phase 2, subtask Kanban). */
+export async function moveSubtask(
+  db: Db,
+  subtaskId: string,
+  targetColumnId: string,
+  position: number,
+) {
+  return moveCard(db, 'subtasks', subtaskId, targetColumnId, position)
 }
 
 /**

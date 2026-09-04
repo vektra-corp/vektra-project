@@ -3817,6 +3817,12 @@ export interface Database {
         }
         Returns: string
       }
+      ensure_task_board: {
+        Args: {
+          p_task_id: string
+        }
+        Returns: string
+      }
       event_resource_name: {
         Args: {
           table_name: string
