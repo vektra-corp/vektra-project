@@ -7,8 +7,10 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
+import { CustomFieldInputs } from '@/components/custom-fields/custom-field-inputs'
 import { PageBody } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
+import { loadCustomFields } from '@/lib/custom-fields'
 import { createClient } from '@/lib/supabase/server'
 import { DOC_TYPE_LABELS, SEGMENT_TO_DOC_TYPE, statusVariant } from '../../doc-types'
 import { DocumentActions } from '../../document-actions'
@@ -55,6 +57,9 @@ export default async function CommercialDocPage({
   // RLS returns nothing for another tenant's document, which is the same
   // observable outcome as one that does not exist. That is deliberate.
   if (!doc || doc.doc_type !== docType) notFound()
+
+  const custom = await loadCustomFields(supabase, auth.orgId, 'commercial_document', doc.id)
+  const canEditDoc = can(auth, 'commercial', 'update')
 
   const contact = Array.isArray(doc.contact) ? doc.contact[0] : doc.contact
   const project = Array.isArray(doc.project) ? doc.project[0] : doc.project
@@ -247,6 +252,20 @@ export default async function CommercialDocPage({
                 <p className="whitespace-pre-wrap text-[13px] text-muted-foreground">{doc.terms}</p>
               </div>
             ) : null}
+          </div>
+        ) : null}
+
+        {custom.fields.length > 0 ? (
+          <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
+            <p className="label-meta pb-3 text-faint">Custom fields</p>
+            <CustomFieldInputs
+              orgSlug={params.orgSlug}
+              entityType="commercial_document"
+              entityId={doc.id}
+              fields={custom.fields}
+              values={custom.values}
+              canEdit={canEditDoc}
+            />
           </div>
         ) : null}
       </div>

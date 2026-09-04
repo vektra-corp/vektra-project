@@ -1,6 +1,6 @@
 'use client'
 
-import { CONTACT_TYPES } from '@pm/shared/constants'
+import { CONTACT_TYPES, type CustomFieldDefinition } from '@pm/shared/constants'
 import {
   Alert,
   AlertDescription,
@@ -19,6 +19,7 @@ import { AlertCircle, Pencil, UserPlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
+import { CustomFieldInputs, type CustomValue } from '@/components/custom-fields/custom-field-inputs'
 import { Field, SelectField } from '@/components/settings/settings-form'
 import { saveContact } from './actions'
 
@@ -46,9 +47,13 @@ function SubmitButton({ isNew }: { isNew: boolean }) {
 export function ContactDialog({
   scope,
   contact,
+  customFields = [],
+  customValues = {},
 }: {
   scope: { orgSlug: string; workspaceSlug: string }
   contact?: ContactRecord
+  customFields?: CustomFieldDefinition[]
+  customValues?: Record<string, CustomValue>
 }) {
   const [open, setOpen] = useState(false)
   const isNew = !contact
@@ -170,6 +175,26 @@ export function ContactDialog({
               <SubmitButton isNew={isNew} />
             </DialogFooter>
           </form>
+
+          {/*
+            Custom fields save themselves, so they sit outside the contact form
+            rather than inside it — a nested submit button would post the outer
+            form. They need an id to attach values to, which a contact that has
+            not been created yet does not have.
+          */}
+          {!isNew && customFields.length > 0 && contact ? (
+            <div className="border-t border-border-subtle pt-4">
+              <p className="label-meta pb-3 text-faint">Custom fields</p>
+              <CustomFieldInputs
+                orgSlug={scope.orgSlug}
+                entityType="contact"
+                entityId={contact.id}
+                fields={customFields}
+                values={customValues}
+                canEdit
+              />
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
     </>

@@ -124,18 +124,10 @@ export const executeWorkflow = inngest.createFunction(
       return true
     })
 
-    // run_count is a display counter, so a lost increment is not worth a
-    // transaction; it is bumped once the run is recorded.
-    await step.run('bump-count', async () => {
-      const db = createAdminClient()
-      const { data } = await db.from('workflows').select('run_count').eq('id', workflowId).maybeSingle()
-      await db
-        .from('workflows')
-        .update({ run_count: (data?.run_count ?? 0) + 1, last_run_at: new Date().toISOString() })
-        .eq('id', workflowId)
-      return true
-    })
-
+    // run_count and last_run_at are NOT touched here. The
+    // bump_workflow_run_stats trigger (00005) already maintains them on insert
+    // into workflow_runs, atomically — a second write from the engine both
+    // double-counted and was a read-then-write race.
     return { ran: true, steps: executed, failed }
   },
 )

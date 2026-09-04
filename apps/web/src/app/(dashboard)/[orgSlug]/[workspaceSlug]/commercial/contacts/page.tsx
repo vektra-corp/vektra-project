@@ -3,6 +3,7 @@ import { Contact as ContactIcon } from 'lucide-react'
 import type { Metadata } from 'next'
 import { PageBody } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
+import { loadCustomFieldsForMany } from '@/lib/custom-fields'
 import { createClient } from '@/lib/supabase/server'
 import { ContactDialog, type ContactRecord } from './contact-dialog'
 
@@ -29,6 +30,14 @@ export default async function ContactsPage({
       .eq('organization_id', auth.orgId)
       .not('contact_id', 'is', null),
   ])
+
+  // Definitions and every row's values in two queries, not two per contact.
+  const custom = await loadCustomFieldsForMany(
+    supabase,
+    auth.orgId,
+    'contact',
+    (contacts ?? []).map((contact) => contact.id),
+  )
 
   const docCounts = new Map<string, number>()
   for (const doc of docs ?? []) {
@@ -94,7 +103,12 @@ export default async function ContactsPage({
                   {contact.type}
                 </Badge>
 
-                <ContactDialog scope={params} contact={contact} />
+                <ContactDialog
+                  scope={params}
+                  contact={contact}
+                  customFields={custom.fields}
+                  customValues={custom.valuesByEntity[contact.id] ?? {}}
+                />
               </li>
             ))}
           </ul>

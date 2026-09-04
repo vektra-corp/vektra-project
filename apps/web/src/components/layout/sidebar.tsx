@@ -7,7 +7,7 @@ import { SidebarItem, SidebarProjectGroup, SidebarSection, type NavItem } from '
 import { UserMenu } from './user-menu'
 
 /** Project views with a route today; the rest render as "soon". */
-const ROUTED_PROJECT_VIEWS = ['board', 'list', 'timeline', 'documents']
+const ROUTED_PROJECT_VIEWS = ['board', 'list', 'timeline', 'documents', 'settings']
 
 export interface SidebarWorkspace {
   id: string
@@ -85,6 +85,7 @@ export async function Sidebar({
     { key: 'planning', label: t('planning'), icon: 'Layers' },
     { key: 'documents', label: t('documents'), icon: 'FileText' },
     { key: 'workload', label: t('workload'), icon: 'Gauge' },
+    { key: 'settings', label: t('settings'), icon: 'Settings' },
   ]
 
   // Commercial lives inside a workspace, so its links need one. The first

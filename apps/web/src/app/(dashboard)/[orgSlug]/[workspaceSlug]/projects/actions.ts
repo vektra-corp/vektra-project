@@ -116,11 +116,18 @@ export async function updateProject(
   }
 
   const supabase = createClient()
-  const { error } = await supabase.from('projects').update(parsed.data).eq('id', projectId)
+  // RLS already confines this to the caller's org; the explicit filter is
+  // defence in depth (§22.4 layer 5) and matches every other mutation here.
+  const { error } = await supabase
+    .from('projects')
+    .update(parsed.data)
+    .eq('id', projectId)
+    .eq('organization_id', auth.orgId)
   if (error) return { ok: false, code: 'INTERNAL_ERROR', message: error.message }
 
   revalidatePath(`/${orgSlug}/${workspaceSlug}/projects`)
   revalidatePath(`/${orgSlug}/${workspaceSlug}/projects/${projectId}`)
+  revalidatePath(`/${orgSlug}/${workspaceSlug}/projects/${projectId}/settings`)
   return { ok: true, data: null }
 }
 
@@ -129,6 +136,10 @@ export async function archiveProject(orgSlug: string, workspaceSlug: string, pro
   assertCan(auth, 'projects', 'update')
 
   const supabase = createClient()
-  await supabase.from('projects').update({ status: 'archived' }).eq('id', projectId)
+  await supabase
+    .from('projects')
+    .update({ status: 'archived' })
+    .eq('id', projectId)
+    .eq('organization_id', auth.orgId)
   revalidatePath(`/${orgSlug}/${workspaceSlug}/projects`)
 }
