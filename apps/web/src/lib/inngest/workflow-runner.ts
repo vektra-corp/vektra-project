@@ -1,9 +1,16 @@
 import 'server-only'
 
-import { planExecution, triggerMatches, type TriggerEvent } from '@pm/db'
+import {
+  createTask,
+  planExecution,
+  triggerMatches,
+  type PlannedStep,
+  type TriggerEvent,
+} from '@pm/db'
 import type { Database } from '@pm/db/types'
 import { parseGraph, type WorkflowNode } from '@pm/shared/constants'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { callWebhook } from './webhook-call'
 
 type Db = SupabaseClient<Database>
 
@@ -143,27 +150,78 @@ async function performAction(
       const text = typeof node.config.body === 'string' ? node.config.body.trim() : ''
       if (!text) return { status: 'skipped', error: 'No comment body configured' }
 
+      // Since 00025 a comment records what kind of author it has, so a
+      // workflow can write one without impersonating a person or needing a
+      // fake member seat. It renders as "Automation".
       const { error } = await db.from('comments').insert({
         task_id: taskId,
         organization_id: workflow.organization_id,
-        // A workflow comment has no human author; author_id is NOT NULL, so
-        // this action is skipped until workflows have a system identity.
-        author_id: null as never,
+        author_id: null,
+        author_type: 'workflow',
+        author_workflow_id: workflow.id,
         body: {
           type: 'doc',
           content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
         } as never,
-        is_internal: true,
+        // Automated notes are internal by default: a portal user should not be
+        // shown the customer's internal automation chatter (§18 rule 6).
+        is_internal: node.config.visible_to_portal !== true,
       })
 
       return error ? { status: 'failed', error: error.message } : { status: 'success' }
     }
 
-    case 'create_task':
-    case 'call_webhook':
-      // Deliberately unimplemented: creating tasks needs a project and column to
-      // be chosen, and calling out needs SSRF protection. Logged, not failed.
-      return { status: 'skipped', error: `${node.action_type} is not implemented yet` }
+    case 'create_task': {
+      const projectId = typeof node.config.project_id === 'string' ? node.config.project_id : ''
+      const title = typeof node.config.title === 'string' ? node.config.title.trim() : ''
+      if (!projectId) return { status: 'skipped', error: 'No project configured' }
+      if (!title) return { status: 'skipped', error: 'No title configured' }
+
+      // The project must belong to this workflow's org. The runner holds the
+      // service role and so bypasses RLS — this check is the only thing
+      // standing between a config blob and a cross-tenant write.
+      const { data: project } = await db
+        .from('projects')
+        .select('id')
+        .eq('id', projectId)
+        .eq('organization_id', workflow.organization_id)
+        .maybeSingle()
+
+      if (!project) return { status: 'failed', error: 'Project is not in this organisation' }
+
+      // Reuse the service rather than inserting directly: it allocates the
+      // column and status together (§18 rule 3) and enforces the plan limit,
+      // neither of which a workflow should get to bypass.
+      try {
+        const created = await createTask(db, {
+          orgId: workflow.organization_id,
+          userId: null,
+          project_id: projectId,
+          title: title.slice(0, 200),
+          priority: typeof node.config.priority === 'string' ? node.config.priority : 'medium',
+          assignee_id: typeof node.config.assignee_id === 'string' ? node.config.assignee_id : null,
+        })
+        return { status: 'success', output: { task_id: created.id } }
+      } catch (error) {
+        return { status: 'failed', error: error instanceof Error ? error.message : 'Create failed' }
+      }
+    }
+
+    case 'call_webhook': {
+      const url = typeof node.config.url === 'string' ? node.config.url : ''
+      if (!url) return { status: 'skipped', error: 'No URL configured' }
+
+      const outcome = await callWebhook(url, {
+        workflow_id: workflow.id,
+        workflow_name: workflow.name,
+        organization_id: workflow.organization_id,
+        payload,
+      })
+
+      return outcome.ok
+        ? { status: 'success', output: { status: outcome.status, body: outcome.body } }
+        : { status: 'failed', error: outcome.reason }
+    }
 
     default:
       return { status: 'skipped', error: 'No action type set' }
@@ -171,19 +229,18 @@ async function performAction(
 }
 
 /**
- * Run one workflow against one event.
+ * Claim a run for this (workflow, event).
  *
- * Returns the run id, or null when the run was already recorded — the unique
- * index on (workflow_id, event_id) is what makes a retried poll safe.
+ * Returns null when the run already exists. The unique index from 00024 is what
+ * makes that safe: two pollers, or a retried delivery, race to insert and only
+ * one wins. Losing is not an error — it means someone else is running it.
  */
-export async function runWorkflow(
+export async function startRun(
   db: Db,
   workflow: WorkflowRow,
   event: TriggerEvent,
-): Promise<{ runId: string; steps: number } | null> {
-  const startedAt = Date.now()
-
-  const { data: run, error: runError } = await db
+): Promise<string | null> {
+  const { data, error } = await db
     .from('workflow_runs')
     .insert({
       workflow_id: workflow.id,
@@ -194,69 +251,105 @@ export async function runWorkflow(
     .select('id')
     .single()
 
-  // 23505 means another poll already claimed this event. Not an error.
-  if (runError) return null
-  if (!run) return null
+  if (error || !data) return null
+  return data.id
+}
 
-  const graph = parseGraph(workflow.graph)
-  const plan = planExecution(graph, event.payload)
+/** Decide what this workflow would do for this payload. */
+export function planFor(workflow: WorkflowRow, payload: Record<string, unknown>) {
+  return planExecution(parseGraph(workflow.graph), payload)
+}
 
-  let failed: string | null = null
-  let executed = 0
+/**
+ * Perform one planned step.
+ *
+ * Conditions, filters and branches were already decided by the planner — they
+ * are recorded here, not re-evaluated, so the log matches the walk exactly.
+ * Delays are handled by the caller, which is the only place that can suspend.
+ */
+export async function executeStep(
+  db: Db,
+  workflow: WorkflowRow,
+  step: PlannedStep,
+  payload: Record<string, unknown>,
+): Promise<StepResult> {
+  switch (step.node.type) {
+    case 'trigger':
+      return { status: 'success' }
 
-  for (const step of plan.steps) {
-    const stepStart = Date.now()
-    let result: StepResult
+    case 'condition':
+    case 'filter':
+      return {
+        status: 'success',
+        output: { outcome: step.outcome, halted: step.halted ?? false },
+      }
 
-    if (step.node.type === 'trigger') {
-      result = { status: 'success' }
-    } else if (step.node.type === 'condition' || step.node.type === 'filter') {
-      result = { status: 'success', output: { outcome: step.outcome, halted: step.halted ?? false } }
-    } else if (step.node.type === 'delay') {
-      // A real delay needs the run to suspend and resume, which this polling
-      // shape cannot express. Recorded honestly rather than silently ignored.
-      result = { status: 'skipped', error: 'Delays are not supported by the current runner' }
-    } else if (step.node.type === 'branch') {
-      result = { status: 'success' }
-    } else {
-      result = await performAction(db, workflow, step.node, event.payload)
-    }
+    case 'branch':
+      return {
+        status: 'success',
+        output: { branch: step.branch ?? null, halted: step.halted ?? false },
+      }
 
-    executed += 1
+    case 'delay':
+      // The caller sleeps; this only records the outcome.
+      return step.delaySeconds === null || step.delaySeconds === undefined
+        ? { status: 'skipped', error: 'Delay duration could not be read' }
+        : { status: 'success', output: { waited_seconds: step.delaySeconds } }
 
-    await db.from('workflow_step_logs').insert({
-      run_id: run.id,
-      organization_id: workflow.organization_id,
-      node_id: step.node.id,
-      node_type: step.node.type,
-      input: { config: step.node.config } as never,
-      output: (result.output ?? null) as never,
-      status: result.status,
-      error: result.error ?? null,
-      completed_at: new Date().toISOString(),
-      duration_ms: Date.now() - stepStart,
-    })
-
-    // A failed action stops the run: continuing would apply later steps that
-    // assumed the earlier one succeeded.
-    if (result.status === 'failed') {
-      failed = result.error ?? 'Step failed'
-      break
-    }
+    default:
+      return performAction(db, workflow, step.node, payload)
   }
+}
 
+export async function logStep(
+  db: Db,
+  runId: string,
+  orgId: string,
+  step: PlannedStep,
+  result: StepResult,
+  durationMs: number,
+): Promise<void> {
+  await db.from('workflow_step_logs').insert({
+    run_id: runId,
+    organization_id: orgId,
+    node_id: step.node.id,
+    node_type: step.node.type,
+    input: { config: step.node.config } as never,
+    output: (result.output ?? null) as never,
+    status: result.status,
+    error: result.error ?? null,
+    completed_at: new Date().toISOString(),
+    duration_ms: durationMs,
+  })
+}
+
+export async function finishRun(
+  db: Db,
+  runId: string,
+  outcome: { failed: string | null; truncated: boolean; steps: number; startedAt: number },
+): Promise<void> {
   await db
     .from('workflow_runs')
     .update({
-      status: failed ? 'failed' : plan.truncated ? 'timed_out' : 'completed',
+      status: outcome.failed ? 'failed' : outcome.truncated ? 'timed_out' : 'completed',
       completed_at: new Date().toISOString(),
-      duration_ms: Date.now() - startedAt,
-      error: failed ?? (plan.truncated ? 'Step limit reached' : null),
-      step_count: executed,
+      duration_ms: Date.now() - outcome.startedAt,
+      error: outcome.failed ?? (outcome.truncated ? 'Step limit reached' : null),
+      step_count: outcome.steps,
     })
-    .eq('id', run.id)
+    .eq('id', runId)
+}
 
-  return { runId: run.id, steps: executed }
+/** Load a workflow for the runner, by id, without an org filter (it carries one). */
+export async function loadWorkflow(db: Db, workflowId: string): Promise<WorkflowRow | null> {
+  const { data } = await db
+    .from('workflows')
+    .select('id, organization_id, workspace_id, name, trigger_type, trigger_config, graph')
+    .eq('id', workflowId)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  return (data as WorkflowRow | null) ?? null
 }
 
 export { triggerMatches }

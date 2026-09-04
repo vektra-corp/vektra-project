@@ -14,7 +14,8 @@ import { assertPlanLimit, incrementUsage } from './plan-limits'
 
 export interface CreateTaskInput extends Omit<TablesInsert<'tasks'>, 'organization_id' | 'task_number'> {
   orgId: string
-  userId: string
+  /** Null when a workflow created the task — no person did. */
+  userId: string | null
   labelIds?: string[]
 }
 

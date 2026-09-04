@@ -298,3 +298,63 @@ export function executionOrder(graph: WorkflowGraph): WorkflowNode[] {
 
   return [trigger, ...[...reachable].map((id) => byId.get(id)).filter(Boolean)] as WorkflowNode[]
 }
+
+// --- delays -------------------------------------------------------------------
+
+/**
+ * How long a delay node waits, in seconds.
+ *
+ * The editor writes a duration string (`30m`, `2h`, `3d`); anything unparseable
+ * yields null so the runner can log why it skipped rather than guessing a wait.
+ * The ceiling matters: a delay holds a workflow run open, and an unbounded one
+ * is a resource leak with no way to see it. Thirty days is the cap.
+ *
+ * Note this is wall-clock, not the §18 five-minute runtime budget — that budget
+ * governs compute, and a delay is by definition not computing.
+ */
+export const MAX_DELAY_SECONDS = 30 * 24 * 60 * 60
+
+const DELAY_UNITS: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 }
+
+export function parseDelaySeconds(config: Record<string, unknown>): number | null {
+  const raw = config.duration
+  if (typeof raw !== 'string') return null
+
+  const match = /^\s*(\d+)\s*([smhd])\s*$/i.exec(raw)
+  if (!match) return null
+
+  const amount = Number(match[1])
+  const unit = DELAY_UNITS[match[2]!.toLowerCase()]
+  if (!Number.isFinite(amount) || amount <= 0 || !unit) return null
+
+  return Math.min(amount * unit, MAX_DELAY_SECONDS)
+}
+
+// --- branches -----------------------------------------------------------------
+
+/**
+ * Which edge label a branch node takes for a given value.
+ *
+ * A branch is a switch, not a fan-out: exactly one case wins. Matching is on the
+ * stringified value because the case comes from a text input while the payload
+ * carries a real type. When nothing matches, the `default` edge takes over — and
+ * if there is no default edge, the branch simply ends, which is why the editor
+ * warns about a branch with no default.
+ */
+export const BRANCH_DEFAULT_LABEL = 'default'
+
+export function branchLabelFor(value: unknown, cases: readonly string[]): string {
+  const needle = value === null || value === undefined ? '' : String(value)
+  const hit = cases.find((entry) => entry === needle)
+  return hit ?? BRANCH_DEFAULT_LABEL
+}
+
+/** The case labels a branch node declares, in editor order. */
+export function branchCases(config: Record<string, unknown>): string[] {
+  const raw = config.cases
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0 && entry !== BRANCH_DEFAULT_LABEL)
+}

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BRANCH_DEFAULT_LABEL,
+  MAX_DELAY_SECONDS,
+  branchCases,
+  branchLabelFor,
   executionOrder,
   findCycles,
+  parseDelaySeconds,
   parseGraph,
   reachableFrom,
   validateGraph,
@@ -215,5 +220,75 @@ describe('reachableFrom / executionOrder', () => {
   it('returns nothing without a trigger', () => {
     const graph = parseGraph({ nodes: [node('a', 'action')], edges: [] })
     expect(executionOrder(graph)).toEqual([])
+  })
+})
+
+describe('parseDelaySeconds', () => {
+  it('reads each unit', () => {
+    expect(parseDelaySeconds({ duration: '45s' })).toBe(45)
+    expect(parseDelaySeconds({ duration: '30m' })).toBe(1800)
+    expect(parseDelaySeconds({ duration: '2h' })).toBe(7200)
+    expect(parseDelaySeconds({ duration: '3d' })).toBe(259200)
+  })
+
+  it('tolerates whitespace and case', () => {
+    expect(parseDelaySeconds({ duration: ' 2H ' })).toBe(7200)
+  })
+
+  it('returns null for anything it cannot read, rather than guessing', () => {
+    // A guessed wait is worse than a skipped node: the run would silently
+    // behave differently from what the editor shows.
+    for (const duration of ['', 'soon', '2', 'h', '-5m', '2 hours', '1.5h']) {
+      expect(parseDelaySeconds({ duration })).toBeNull()
+    }
+    expect(parseDelaySeconds({})).toBeNull()
+    expect(parseDelaySeconds({ duration: 60 })).toBeNull()
+  })
+
+  it('rejects a zero wait', () => {
+    expect(parseDelaySeconds({ duration: '0m' })).toBeNull()
+  })
+
+  it('caps an absurd delay instead of holding a run open forever', () => {
+    expect(parseDelaySeconds({ duration: '999d' })).toBe(MAX_DELAY_SECONDS)
+  })
+})
+
+describe('branchLabelFor', () => {
+  const cases = ['critical', 'high']
+
+  it('picks the matching case', () => {
+    expect(branchLabelFor('high', cases)).toBe('high')
+  })
+
+  it('stringifies, so a number payload matches a text case', () => {
+    expect(branchLabelFor(5, ['5'])).toBe('5')
+  })
+
+  it('falls through to default when nothing matches', () => {
+    expect(branchLabelFor('low', cases)).toBe(BRANCH_DEFAULT_LABEL)
+  })
+
+  it('treats null and undefined as no match, not as the string "null"', () => {
+    expect(branchLabelFor(null, cases)).toBe(BRANCH_DEFAULT_LABEL)
+    expect(branchLabelFor(undefined, cases)).toBe(BRANCH_DEFAULT_LABEL)
+    expect(branchLabelFor(null, [''])).toBe('')
+  })
+})
+
+describe('branchCases', () => {
+  it('reads and trims declared cases', () => {
+    expect(branchCases({ cases: [' high ', 'low'] })).toEqual(['high', 'low'])
+  })
+
+  it('drops blanks, non-strings and a literal "default"', () => {
+    // "default" is the fallback edge; letting it be a case too would give the
+    // branch two edges that both claim the same label.
+    expect(branchCases({ cases: ['a', '', 3, null, 'default', '  '] })).toEqual(['a'])
+  })
+
+  it('returns nothing when unconfigured', () => {
+    expect(branchCases({})).toEqual([])
+    expect(branchCases({ cases: 'high' })).toEqual([])
   })
 })

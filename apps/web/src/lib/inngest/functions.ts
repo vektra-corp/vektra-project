@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { chooseAssignee, ruleFor, type AssignmentRule, type Candidate } from '@pm/db'
+import { isDue, parseSchedule, slotKey } from '@pm/shared/constants'
 import { todayIn } from '@pm/shared/utils'
 import { sendEmail } from '@/lib/email/client'
 import { digestEmail, notificationEmail } from '@/lib/email/templates'
@@ -12,7 +13,8 @@ import {
   notificationUrl,
   preferenceFor,
 } from './notifications'
-import { runWorkflow, triggerMatches, type WorkflowRow } from './workflow-runner'
+import { executeWorkflow } from './workflow-execute'
+import { triggerMatches } from './workflow-runner'
 
 /**
  * Background jobs (§3, §12).
@@ -548,7 +550,7 @@ export const dispatchWorkflows = inngest.createFunction(
         .eq('is_active', true)
         .in('trigger_type', ['task_event', 'subtask_event', 'commercial_event'])
 
-      if (!workflows?.length) return { runs: 0, events: 0 }
+      if (!workflows?.length) return { queued: [], events: 0 }
 
       const orgIds = [...new Set(workflows.map((workflow) => workflow.organization_id))]
 
@@ -560,9 +562,15 @@ export const dispatchWorkflows = inngest.createFunction(
         .order('created_at')
         .limit(500)
 
-      if (!events?.length) return { runs: 0, events: 0 }
+      if (!events?.length) return { queued: [], events: 0 }
 
-      let runs = 0
+      // Matching happens here; running happens in `executeWorkflow`. Keeping
+      // them apart is what lets a run suspend on a delay — a poll cannot wait
+      // three days for a workflow to finish.
+      const queued: {
+        workflow_id: string
+        trigger: { id: string; eventType: string; payload: Record<string, unknown> }
+      }[] = []
 
       for (const event of events) {
         const trigger = {
@@ -577,15 +585,106 @@ export const dispatchWorkflows = inngest.createFunction(
           const config = (workflow.trigger_config ?? {}) as Record<string, unknown>
           if (!triggerMatches(workflow.trigger_type, config, trigger)) continue
 
-          const outcome = await runWorkflow(db, workflow as WorkflowRow, trigger)
-          if (outcome) runs += 1
+          queued.push({ workflow_id: workflow.id, trigger })
         }
       }
 
-      return { runs, events: events.length }
+      return { queued, events: events.length }
     })
 
-    return result
+    if (result.queued.length > 0) {
+      await step.sendEvent(
+        'run-workflows',
+        result.queued.map((data) => ({ name: 'workflow/run' as const, data })),
+      )
+    }
+
+    return { runs: result.queued.length, events: result.events }
+  },
+)
+
+/**
+ * Fire schedule-triggered workflows (§11).
+ *
+ * Inngest functions are declared statically, so there is no way to register one
+ * cron per workflow. Instead this polls often and asks each scheduled workflow
+ * whether its moment has passed, in the organisation's timezone (§21.6).
+ *
+ * The slot key, not `last_run_at`, is what prevents a double fire. Comparing
+ * elapsed time would drift: a poll that lands a minute late would push every
+ * subsequent run a minute later, forever.
+ */
+export const runScheduledWorkflows = inngest.createFunction(
+  { id: 'workflow-schedule', retries: 2 },
+  { cron: '*/5 * * * *' },
+  async ({ step }) => {
+    const due = await step.run('find-due', async () => {
+      const db = createAdminClient()
+
+      const { data: workflows } = await db
+        .from('workflows')
+        .select('id, organization_id, trigger_config, last_scheduled_slot')
+        .eq('is_active', true)
+        .eq('trigger_type', 'schedule')
+
+      if (!workflows?.length) return []
+
+      const orgIds = [...new Set(workflows.map((workflow) => workflow.organization_id))]
+      const { data: orgs } = await db
+        .from('organizations')
+        .select('id, timezone')
+        .in('id', orgIds)
+
+      const zoneFor = new Map((orgs ?? []).map((org) => [org.id, org.timezone || 'UTC']))
+      const now = new Date()
+      const ready: { id: string; slot: string }[] = []
+
+      for (const workflow of workflows) {
+        const zone = zoneFor.get(workflow.organization_id) ?? 'UTC'
+        const config = (workflow.trigger_config ?? {}) as { schedule?: unknown }
+        const schedule = parseSchedule(config.schedule)
+        const slot = slotKey(schedule, now, zone)
+
+        // The stored slot is the authority. isDue also compares against
+        // last_run_at, but a run that failed still consumed its occurrence.
+        if (workflow.last_scheduled_slot === slot) continue
+        if (!isDue(schedule, now, null, zone)) continue
+
+        ready.push({ id: workflow.id, slot })
+      }
+
+      // Claim the slot before dispatching. If the send fails, the occurrence is
+      // lost rather than repeated — for a scheduled side effect that is the
+      // safer direction.
+      for (const entry of ready) {
+        await db
+          .from('workflows')
+          .update({ last_scheduled_slot: entry.slot })
+          .eq('id', entry.id)
+          .or(`last_scheduled_slot.is.null,last_scheduled_slot.neq.${entry.slot}`)
+      }
+
+      return ready
+    })
+
+    if (due.length > 0) {
+      await step.sendEvent(
+        'run-scheduled',
+        due.map((entry) => ({
+          name: 'workflow/run' as const,
+          data: {
+            workflow_id: entry.id,
+            trigger: {
+              id: `schedule:${entry.id}:${entry.slot}`,
+              eventType: 'workflow.scheduled',
+              payload: { source: 'schedule', slot: entry.slot },
+            },
+          },
+        })),
+      )
+    }
+
+    return { fired: due.length }
   },
 )
 
@@ -596,4 +695,6 @@ export const functions = [
   refreshRevenueSummary,
   applyAutoAssignment,
   dispatchWorkflows,
+  runScheduledWorkflows,
+  executeWorkflow,
 ]

@@ -16,6 +16,17 @@ type Events = {
   'org/digest.requested': {
     data: { organization_id: string; user_id: string }
   }
+  /**
+   * One workflow run. The dispatcher, the scheduler and the inbound webhook
+   * route all fan in here, so there is a single path that actually executes a
+   * graph — and a single place where delays, retries and idempotency live.
+   */
+  'workflow/run': {
+    data: {
+      workflow_id: string
+      trigger: { id: string; eventType: string; payload: Record<string, unknown> }
+    }
+  }
 }
 
 export const inngest = new Inngest({

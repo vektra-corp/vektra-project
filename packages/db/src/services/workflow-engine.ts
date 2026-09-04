@@ -1,5 +1,9 @@
 import {
+  BRANCH_DEFAULT_LABEL,
   WORKFLOW_LIMITS,
+  branchCases,
+  branchLabelFor,
+  parseDelaySeconds,
   type WorkflowGraph,
   type WorkflowNode,
 } from '@pm/shared/constants'
@@ -100,6 +104,10 @@ export interface PlannedStep {
   outcome?: ConditionOutcome
   /** True when the branch stopped here because a condition was not met. */
   halted?: boolean
+  /** Present for branch nodes: the edge label that won. */
+  branch?: string
+  /** Present for delay nodes; null when the duration could not be read. */
+  delaySeconds?: number | null
 }
 
 export interface ExecutionPlan {
@@ -147,6 +155,30 @@ export function planExecution(
       const halted = node.type === 'filter' && outcome === 'no'
       steps.push({ node, outcome, halted })
       if (!halted) queue.push(...nextNodes(graph, nodeId, outcome))
+      continue
+    }
+
+    // A branch is a switch: exactly one outgoing edge is taken, chosen by the
+    // value of the configured field. Following every edge — which is what this
+    // did before branches were really implemented — turns a three-way routing
+    // decision into three simultaneous actions.
+    if (node.type === 'branch') {
+      const field = typeof node.config.field === 'string' ? node.config.field : ''
+      const value = field ? readField(payload, field) : undefined
+      const label = branchLabelFor(value, branchCases(node.config))
+
+      const taken = graph.edges.filter(
+        (edge) => edge.source === nodeId && (edge.label ?? BRANCH_DEFAULT_LABEL) === label,
+      )
+
+      steps.push({ node, branch: label, halted: taken.length === 0 })
+      queue.push(...taken.map((edge) => edge.target))
+      continue
+    }
+
+    if (node.type === 'delay') {
+      steps.push({ node, delaySeconds: parseDelaySeconds(node.config) })
+      queue.push(...nextNodes(graph, nodeId))
       continue
     }
 

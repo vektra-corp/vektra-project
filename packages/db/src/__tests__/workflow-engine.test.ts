@@ -210,3 +210,103 @@ describe('triggerMatches', () => {
     expect(triggerMatches('task_event', { event_types: [] }, event)).toBe(true)
   })
 })
+
+describe('planExecution — branch nodes', () => {
+  const graph = parseGraph({
+    nodes: [
+      node('t', 'trigger'),
+      node('b', 'branch', { config: { field: 'priority', cases: ['critical', 'high'] } }),
+      node('a-crit', 'action', { action_type: 'send_notification' }),
+      node('a-high', 'action', { action_type: 'add_label' }),
+      node('a-else', 'action', { action_type: 'assign_task' }),
+    ],
+    edges: [
+      edge('t', 'b'),
+      edge('b', 'a-crit', 'critical'),
+      edge('b', 'a-high', 'high'),
+      edge('b', 'a-else', 'default'),
+    ],
+  })
+
+  const ran = (priority: unknown) =>
+    planExecution(graph, taskPayload({ priority }))
+      .steps.filter((step) => step.node.type === 'action')
+      .map((step) => step.node.id)
+
+  it('takes exactly one edge, not all of them', () => {
+    // Before branches were implemented this fanned out on every edge, so a
+    // three-way routing decision performed all three actions.
+    expect(ran('critical')).toEqual(['a-crit'])
+    expect(ran('high')).toEqual(['a-high'])
+  })
+
+  it('falls through to the default edge', () => {
+    expect(ran('low')).toEqual(['a-else'])
+    expect(ran(undefined)).toEqual(['a-else'])
+  })
+
+  it('records which label won', () => {
+    const step = planExecution(graph, taskPayload({ priority: 'high' })).steps.find(
+      (entry) => entry.node.type === 'branch',
+    )
+    expect(step?.branch).toBe('high')
+  })
+
+  it('halts when no edge matches and there is no default', () => {
+    const noDefault = parseGraph({
+      nodes: [
+        node('t', 'trigger'),
+        node('b', 'branch', { config: { field: 'priority', cases: ['critical'] } }),
+        node('a', 'action', { action_type: 'add_label' }),
+      ],
+      edges: [edge('t', 'b'), edge('b', 'a', 'critical')],
+    })
+
+    const plan = planExecution(noDefault, taskPayload({ priority: 'low' }))
+    expect(plan.steps.filter((s) => s.node.type === 'action')).toEqual([])
+    expect(plan.steps.find((s) => s.node.type === 'branch')?.halted).toBe(true)
+  })
+
+  it('with no field configured, routes to default rather than everywhere', () => {
+    const unconfigured = parseGraph({
+      nodes: [
+        node('t', 'trigger'),
+        node('b', 'branch', { config: {} }),
+        node('a', 'action', { action_type: 'add_label' }),
+        node('d', 'action', { action_type: 'assign_task' }),
+      ],
+      edges: [edge('t', 'b'), edge('b', 'a', 'high'), edge('b', 'd', 'default')],
+    })
+    const ids = planExecution(unconfigured, taskPayload({ priority: 'high' }))
+      .steps.filter((s) => s.node.type === 'action')
+      .map((s) => s.node.id)
+    expect(ids).toEqual(['d'])
+  })
+})
+
+describe('planExecution — delay nodes', () => {
+  it('carries the parsed wait so the runner does not re-read config', () => {
+    const graph = parseGraph({
+      nodes: [
+        node('t', 'trigger'),
+        node('d', 'delay', { config: { duration: '2h' } }),
+        node('a', 'action', { action_type: 'add_label' }),
+      ],
+      edges: [edge('t', 'd'), edge('d', 'a')],
+    })
+
+    const plan = planExecution(graph, taskPayload({}))
+    expect(plan.steps.find((s) => s.node.type === 'delay')?.delaySeconds).toBe(7200)
+    // The delay does not stop the walk — what follows it still runs, later.
+    expect(plan.steps.map((s) => s.node.id)).toEqual(['t', 'd', 'a'])
+  })
+
+  it('reports an unreadable duration as null rather than zero', () => {
+    // Zero would silently turn "wait a day" into "run immediately".
+    const graph = parseGraph({
+      nodes: [node('t', 'trigger'), node('d', 'delay', { config: { duration: 'soon' } })],
+      edges: [edge('t', 'd')],
+    })
+    expect(planExecution(graph, taskPayload({})).steps[1]?.delaySeconds).toBeNull()
+  })
+})

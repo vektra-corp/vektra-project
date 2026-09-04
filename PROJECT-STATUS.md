@@ -198,6 +198,18 @@ arbitrary column name from a config blob is a write primitive.
 
 ---
 
+## Authentication
+
+Supabase Auth issues the JWTs; Resend delivers the mail; verification is a
+six-digit code, never a magic link. **Two dashboard settings are required and
+are not in this repo** — Resend as the SMTP provider, and both email templates
+rewritten to send `{{ .Token }}`. See `docs/AUTH.md`.
+
+No auth call passes `emailRedirectTo` or `redirectTo`. Adding one reintroduces
+the magic link, which scanners consume before the recipient sees it.
+
+---
+
 ## Conventions
 
 - Server actions return `ActionResult<T>`; errors go through `toActionError`.

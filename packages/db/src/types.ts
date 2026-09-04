@@ -567,12 +567,14 @@ export interface Database {
           subtask_id: string | null
           document_id: string | null
           parent_id: string | null
-          author_id: string
+          author_id: string | null
           body: Json
           is_internal: boolean
           is_edited: boolean
           created_at: string
           updated_at: string
+          author_type: string
+          author_workflow_id: string | null
         }
         Insert: {
           id?: string
@@ -581,12 +583,14 @@ export interface Database {
           subtask_id?: string | null
           document_id?: string | null
           parent_id?: string | null
-          author_id: string
+          author_id?: string | null
           body: Json
           is_internal?: boolean
           is_edited?: boolean
           created_at?: string
           updated_at?: string
+          author_type?: string
+          author_workflow_id?: string | null
         }
         Update: {
           id?: string
@@ -595,12 +599,14 @@ export interface Database {
           subtask_id?: string | null
           document_id?: string | null
           parent_id?: string | null
-          author_id?: string
+          author_id?: string | null
           body?: Json
           is_internal?: boolean
           is_edited?: boolean
           created_at?: string
           updated_at?: string
+          author_type?: string
+          author_workflow_id?: string | null
         }
         Relationships: [
           {
@@ -608,6 +614,13 @@ export interface Database {
             columns: ['author_id']
             isOneToOne: false
             referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'comments_author_workflow_id_fkey'
+            columns: ['author_workflow_id']
+            isOneToOne: false
+            referencedRelation: 'workflows'
             referencedColumns: ['id']
           },
           {
@@ -3489,13 +3502,14 @@ export interface Database {
           trigger_type: string
           trigger_config: Json
           graph: Json
-          webhook_token: string | null
           cron_expression: string | null
           last_run_at: string | null
           run_count: number
           created_by: string | null
           created_at: string
           updated_at: string
+          webhook_token_hash: string | null
+          last_scheduled_slot: string | null
         }
         Insert: {
           id?: string
@@ -3507,13 +3521,14 @@ export interface Database {
           trigger_type: string
           trigger_config?: Json
           graph?: Json
-          webhook_token?: string | null
           cron_expression?: string | null
           last_run_at?: string | null
           run_count?: number
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          webhook_token_hash?: string | null
+          last_scheduled_slot?: string | null
         }
         Update: {
           id?: string
@@ -3525,13 +3540,14 @@ export interface Database {
           trigger_type?: string
           trigger_config?: Json
           graph?: Json
-          webhook_token?: string | null
           cron_expression?: string | null
           last_run_at?: string | null
           run_count?: number
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          webhook_token_hash?: string | null
+          last_scheduled_slot?: string | null
         }
         Relationships: [
           {

@@ -1,5 +1,6 @@
 import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
 import { can } from '@pm/auth/rbac'
+import { describeSchedule, parseSchedule } from '@pm/shared/constants'
 import { Badge } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -9,7 +10,7 @@ import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
 import { createClient } from '@/lib/supabase/server'
-import { DeleteWorkflowButton, WorkflowEditor } from '../workflow-controls'
+import { DeleteWorkflowButton, WebhookTrigger, WorkflowEditor } from '../workflow-controls'
 
 export const metadata: Metadata = { title: 'Workflow' }
 
@@ -27,7 +28,7 @@ export default async function WorkflowPage({
     supabase
       .from('workflows')
       .select(
-        'id, name, description, is_active, trigger_type, graph, webhook_token, cron_expression, run_count',
+        'id, name, description, is_active, trigger_type, graph, webhook_token_hash, cron_expression, trigger_config, run_count',
       )
       .eq('id', params.workflowId)
       .eq('organization_id', auth.orgId)
@@ -75,19 +76,22 @@ export default async function WorkflowPage({
             ) : null}
           </div>
 
-          {workflow.trigger_type === 'webhook' && workflow.webhook_token ? (
-            <p className="rounded-lg border border-border-subtle bg-surface px-4 py-2.5 text-xs">
-              <span className="label-meta pe-2 text-faint">Webhook</span>
-              <code className="break-all font-mono text-[11px] text-muted-foreground">
-                /api/webhooks/workflows/{workflow.webhook_token}
-              </code>
-            </p>
+          {workflow.trigger_type === 'webhook' ? (
+            <WebhookTrigger
+              scope={params}
+              workflowId={workflow.id}
+              hasToken={Boolean(workflow.webhook_token_hash)}
+              canEdit={canEdit}
+            />
           ) : null}
 
-          {workflow.trigger_type === 'schedule' && workflow.cron_expression ? (
+          {workflow.trigger_type === 'schedule' ? (
             <p className="rounded-lg border border-border-subtle bg-surface px-4 py-2.5 text-xs">
               <span className="label-meta pe-2 text-faint">Schedule</span>
-              <code className="font-mono text-[11px] text-muted-foreground">
+              <span className="text-muted-foreground">
+                {describeSchedule(parseSchedule((workflow.trigger_config as { schedule?: unknown })?.schedule))}
+              </span>
+              <code className="ps-2 font-mono text-[11px] text-faint">
                 {workflow.cron_expression}
               </code>
             </p>

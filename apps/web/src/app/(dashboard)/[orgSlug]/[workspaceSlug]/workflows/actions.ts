@@ -4,6 +4,8 @@ import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
 import {
   WORKFLOW_TRIGGER_TYPES,
   parseGraph,
+  parseSchedule,
+  scheduleToCron,
   validateGraph,
   type WorkflowTriggerType,
 } from '@pm/shared/constants'
@@ -11,6 +13,7 @@ import type { ActionResult } from '@pm/shared/types'
 import { revalidatePath } from 'next/cache'
 import { toActionError } from '@/lib/action-error'
 import { requireAuth } from '@/lib/auth/context'
+import { mintWebhookToken } from '@/lib/net/webhook-token'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -41,9 +44,9 @@ async function assertManager(orgSlug: string) {
 
 export async function createWorkflow(
   scope: Scope,
-  _prevState: ActionResult<{ id: string }> | null,
+  _prevState: ActionResult<{ id: string; webhookToken?: string }> | null,
   formData: FormData,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<{ id: string; webhookToken?: string }>> {
   try {
     const auth = await assertManager(scope.orgSlug)
 
@@ -73,17 +76,21 @@ export async function createWorkflow(
 
     if (!workspace) return { ok: false, code: 'NOT_FOUND', message: 'Workspace not found.' }
 
-    const cron = String(formData.get('cron_expression') ?? '').trim()
-    // The schema requires a cron expression for a scheduled workflow; catch it
-    // here so the message names the field rather than a constraint.
-    if (triggerType === 'schedule' && !cron) {
-      return {
-        ok: false,
-        code: 'VALIDATION_ERROR',
-        message: 'A scheduled workflow needs a cron expression.',
-        fieldErrors: { cron_expression: ['Required for a schedule trigger.'] },
-      }
-    }
+    // A schedule is captured structurally (frequency + time) and the cron
+    // string is derived from it. The DB still requires cron_expression for a
+    // scheduled workflow, and the scheduler reads the structure — so both are
+    // written, from one source.
+    const schedule = parseSchedule({
+      frequency: formData.get('schedule_frequency'),
+      hour: formData.get('schedule_hour'),
+      minute: formData.get('schedule_minute'),
+      weekday: formData.get('schedule_weekday'),
+      day: formData.get('schedule_day'),
+    })
+
+    // The mint trigger was dropped in 00025 — the token is hashed now, so it
+    // has to be generated here, where the plaintext can be handed back once.
+    const minted = triggerType === 'webhook' ? mintWebhookToken() : null
 
     const { data, error } = await supabase
       .from('workflows')
@@ -93,9 +100,11 @@ export async function createWorkflow(
         name: name.slice(0, 120),
         description: String(formData.get('description') ?? '').trim() || null,
         trigger_type: triggerType as WorkflowTriggerType,
-        cron_expression: triggerType === 'schedule' ? cron : null,
+        trigger_config: triggerType === 'schedule' ? { schedule: { ...schedule } } : {},
+        cron_expression: triggerType === 'schedule' ? scheduleToCron(schedule) : null,
+        webhook_token_hash: minted?.hash ?? null,
         // A new workflow starts inactive: it has no graph yet, so activating it
-        // could only ever be a mistake. The webhook token is minted by a trigger.
+        // could only ever be a mistake.
         is_active: false,
       })
       .select('id')
@@ -104,7 +113,52 @@ export async function createWorkflow(
     if (error) throw error
 
     revalidatePath(workflowsPath(scope))
-    return { ok: true, data: { id: data.id } }
+    // The plaintext token travels back exactly once, in this response. It is
+    // not stored and cannot be re-read.
+    return { ok: true, data: { id: data.id, webhookToken: minted?.token } }
+  } catch (error) {
+    return toActionError(error)
+  }
+}
+
+/**
+ * Mint a fresh trigger token, invalidating the old one.
+ *
+ * Rotation is the only way to see a token again, which is the point: a stored
+ * plaintext is a stored credential. Manager-gated like every other change to a
+ * workflow.
+ */
+export async function rotateWebhookToken(
+  scope: Scope,
+  workflowId: string,
+): Promise<ActionResult<{ token: string }>> {
+  try {
+    const auth = await assertManager(scope.orgSlug)
+    const supabase = createClient()
+
+    const { data: workflow } = await supabase
+      .from('workflows')
+      .select('id, trigger_type')
+      .eq('id', workflowId)
+      .eq('organization_id', auth.orgId)
+      .maybeSingle()
+
+    if (!workflow) return { ok: false, code: 'NOT_FOUND', message: 'Workflow not found.' }
+    if (workflow.trigger_type !== 'webhook') {
+      return { ok: false, code: 'VALIDATION_ERROR', message: 'This workflow is not webhook-triggered.' }
+    }
+
+    const minted = mintWebhookToken()
+    const { error } = await supabase
+      .from('workflows')
+      .update({ webhook_token_hash: minted.hash })
+      .eq('id', workflowId)
+      .eq('organization_id', auth.orgId)
+
+    if (error) throw error
+
+    revalidatePath(`${workflowsPath(scope)}/${workflowId}`)
+    return { ok: true, data: { token: minted.token } }
   } catch (error) {
     return toActionError(error)
   }
