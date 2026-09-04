@@ -3,7 +3,7 @@
 Living record of what is built, what is not, and the traps that have already
 cost time. `CLAUDE.md` is the specification; this file is the state of play.
 
-**Last updated:** during Phase 3, after custom fields and the workflow builder.
+**Last updated:** during Phase 3, after the workflow execution engine.
 
 ---
 
@@ -29,7 +29,7 @@ cost time. `CLAUDE.md` is the specification; this file is the state of play.
 | Lead management | **Removed** — built in `00019`, dropped in `00023` at the product owner's direction. See CLAUDE.md §19.3. |
 | Custom fields | **Done** — admin UI at Settings → Custom fields, plus `coerceCustomValue` / `validateCustomValue` in `@pm/shared/constants/custom-fields`. **Not yet rendered on task/project forms** — `saveCustomValues` exists and is unused. |
 | Workflow builder — **designer** | **Done** — canvas at `/{org}/{workspace}/workflows`, graph model and validation in `@pm/shared/constants/workflows` (21 tests) |
-| Workflow builder — **engine** | **NOT BUILT.** Nothing executes a workflow. See below. |
+| Workflow builder — **engine** | **Done for event triggers.** `dispatchWorkflows` polls the event log every 2 min; `planExecution` decides the walk; `runWorkflow` performs actions and logs runs/steps. Gaps below. |
 | PDF templates & generation | `pdf_templates` table only; no renderer |
 | Slack integration | `integrations` table only; no OAuth, no dispatch |
 
@@ -47,7 +47,7 @@ set -a; source apps/web/.env.local; set +a
 ALLOW_DESTRUCTIVE_TESTS=true pnpm test:rls
 ```
 
-Current counts: **187 unit tests, 70 RLS tests, 63 tables, 23 migrations.**
+Current counts: **207 unit tests, 70 RLS tests, 63 tables, 24 migrations.**
 
 ---
 
@@ -142,35 +142,32 @@ themselves are not.
 
 ---
 
-## The workflow engine — the next substantial piece
+## The workflow engine — what works and what does not
 
-Everything around it exists; the runner does not.
+**Works:** event-driven triggers (`task_event`, `subtask_event`,
+`commercial_event`). `dispatchWorkflows` polls `events` on a 15-minute window,
+matches active workflows with `triggerMatches`, and calls `runWorkflow`.
+Conditions branch on edge label; filters halt a branch; a rejoined tail runs
+once; the 50-step cap is enforced in `planExecution`.
 
-**Built:** `workflows` / `workflow_runs` / `workflow_step_logs` tables, the graph
-model (`parseGraph`, `validateGraph`, `findCycles`, `reachableFrom`,
-`executionOrder`), the visual canvas, and save/activate actions that refuse to
-activate an invalid graph.
+**Idempotency:** the unique index from `00024` on
+`(workflow_id, trigger_data->>'event_id')` means a retried poll gets a unique
+violation and skips. `events.processed` is deliberately NOT used as the cursor —
+it is shared with the §12 integration dispatcher.
 
-**Missing:** an Inngest function that, given a trigger event, walks the graph and
-performs the actions. `CLAUDE.md` §11 sketches it. Notes for whoever builds it:
+**Not implemented, and logged as `skipped` rather than silently ignored:**
 
-- Triggers come from the `events` table, written by the `emit_event` database
-  trigger. Inngest cannot be called from Postgres, so the dispatcher must poll —
-  the same shape as `applyAutoAssignment`. Do **not** use `events.processed` as
-  the cursor without checking who else reads it (§12 integration dispatch is
-  meant to as well).
-- `executionOrder()` gives the walk order. Condition nodes branch on edge label
-  (`yes` / `no`); a `branch` node fans out on its own labels.
-- Enforce `WORKFLOW_LIMITS` (50 steps, 5 min, 3 retries) in the runner. The step
-  cap is a **cost guard**, not a correctness check — cycles are already refused
-  at save time by `findCycles`.
-- Write a `workflow_runs` row per run and a `workflow_step_logs` row per node,
-  and bump `run_count` / `last_run_at` (there is already a
-  `bump_workflow_run_stats` trigger for that — check before doing it by hand).
-- Action types are listed in `WORKFLOW_ACTION_TYPES`; the canvas can already
-  select all of them, so each needs an implementation or an explicit refusal.
-- The workflow detail page carries a visible note saying the engine does not
-  exist. **Remove it when the engine lands.**
+| Gap | Why |
+|---|---|
+| `delay` nodes | Needs the run to suspend and resume; the polling shape cannot express it. Move to an Inngest `step.sleep` per run. |
+| `create_task` action | Needs a project and Kanban column chosen in the node config. |
+| `call_webhook` action | Needs SSRF protection before it can call an arbitrary URL. |
+| `add_comment` action | `comments.author_id` is NOT NULL and a workflow has no identity. Needs a system user or a nullable author. |
+| `webhook` / `schedule` triggers | The route `/api/webhooks/workflows/{token}` is shown in the UI but does not exist. Schedules need a per-workflow cron. |
+| `branch` nodes | Walk through them but fan out on every edge; multi-way branching is not really implemented. |
+
+`update_fields` restricts writes to `status`, `priority`, `is_milestone` — an
+arbitrary column name from a config blob is a write primitive.
 
 ---
 

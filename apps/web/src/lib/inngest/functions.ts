@@ -12,6 +12,7 @@ import {
   notificationUrl,
   preferenceFor,
 } from './notifications'
+import { runWorkflow, triggerMatches, type WorkflowRow } from './workflow-runner'
 
 /**
  * Background jobs (§3, §12).
@@ -517,10 +518,81 @@ export const applyAutoAssignment = inngest.createFunction(
   },
 )
 
+/**
+ * Dispatch events to workflows (§11, §12).
+ *
+ * Polls the `events` table rather than reacting to an Inngest event, because
+ * events are written by the `emit_event` database trigger and Postgres cannot
+ * call Inngest. `events.processed` is deliberately NOT used as the cursor: it is
+ * a single shared boolean and the integration dispatcher is meant to read the
+ * same rows, so consuming it here would starve that.
+ *
+ * Idempotency comes from the unique index on
+ * (workflow_id, trigger_data->>'event_id') added in 00024 — a retried poll gets
+ * a unique violation and skips, rather than firing the actions twice.
+ */
+export const dispatchWorkflows = inngest.createFunction(
+  { id: 'workflow-dispatch', retries: 2 },
+  { cron: '*/2 * * * *' },
+  async ({ step }) => {
+    const result = await step.run('dispatch', async () => {
+      const db = createAdminClient()
+      // A window, not a cursor: anything older has either been handled or is
+      // not worth firing a side effect for now.
+      const since = new Date(Date.now() - 15 * 60_000).toISOString()
+
+      const { data: workflows } = await db
+        .from('workflows')
+        .select('id, organization_id, workspace_id, name, trigger_type, trigger_config, graph')
+        .eq('is_active', true)
+        .in('trigger_type', ['task_event', 'subtask_event', 'commercial_event'])
+
+      if (!workflows?.length) return { runs: 0, events: 0 }
+
+      const orgIds = [...new Set(workflows.map((workflow) => workflow.organization_id))]
+
+      const { data: events } = await db
+        .from('events')
+        .select('id, organization_id, event_type, payload')
+        .in('organization_id', orgIds)
+        .gte('created_at', since)
+        .order('created_at')
+        .limit(500)
+
+      if (!events?.length) return { runs: 0, events: 0 }
+
+      let runs = 0
+
+      for (const event of events) {
+        const trigger = {
+          id: event.id,
+          eventType: event.event_type,
+          payload: (event.payload ?? {}) as Record<string, unknown>,
+        }
+
+        for (const workflow of workflows) {
+          if (workflow.organization_id !== event.organization_id) continue
+
+          const config = (workflow.trigger_config ?? {}) as Record<string, unknown>
+          if (!triggerMatches(workflow.trigger_type, config, trigger)) continue
+
+          const outcome = await runWorkflow(db, workflow as WorkflowRow, trigger)
+          if (outcome) runs += 1
+        }
+      }
+
+      return { runs, events: events.length }
+    })
+
+    return result
+  },
+)
+
 export const functions = [
   deliverNotificationEmails,
   sendDailyDigests,
   flagOverdueTasks,
   refreshRevenueSummary,
   applyAutoAssignment,
+  dispatchWorkflows,
 ]

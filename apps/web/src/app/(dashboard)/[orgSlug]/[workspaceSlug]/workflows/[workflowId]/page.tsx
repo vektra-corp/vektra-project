@@ -140,8 +140,9 @@ export default async function WorkflowPage({
           </section>
 
           <p className="text-xs text-faint">
-            The execution engine is not built yet — workflows can be designed and validated, but
-            nothing runs them.{' '}
+            Active workflows are dispatched every couple of minutes from the event log. Delays,
+            task creation and outbound webhooks are recorded as skipped — those actions are not
+            implemented yet.{' '}
             <Link href={base} className="text-primary hover:underline">
               All workflows
             </Link>
