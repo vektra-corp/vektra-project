@@ -14,9 +14,27 @@ started.
 |---|---|---|
 | 0 — Foundations | Auth, tenancy, RLS, CI, billing skeleton, event bus | **Complete** |
 | 1 — MVP | Design system, board, tasks, comments, attachments, notifications, reports, settings, members, admin console | **Complete** |
-| 2 — V1 | Documents, external portal, Gantt, employees & leave, configurable dashboard | **Complete** |
+| 2 — V1 | Documents, external portal, Gantt, employees & leave, configurable dashboard | **Incomplete** — two spec items missing, below |
 | 3 — V2 | Commercial, timesheets, revenue, auto-assignment, custom fields, workflows, PDF, Slack | **Complete** |
 | 4 — Hardening | Security review, load test, E2E, DR, go-live | **Not started** — plan below |
+
+### Phase 2 — what is actually missing
+
+Audited against CLAUDE.md §20, which lists for Phase 2: *"Subtask Kanban, Gantt
+chart, documents, import/export, external portal, customizable dashboard (grid
+layout + widget catalog), email integration, contacts, employee management,
+leave tracking."*
+
+Eight of ten are built. Two are not, and this file previously claimed the phase
+was complete, which was wrong:
+
+| Missing item | State |
+|---|---|
+| **Subtask Kanban** | Subtasks render as a checklist (`components/tasks/subtask-list.tsx`). The schema supports a subtask-level board — `kanban_boards.task_id` exists with a CHECK making it exclusive with `project_id` — and `PLAN_LIMITS.subtask_kanban` gates it as a Growth feature, but nothing reads or writes those rows. §4 and §10 both name a `subtask-board.tsx` that does not exist. |
+| **Import / export** | Nothing at all. `import_export_jobs` (00007) has never been read or written; there is no CSV surface anywhere in either app. §14 and §20 both call for it, and §13.7 already defines an `export` rate limiter for it. |
+
+Neither blocks Phase 3, which is why it went unnoticed: both are self-contained
+features rather than foundations anything else builds on.
 
 ### Phase 3 detail
 
@@ -353,13 +371,18 @@ this.
 worth testing are the ones where RLS calls a `SECURITY DEFINER` helper per row:
 `is_project_member`, `portal_can_access_task`.
 
-### 6. Not blocking, but wanted
+### 6. Finish Phase 2 first
+
+Two Phase 2 items are unbuilt (see "Phase 2 — what is actually missing" above):
+subtask Kanban and import/export. They are product scope, not hardening, so
+they belong before Phase 4 rather than inside it.
+
+### 7. Not blocking, but wanted
 
 - **Only `en.json`.** Nine locales specified in §21; the scaffolding is there
   and `pnpm i18n:check` guards completeness once a second file exists.
 - **Saved reports** UI (`saved_reports` table exists, unused).
 - **Manual workflow trigger** — no "run now" button.
-- **`import_export_jobs`** table exists; no importer or exporter.
 - **Sentry `onRouterTransitionStart`** export, offered and never added.
 - **Teams / GitHub / Google integrations** — the provider list holds Slack only,
   but the dispatcher is provider-agnostic apart from one `switch`.
