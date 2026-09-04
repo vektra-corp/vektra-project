@@ -142,7 +142,7 @@ export interface Database {
             foreignKeyName: 'announcement_dismissals_user_id_fkey'
             columns: ['user_id']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
         ]
@@ -283,7 +283,7 @@ export interface Database {
             foreignKeyName: 'approval_steps_decided_by_fkey'
             columns: ['decided_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -432,7 +432,7 @@ export interface Database {
             foreignKeyName: 'audit_logs_actor_id_fkey'
             columns: ['actor_id']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -1455,7 +1455,7 @@ export interface Database {
             foreignKeyName: 'import_export_jobs_started_by_fkey'
             columns: ['started_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
         ]
@@ -1508,7 +1508,7 @@ export interface Database {
             foreignKeyName: 'integrations_connected_by_fkey'
             columns: ['connected_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -1997,7 +1997,7 @@ export interface Database {
             foreignKeyName: 'notification_preferences_user_id_fkey'
             columns: ['user_id']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
         ]
@@ -2296,7 +2296,7 @@ export interface Database {
             foreignKeyName: 'portal_project_access_granted_by_fkey'
             columns: ['granted_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -2372,7 +2372,7 @@ export interface Database {
             foreignKeyName: 'portal_users_user_id_fkey'
             columns: ['user_id']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
         ]
@@ -3252,7 +3252,7 @@ export interface Database {
             foreignKeyName: 'user_sessions_user_id_fkey'
             columns: ['user_id']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
         ]
@@ -3365,7 +3365,7 @@ export interface Database {
             foreignKeyName: 'webhook_endpoints_created_by_fkey'
             columns: ['created_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -3554,7 +3554,7 @@ export interface Database {
             foreignKeyName: 'workflows_created_by_fkey'
             columns: ['created_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
@@ -3664,7 +3664,7 @@ export interface Database {
             foreignKeyName: 'workspaces_created_by_fkey'
             columns: ['created_by']
             isOneToOne: false
-            referencedRelation: 'users'
+            referencedRelation: 'profiles'
             referencedColumns: ['id']
           },
           {
