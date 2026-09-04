@@ -30,6 +30,7 @@ export default async function SettingsLayout({
           { segment: 'workspaces', label: 'Workspaces' },
           { segment: 'roles', label: 'Roles' },
           { segment: 'custom-fields', label: 'Custom fields' },
+          { segment: 'integrations', label: 'Integrations' },
           { segment: 'audit-log', label: 'Audit log' },
         ]
       : []),

@@ -7,6 +7,7 @@ import { sendEmail } from '@/lib/email/client'
 import { digestEmail, notificationEmail } from '@/lib/email/templates'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { inngest } from './client'
+import { dispatchIntegrationEvents } from './integration-dispatch'
 import {
   digestModeOf,
   inQuietHours,
@@ -697,4 +698,5 @@ export const functions = [
   dispatchWorkflows,
   runScheduledWorkflows,
   executeWorkflow,
+  dispatchIntegrationEvents,
 ]

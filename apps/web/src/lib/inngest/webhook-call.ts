@@ -48,9 +48,16 @@ async function hostIsSafe(hostname: string): Promise<string | null> {
   return bad ? `${hostname} resolves to a private address` : null
 }
 
+/**
+ * @param serialized  Pre-serialized body, when the caller must sign the exact
+ *                    bytes it sends. Re-stringifying an object here would
+ *                    produce different bytes from the ones an HMAC covers.
+ * @param headers     Extra headers, e.g. a signature.
+ */
 export async function callWebhook(
   rawUrl: string,
   body: Record<string, unknown>,
+  options: { serialized?: string; headers?: Record<string, string> } = {},
 ): Promise<WebhookOutcome> {
   let current = rawUrl
 
@@ -71,8 +78,9 @@ export async function callWebhook(
         headers: {
           'Content-Type': 'application/json',
           'User-Agent': 'ProjectManagement-Workflow/1.0',
+          ...(options.headers ?? {}),
         },
-        body: JSON.stringify(body),
+        body: options.serialized ?? JSON.stringify(body),
         // Followed by hand so each hop is re-checked against the rules above.
         redirect: 'manual',
         signal: controller.signal,

@@ -1460,6 +1460,74 @@ export interface Database {
           },
         ]
       }
+      integration_deliveries: {
+        Row: {
+          id: string
+          organization_id: string
+          integration_id: string | null
+          webhook_id: string | null
+          event_id: string | null
+          event_type: string
+          status: string
+          detail: string | null
+          duration_ms: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          integration_id?: string | null
+          webhook_id?: string | null
+          event_id?: string | null
+          event_type: string
+          status: string
+          detail?: string | null
+          duration_ms?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          integration_id?: string | null
+          webhook_id?: string | null
+          event_id?: string | null
+          event_type?: string
+          status?: string
+          detail?: string | null
+          duration_ms?: number | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'integration_deliveries_event_id_fkey'
+            columns: ['event_id']
+            isOneToOne: false
+            referencedRelation: 'events'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'integration_deliveries_integration_id_fkey'
+            columns: ['integration_id']
+            isOneToOne: false
+            referencedRelation: 'integrations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'integration_deliveries_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'integration_deliveries_webhook_id_fkey'
+            columns: ['webhook_id']
+            isOneToOne: false
+            referencedRelation: 'webhook_endpoints'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       integrations: {
         Row: {
           id: string
@@ -3785,6 +3853,13 @@ export interface Database {
         }
         Returns: number
       }
+      integration_access_token: {
+        Args: {
+          p_integration: string
+          p_key: string
+        }
+        Returns: string
+      }
       is_org_member: {
         Args: {
           org: string
@@ -3862,6 +3937,17 @@ export interface Database {
           p_months?: number
         }
         Returns: unknown
+      }
+      save_integration: {
+        Args: {
+          p_org: string
+          p_provider: string
+          p_access_token: string
+          p_config: Json
+          p_key: string
+          p_connected_by?: string
+        }
+        Returns: string
       }
       shares_org_with: {
         Args: {
