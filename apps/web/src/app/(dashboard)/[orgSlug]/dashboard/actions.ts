@@ -1,9 +1,11 @@
 'use server'
 
+import { ORG_ADMIN_ROLES } from '@pm/auth/constants'
 import {
   DASHBOARD_COLUMNS,
   WIDGET_SPECS,
   isDashboardWidget,
+  parseLayout,
   type WidgetPlacement,
 } from '@pm/shared/constants'
 import type { ActionResult, Json } from '@pm/shared/types'
@@ -102,6 +104,69 @@ export async function resetDashboardLayout(orgSlug: string): Promise<ActionResul
       .delete()
       .eq('organization_id', auth.orgId)
       .eq('user_id', auth.userId)
+
+    if (error) throw error
+
+    revalidatePath(`/${orgSlug}/dashboard`)
+    return { ok: true, data: null }
+  } catch (error) {
+    return toActionError(error)
+  }
+}
+
+/**
+ * Publish the caller's current layout as the organisation's default (§19.10).
+ *
+ * Stored on `organizations.settings`, not as a `dashboard_configs` row: it is a
+ * template applied when someone has no layout of their own, not a dashboard
+ * anyone owns. A row would need an owner, and RLS on that table deliberately
+ * confines a row to its owner.
+ *
+ * It does not touch anyone's existing dashboard. Rewriting layouts people have
+ * arranged themselves would be a surprise an admin cannot undo.
+ */
+export async function publishOrgDashboardDefault(
+  orgSlug: string,
+): Promise<ActionResult<null>> {
+  try {
+    const auth = await requireAuth(orgSlug)
+    if (!(ORG_ADMIN_ROLES as readonly string[]).includes(auth.orgRole)) {
+      return { ok: false, code: 'FORBIDDEN', message: 'Only an admin can set the organization default.' }
+    }
+
+    const supabase = createClient()
+
+    const { data: config } = await supabase
+      .from('dashboard_configs')
+      .select('layout')
+      .eq('organization_id', auth.orgId)
+      .eq('user_id', auth.userId)
+      .eq('is_default', true)
+      .maybeSingle()
+
+    const layout = parseLayout(config?.layout)
+    if (layout.length === 0) {
+      return {
+        ok: false,
+        code: 'VALIDATION_ERROR',
+        message: 'Arrange your own dashboard first, then publish it.',
+      }
+    }
+
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('settings')
+      .eq('id', auth.orgId)
+      .maybeSingle()
+
+    const settings = (org?.settings ?? {}) as Record<string, unknown>
+
+    const { error } = await supabase
+      .from('organizations')
+      // Same cast as the per-user save above: WidgetPlacement is an interface,
+      // which has no implicit index signature and so is not structurally Json.
+      .update({ settings: { ...settings, dashboard_layout: layout } as unknown as Json })
+      .eq('id', auth.orgId)
 
     if (error) throw error
 

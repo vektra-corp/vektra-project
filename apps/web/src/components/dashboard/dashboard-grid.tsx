@@ -18,7 +18,7 @@ import {
   cn,
   toast,
 } from '@pm/ui'
-import { Check, GripVertical, Plus, RotateCcw, X } from 'lucide-react'
+import { Check, GripVertical, Plus, RotateCcw, Users, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useMemo, useState, useTransition, type ReactNode } from 'react'
@@ -27,6 +27,7 @@ import GridLayout, { useContainerWidth, type Layout, type LayoutItem } from 'rea
 // globals.css because postcss-import resolves a bare specifier as a relative path.
 import 'react-grid-layout/css/styles.css'
 import {
+  publishOrgDashboardDefault,
   resetDashboardLayout,
   saveDashboardLayout,
 } from '@/app/(dashboard)/[orgSlug]/dashboard/actions'
@@ -43,12 +44,15 @@ export function DashboardGrid({
   initialLayout,
   widgets,
   availableTypes,
+  canPublishDefault = false,
 }: {
   orgSlug: string
   initialLayout: WidgetPlacement[]
   /** Pre-rendered widget bodies, keyed by widget type. */
   widgets: Partial<Record<DashboardWidgetType, ReactNode>>
   availableTypes: DashboardWidgetType[]
+  /** Admins can publish their arrangement as the org-wide starting point. */
+  canPublishDefault?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [placements, setPlacements] = useState(initialLayout)
@@ -179,6 +183,31 @@ export function DashboardGrid({
               <RotateCcw className="h-3.5 w-3.5" aria-hidden />
               Reset
             </Button>
+
+            {canPublishDefault ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={pending}
+                onClick={() =>
+                  startTransition(async () => {
+                    const result = await publishOrgDashboardDefault(orgSlug)
+                    toast(
+                      result.ok
+                        ? {
+                            title: 'Published',
+                            description:
+                              'New members start from this layout. Existing dashboards are untouched.',
+                          }
+                        : { title: result.message, variant: 'destructive' },
+                    )
+                  })
+                }
+              >
+                <Users className="h-3.5 w-3.5" aria-hidden />
+                Set as org default
+              </Button>
+            ) : null}
 
             <span className="label-meta ms-auto hidden text-faint sm:block">
               Drag to move, corner to resize

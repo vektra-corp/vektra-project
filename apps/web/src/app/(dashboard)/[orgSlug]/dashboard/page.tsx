@@ -1,4 +1,4 @@
-import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
+import { ORG_ADMIN_ROLES, ORG_MANAGER_ROLES } from '@pm/auth/constants'
 import {
   DEFAULT_DASHBOARD,
   WIDGET_SPECS,
@@ -149,16 +149,26 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
 
   // The saved layout is per person per org; absence means "never customised",
   // which is what makes DEFAULT_DASHBOARD the single definition of the default.
-  const { data: config } = await supabase
-    .from('dashboard_configs')
-    .select('layout')
-    .eq('organization_id', auth.orgId)
-    .eq('user_id', auth.userId)
-    .eq('is_default', true)
-    .maybeSingle()
+  const [{ data: config }, { data: organization }] = await Promise.all([
+    supabase
+      .from('dashboard_configs')
+      .select('layout')
+      .eq('organization_id', auth.orgId)
+      .eq('user_id', auth.userId)
+      .eq('is_default', true)
+      .maybeSingle(),
+    supabase.from('organizations').select('settings').eq('id', auth.orgId).maybeSingle(),
+  ])
 
+  // Three tiers, most specific first: what this person arranged, then the
+  // template an admin published for the organisation (§19.10), then the
+  // built-in. Each is only consulted when the one before it is absent, so
+  // "never customised" stays distinguishable from "customised to empty".
   const saved = parseLayout(config?.layout)
-  const layout = saved.length > 0 ? saved : DEFAULT_DASHBOARD
+  const orgDefault = parseLayout(
+    (organization?.settings as { dashboard_layout?: unknown } | null)?.dashboard_layout,
+  )
+  const layout = saved.length > 0 ? saved : orgDefault.length > 0 ? orgDefault : DEFAULT_DASHBOARD
 
   const isManager = (ORG_MANAGER_ROLES as readonly string[]).includes(auth.orgRole)
   const availableTypes = (Object.keys(WIDGET_SPECS) as DashboardWidgetType[]).filter(
@@ -379,6 +389,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
           initialLayout={layout}
           widgets={widgets}
           availableTypes={availableTypes}
+          canPublishDefault={(ORG_ADMIN_ROLES as readonly string[]).includes(auth.orgRole)}
         />
       </PageBody>
     </>
