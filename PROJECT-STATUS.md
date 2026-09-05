@@ -61,8 +61,8 @@ set -a; source apps/web/.env.local; set +a
 ALLOW_DESTRUCTIVE_TESTS=true pnpm test:rls
 ```
 
-Current counts: **404 unit tests, 99 RLS tests, 39 end-to-end tests, 63 tables,
-31 migrations, 9 background jobs.**
+Current counts: **433 unit tests, 99 RLS tests, 42 end-to-end tests, 63 tables,
+32 migrations, 9 background jobs.**
 
 ```bash
 pnpm test:e2e        # Playwright, starts its own dev server on 3100
@@ -363,17 +363,23 @@ before React attaches its handler, so use `clickUntil` rather than a sleep; and
 a Kanban card renders its title twice (visible link plus a screen-reader label),
 so assert on roles rather than text.
 
-### 3. Outstanding §13 items  *(blocking for a security review)*
+### 3. Outstanding §13 items — IN PROGRESS
 
 | Item | State |
 |---|---|
-| Magic-byte MIME sniffing on upload | Not done — MIME is taken from the client |
-| Virus scanning | Not done |
-| EXIF stripping / image re-encode | Not done |
-| Session management UI (list, revoke) | Not done — `user_sessions` exists |
-| MFA (TOTP) | Not done |
-| DNS-rebinding-proof outbound calls | Not done — needs a pinned-IP agent |
-| Integration key rotation path | Not done — rotating orphans every token |
+| Magic-byte MIME sniffing | **Done.** `utils/magic-bytes`, applied in `recordAttachment` after the upload lands and before any row references it. Fails closed. Stores the sniffed type, not the claimed one. |
+| Scriptable markup (SVG/HTML/XML) | **Done** — was not on the list and should have been. `image/svg+xml` passes every mechanical image test but can carry `<script>`, and attachments are served from the storage origin. |
+| Session management UI | **Done.** `/{org}/settings/security`. Revocation deletes the GoTrue session, so it is real rather than cosmetic. |
+| EXIF stripping / image re-encode | Not done. Needs `sharp` and a re-encode step after upload — download, strip, re-upload — because uploads go straight to storage. |
+| Virus scanning | Not done. Needs ClamAV or a scanning API; cannot be completed without that infrastructure. The `recordAttachment` hook is the place it goes. |
+| MFA (TOTP) | Not done. Supabase Auth supports factors natively, so this is UI plus an enrolment flow rather than crypto. |
+| DNS-rebinding-proof outbound calls | Not done — needs a pinned-IP agent. |
+| Integration key rotation path | Not done — rotating `INTEGRATION_ENCRYPTION_KEY` orphans every stored token. |
+
+**Known limit of session revocation, stated because the UI states it too:**
+deleting the refresh token stops renewal, but an access token already issued
+stays valid until it expires (up to an hour). Changing the password is what ends
+everything at once. Do not let the copy drift back to claiming "immediately".
 
 ### 4. Deployment  *(blocking)*
 
