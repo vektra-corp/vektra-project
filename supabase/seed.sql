@@ -408,3 +408,17 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO admin_users (email, full_name, role, is_active)
 VALUES ('admin@platform.test', 'Platform Admin', 'superadmin', true)
 ON CONFLICT (email) DO NOTHING;
+
+-- -----------------------------------------------------------------------------
+-- Materialized views
+-- -----------------------------------------------------------------------------
+
+-- `revenue_summary` is a materialized view, so the rows inserted above are not
+-- visible through it until it is refreshed. In a running deployment the hourly
+-- `refreshRevenueSummary` job does this; a freshly seeded database has never had
+-- that job run, so the revenue dashboard reads as empty and the RLS suite's
+-- revenue isolation test finds nothing to isolate.
+--
+-- Refreshing here leaves a seeded database in a state that matches what the app
+-- expects, rather than one that only becomes correct an hour later.
+REFRESH MATERIALIZED VIEW revenue_summary;
