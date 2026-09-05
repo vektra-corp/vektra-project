@@ -1,0 +1,190 @@
+name: Deploy
+
+# Staging deploys itself; production waits for a person (§15).
+#
+# `main` is gated by the `production` GitHub Environment. Add a required
+# reviewer to that environment in the repo settings — without one, this
+# workflow deploys to production automatically and the gate is decorative.
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which environment to deploy
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+
+concurrency:
+  # One deploy per branch at a time. Two overlapping deploys can land in either
+  # order, so the newer commit is not necessarily the one that ends up live.
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+
+jobs:
+  # Deploying something that does not pass its own tests is not faster, it is
+  # just faster to find out in production.
+  verify:
+    name: Verify
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  changed:
+    name: What changed
+    runs-on: ubuntu-latest
+    needs: verify
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      admin: ${{ steps.filter.outputs.admin }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # A change to a shared package rebuilds both, because either app may
+      # depend on it. Only an app-local change is treated as app-local.
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            shared: &shared
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'turbo.json'
+              - 'package.json'
+            web:
+              - *shared
+              - 'apps/web/**'
+            admin:
+              - *shared
+              - 'apps/admin/**'
+
+  staging:
+    name: Staging
+    if: |
+      github.ref == 'refs/heads/develop' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'staging')
+    runs-on: ubuntu-latest
+    needs: [verify, changed]
+    environment:
+      name: staging
+      url: ${{ steps.deploy-web.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm install --global vercel@latest
+
+      - name: Deploy web
+        id: deploy-web
+        if: needs.changed.outputs.web == 'true'
+        run: |
+          vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          vercel build --token="$VERCEL_TOKEN"
+          url=$(vercel deploy --prebuilt --token="$VERCEL_TOKEN")
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+
+      - name: Deploy admin
+        if: needs.changed.outputs.admin == 'true'
+        run: |
+          vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          vercel build --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+
+  migrate:
+    name: Database migrations
+    if: |
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'production')
+    runs-on: ubuntu-latest
+    needs: verify
+    # Same gate as the deploy: a migration is the least reversible thing here.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # Migrations run BEFORE the new code, and §15 requires every one to be
+      # backward-compatible for exactly this reason: for the length of the
+      # deploy, the old code is running against the new schema.
+      - name: Show what would be applied
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+        env:
+          SUPABASE_DB_URL: ${{ secrets.PRODUCTION_DB_URL }}
+
+      - name: Apply
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
+        env:
+          SUPABASE_DB_URL: ${{ secrets.PRODUCTION_DB_URL }}
+
+  production:
+    name: Production
+    if: |
+      github.ref == 'refs/heads/main' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'production')
+    runs-on: ubuntu-latest
+    needs: [verify, changed, migrate]
+    environment:
+      name: production
+      url: https://project.vektracorp.in
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm install --global vercel@latest
+
+      - name: Deploy web
+        if: needs.changed.outputs.web == 'true'
+        run: |
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_WEB }}
+
+      - name: Deploy admin
+        if: needs.changed.outputs.admin == 'true'
+        run: |
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_ADMIN }}
+
+  smoke:
+    name: Smoke test production
+    runs-on: ubuntu-latest
+    needs: production
+    steps:
+      # Not a full E2E run — those need a database they may write to. This asks
+      # the one question worth asking straight after a deploy: is it serving?
+      - name: The apps respond
+        run: |
+          set -euo pipefail
+          for url in \
+            "https://project.vektracorp.in/login" \
+            "https://admin.vektracorp.in/project/login"; do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 --retry 5 --retry-delay 5 "$url")
+            echo "$url -> $code"
+            if [ "$code" != "200" ]; then
+              echo "::error::$url returned $code"
+              exit 1
+            fi
+          done

@@ -2,8 +2,11 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main, develop]
+  # Callable from deploy.yml, which runs these checks before it ships anything.
+  # There is deliberately no `push` trigger: deploy.yml already fires on pushes
+  # to main and develop and calls this, and a second trigger would run the whole
+  # suite twice for every merge.
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
