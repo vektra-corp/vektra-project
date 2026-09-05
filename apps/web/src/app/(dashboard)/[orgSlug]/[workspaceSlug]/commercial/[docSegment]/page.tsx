@@ -97,7 +97,7 @@ export default async function CommercialListPage({
       key: 'contact',
       header: 'Contact',
       cell: (row) => (
-        <span className="truncate text-[13px]">
+        <span className="truncate text-base">
           {row.contactName ?? <span className="text-faint">No contact</span>}
         </span>
       ),
@@ -131,7 +131,7 @@ export default async function CommercialListPage({
       headClassName: 'w-32 text-end',
       className: 'text-end',
       cell: (row) => (
-        <span className="text-[13px] tabular-nums">
+        <span className="text-base tabular-nums">
           {formatCurrency(row.grandTotal, row.currency, locale)}
         </span>
       ),
@@ -147,7 +147,7 @@ export default async function CommercialListPage({
               const owed = row.grandTotal - row.amountPaid
               return (
                 <span
-                  className={`text-[13px] tabular-nums ${owed > 0 ? 'text-warning' : 'text-faint'}`}
+                  className={`text-base tabular-nums ${owed > 0 ? 'text-warning' : 'text-faint'}`}
                 >
                   {formatCurrency(owed, row.currency, locale)}
                 </span>
@@ -171,7 +171,7 @@ export default async function CommercialListPage({
   return (
     <>
       <div className="flex flex-wrap items-center gap-3 px-5 pb-3">
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           {rows.length} {rows.length === 1 ? labels.singular.toLowerCase() : labels.plural.toLowerCase()}
         </p>
 
@@ -217,7 +217,7 @@ export default async function CommercialListPage({
         {rows.length === 0 ? (
           <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">
             <FileText className="h-6 w-6 text-faint" aria-hidden />
-            <p className="pt-3 text-[13px] text-muted-foreground">
+            <p className="pt-3 text-base text-muted-foreground">
               {searchParams.status
                 ? `No ${labels.plural.toLowerCase()} with that status.`
                 : `No ${labels.plural.toLowerCase()} yet.`}

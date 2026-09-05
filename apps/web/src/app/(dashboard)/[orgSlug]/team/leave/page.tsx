@@ -124,7 +124,7 @@ export default async function LeavePage({ params }: { params: { orgSlug: string 
       <PageBody>
         <div className="space-y-4">
           {!me ? (
-            <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-[13px] text-faint">
+            <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-base text-faint">
               You do not have an employee record, so you cannot request leave yet. An admin can
               create one from the directory.
             </p>
@@ -145,9 +145,9 @@ export default async function LeavePage({ params }: { params: { orgSlug: string 
                     className="rounded-lg border border-border bg-surface p-4 shadow-card"
                   >
                     <p className="label-meta text-faint">{type?.name ?? 'Leave'}</p>
-                    <p className="pt-2 text-xl font-semibold tabular-nums">
+                    <p className="pt-2 text-head font-semibold tabular-nums">
                       {balance.remaining_days}
-                      <span className="ps-1 text-[13px] font-normal text-faint">
+                      <span className="ps-1 text-base font-normal text-faint">
                         of {allocated} left
                       </span>
                     </p>
@@ -183,7 +183,7 @@ export default async function LeavePage({ params }: { params: { orgSlug: string 
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px]">
+                        <p className="truncate text-base">
                           {row.personName}
                           <span className="ps-2 text-muted-foreground">{row.typeName}</span>
                         </p>
@@ -209,12 +209,12 @@ export default async function LeavePage({ params }: { params: { orgSlug: string 
                   {mine.slice(0, 10).map((row) => (
                     <li key={row.id} className="flex items-center gap-3 px-4 py-2.5">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-[13px]">{row.typeName}</p>
+                        <p className="truncate text-base">{row.typeName}</p>
                         <p className="label-meta pt-1 text-faint">
                           {date(row.startDate)} → {date(row.endDate)} · {row.durationDays}d
                         </p>
                         {row.rejectionNote ? (
-                          <p className="pt-1 text-xs text-destructive">{row.rejectionNote}</p>
+                          <p className="pt-1 text-nav text-destructive">{row.rejectionNote}</p>
                         ) : null}
                       </div>
                       <Badge variant={STATUS_VARIANT[row.status] ?? 'secondary'} shape="meta">
@@ -237,7 +237,7 @@ export default async function LeavePage({ params }: { params: { orgSlug: string 
                   {upcoming.slice(0, 10).map((row) => (
                     <li key={row.id} className="flex items-center gap-3 px-4 py-2.5">
                       <CalendarDays className="h-3.5 w-3.5 shrink-0 text-faint" aria-hidden />
-                      <span className="min-w-0 flex-1 truncate text-[13px]">{row.personName}</span>
+                      <span className="min-w-0 flex-1 truncate text-base">{row.personName}</span>
                       <span className="label-meta text-faint">
                         {date(row.startDate)} → {date(row.endDate)}
                       </span>

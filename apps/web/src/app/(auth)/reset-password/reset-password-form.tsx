@@ -53,9 +53,9 @@ export function ResetPasswordForm() {
           aria-invalid={Boolean(fieldError('password'))}
         />
         {fieldError('password') ? (
-          <p className="text-xs text-destructive">{fieldError('password')}</p>
+          <p className="text-nav text-destructive">{fieldError('password')}</p>
         ) : (
-          <p className="text-xs text-faint">At least 8 characters.</p>
+          <p className="text-nav text-faint">At least 8 characters.</p>
         )}
       </div>
 
@@ -69,7 +69,7 @@ export function ResetPasswordForm() {
           aria-invalid={Boolean(fieldError('confirm_password'))}
         />
         {fieldError('confirm_password') ? (
-          <p className="text-xs text-destructive">{fieldError('confirm_password')}</p>
+          <p className="text-nav text-destructive">{fieldError('confirm_password')}</p>
         ) : null}
       </div>
 

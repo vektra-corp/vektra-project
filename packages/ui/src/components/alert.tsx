@@ -3,7 +3,7 @@ import * as React from 'react'
 import { cn } from '../utils'
 
 const alertVariants = cva(
-  'relative w-full rounded-lg border p-4 text-sm [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:h-4 [&>svg]:w-4 [&>svg~*]:pl-7',
+  'relative w-full rounded-lg border p-4 text-ui [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:h-4 [&>svg]:w-4 [&>svg~*]:pl-7',
   {
     variants: {
       variant: {

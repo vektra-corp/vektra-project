@@ -94,8 +94,8 @@ export default async function RevenuePage({ params }: { params: { orgSlug: strin
         <PageBody>
           <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">
             <TrendingUp className="h-6 w-6 text-faint" aria-hidden />
-            <p className="pt-3 text-[13px] text-muted-foreground">Nothing to report yet.</p>
-            <p className="pt-1 text-xs text-faint">
+            <p className="pt-3 text-base text-muted-foreground">Nothing to report yet.</p>
+            <p className="pt-1 text-nav text-faint">
               Revenue appears once invoices and quotations have been issued.
             </p>
           </div>
@@ -157,7 +157,7 @@ export default async function RevenuePage({ params }: { params: { orgSlug: strin
           </div>
 
           {currencies.length > 1 ? (
-            <p className="rounded-lg border border-border-subtle bg-surface px-4 py-2.5 text-xs text-muted-foreground">
+            <p className="rounded-lg border border-border-subtle bg-surface px-4 py-2.5 text-nav text-muted-foreground">
               Figures shown in {primary}. This organization also has documents in{' '}
               {currencies.filter((code) => code !== primary).join(', ')} — those are reported
               separately below rather than converted, since there is no exchange rate stored.
@@ -181,8 +181,8 @@ export default async function RevenuePage({ params }: { params: { orgSlug: strin
                       key={`${entry.name}-${entry.currency}`}
                       className="flex items-center gap-3 px-4 py-2.5"
                     >
-                      <span className="min-w-0 flex-1 truncate text-[13px]">{entry.name}</span>
-                      <span className="text-[13px] tabular-nums text-muted-foreground">
+                      <span className="min-w-0 flex-1 truncate text-base">{entry.name}</span>
+                      <span className="text-base tabular-nums text-muted-foreground">
                         {formatCurrency(entry.total, entry.currency, locale)}
                       </span>
                     </li>
@@ -200,8 +200,8 @@ export default async function RevenuePage({ params }: { params: { orgSlug: strin
                   .map((code) => (
                     <li key={code} className="flex items-center gap-3 px-4 py-2.5">
                       <span className="label-meta w-12 text-faint">{code}</span>
-                      <span className="flex-1 text-[13px] text-muted-foreground">Invoiced</span>
-                      <span className="text-[13px] tabular-nums">
+                      <span className="flex-1 text-base text-muted-foreground">Invoiced</span>
+                      <span className="text-base tabular-nums">
                         {formatCurrency(invoiced.get(code) ?? 0, code, locale)}
                       </span>
                     </li>
@@ -210,7 +210,7 @@ export default async function RevenuePage({ params }: { params: { orgSlug: strin
             </Widget>
           ) : null}
 
-          <p className="text-xs text-faint">
+          <p className="text-nav text-faint">
             Figures are rebuilt hourly by a background job, so very recent changes may not appear
             yet.{' '}
             <Link href={`/${params.orgSlug}/dashboard`} className="text-primary hover:underline">

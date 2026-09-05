@@ -197,10 +197,10 @@ export function RuleDialog({
             </div>
 
             <fieldset className="space-y-2">
-              <legend className="pb-1 text-sm font-medium">
+              <legend className="pb-1 text-ui font-medium">
                 Assign to
                 {fieldError('assignee_pool') ? (
-                  <span className="ps-2 text-xs font-normal text-destructive">
+                  <span className="ps-2 text-nav font-normal text-destructive">
                     {fieldError('assignee_pool')}
                   </span>
                 ) : null}
@@ -209,7 +209,7 @@ export function RuleDialog({
                 {members.map((member) => (
                   <label
                     key={member.userId}
-                    className="flex cursor-pointer items-center gap-2.5 text-[13px]"
+                    className="flex cursor-pointer items-center gap-2.5 text-base"
                   >
                     <Checkbox
                       name="assignee_pool"
@@ -221,19 +221,19 @@ export function RuleDialog({
                   </label>
                 ))}
               </div>
-              <p className="text-xs text-faint">
+              <p className="text-nav text-faint">
                 Round robin follows this order, so it stays stable as people come and go.
               </p>
             </fieldset>
 
             <fieldset className="space-y-2">
-              <legend className="pb-1 text-sm font-medium">Only when</legend>
+              <legend className="pb-1 text-ui font-medium">Only when</legend>
 
               <div className="flex flex-wrap gap-3">
                 {PRIORITIES.map((priority) => (
                   <label
                     key={priority}
-                    className="flex cursor-pointer items-center gap-2 text-[13px] capitalize"
+                    className="flex cursor-pointer items-center gap-2 text-base capitalize"
                   >
                     <Checkbox
                       name="priority"
@@ -252,17 +252,17 @@ export function RuleDialog({
                 placeholder="Labels, comma separated — any one matches"
                 className="mt-1"
               />
-              <p className="text-xs text-faint">
+              <p className="text-nav text-faint">
                 Leave both blank to apply to every new task.
               </p>
             </fieldset>
 
             <div className="space-y-1.5">
-              <label className="flex cursor-pointer items-center gap-2.5 text-[13px]">
+              <label className="flex cursor-pointer items-center gap-2.5 text-base">
                 <Checkbox name="respect_leave" size="sm" defaultChecked={rule?.respectLeave ?? true} />
                 Skip anyone on approved leave
               </label>
-              <label className="flex cursor-pointer items-center gap-2.5 text-[13px]">
+              <label className="flex cursor-pointer items-center gap-2.5 text-base">
                 <Checkbox name="is_active" size="sm" defaultChecked={rule?.isActive ?? true} />
                 Active
               </label>

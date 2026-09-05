@@ -19,7 +19,7 @@ export default async function ResetPasswordPage() {
   return (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Set a new password</CardTitle>
+        <CardTitle className="text-head">Set a new password</CardTitle>
         <CardDescription>
           Signing in elsewhere will be ended once you save.
         </CardDescription>

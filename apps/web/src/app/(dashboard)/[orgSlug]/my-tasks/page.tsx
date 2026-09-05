@@ -77,7 +77,7 @@ export default async function MyTasksPage({ params }: { params: { orgSlug: strin
       header: 'ID',
       headClassName: 'w-24',
       cell: (row) => (
-        <span className="label-meta text-faint">
+        <span className="label-id text-faint">
           {projectKey(row.projectName)}-{row.task_number}
         </span>
       ),
@@ -88,11 +88,11 @@ export default async function MyTasksPage({ params }: { params: { orgSlug: strin
       cell: (row) => {
         const href = hrefFor(row)
         return href ? (
-          <Link href={href} className="text-[13px] transition-colors hover:text-primary">
+          <Link href={href} className="text-base transition-colors hover:text-primary">
             {row.title}
           </Link>
         ) : (
-          <span className="text-[13px]">{row.title}</span>
+          <span className="text-base">{row.title}</span>
         )
       },
     },
@@ -101,7 +101,7 @@ export default async function MyTasksPage({ params }: { params: { orgSlug: strin
       header: 'Project',
       headClassName: 'w-44',
       cell: (row) => (
-        <span className="truncate text-[13px] text-muted-foreground">{row.projectName}</span>
+        <span className="truncate text-base text-muted-foreground">{row.projectName}</span>
       ),
     },
     {

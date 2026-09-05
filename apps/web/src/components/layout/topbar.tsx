@@ -1,5 +1,5 @@
-import { AvatarStack, Button, Kbd, type StackedPerson } from '@pm/ui'
-import { ChevronRight, Search } from 'lucide-react'
+import { AvatarStack, Kbd, type StackedPerson } from '@pm/ui'
+import { Search } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { requireAuthPage } from '@/lib/auth/context'
@@ -45,7 +45,7 @@ export async function Topbar({
     .map((profile) => ({ id: profile.id, name: profile.full_name, avatarUrl: profile.avatar_url }))
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-4 px-5">
+    <header className="border-border flex h-[52px] shrink-0 items-center justify-between gap-4 border-b px-5">
       <div className="flex min-w-0 items-center gap-2.5">
         <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5">
           {breadcrumb.map((crumb, index) => {
@@ -53,12 +53,12 @@ export async function Topbar({
             return (
               <span key={`${crumb.label}-${index}`} className="flex min-w-0 items-center gap-1.5">
                 {index > 0 ? (
-                  <ChevronRight className="text-faint rtl-flip h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span className="text-subtle shrink-0 text-nav" aria-hidden>/</span>
                 ) : null}
                 {crumb.href && !last ? (
                   <Link
                     href={crumb.href}
-                    className="text-muted-foreground hover:text-foreground truncate text-[13px] transition-colors"
+                    className="text-faint hover:text-foreground truncate text-base transition-colors"
                   >
                     {crumb.label}
                   </Link>
@@ -67,8 +67,8 @@ export async function Topbar({
                     aria-current={last ? 'page' : undefined}
                     className={
                       last
-                        ? 'text-foreground truncate text-[13px] font-medium'
-                        : 'text-muted-foreground truncate text-[13px]'
+                        ? 'text-foreground truncate text-base font-semibold'
+                        : 'text-faint truncate text-base'
                     }
                   >
                     {crumb.label}
@@ -82,13 +82,14 @@ export async function Topbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
-        <Button asChild variant="subtle" size="sm" className="text-muted-foreground gap-2">
-          <Link href={`/${orgSlug}/search`}>
-            <Search className="h-3.5 w-3.5" aria-hidden />
-            Search
-            <Kbd className="ms-1">⌘K</Kbd>
-          </Link>
-        </Button>
+        <Link
+          href={`/${orgSlug}/search`}
+          className="border-input text-faint hover:text-foreground flex items-center gap-[7px] rounded-md border px-2.5 py-[5px] text-nav transition-colors"
+        >
+          <Search className="h-3 w-3" aria-hidden />
+          Search
+          <Kbd className="ms-1 border-0 px-0">⌘K</Kbd>
+        </Link>
         {people.length > 0 ? <AvatarStack people={people} max={2} /> : null}
       </div>
     </header>

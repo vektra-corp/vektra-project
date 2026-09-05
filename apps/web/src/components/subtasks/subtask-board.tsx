@@ -93,7 +93,7 @@ function Card({
       ref={isOverlay ? undefined : setNodeRef}
       style={isOverlay ? undefined : { transform: CSS.Translate.toString(transform), transition }}
       className={cn(
-        'group border-border-subtle bg-surface-raised relative overflow-hidden rounded-md border ps-2.5 shadow-card',
+        'group border-border-subtle bg-card relative overflow-hidden rounded-md border ps-2.5 shadow-card',
         isDragging && !isOverlay && 'opacity-40',
         isOverlay && 'rotate-1 shadow-lg',
       )}
@@ -107,7 +107,7 @@ function Card({
       />
 
       <div className="px-2.5 py-2">
-        <p className={cn('text-[13px] leading-snug', closed && 'text-muted-foreground line-through')}>
+        <p className={cn('text-base leading-snug', closed && 'text-muted-foreground line-through')}>
           {card.title}
         </p>
 

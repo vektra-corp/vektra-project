@@ -1,7 +1,7 @@
 import { localeDirection } from '@pm/shared/constants'
 import { Toaster } from '@pm/ui'
 import type { Metadata, Viewport } from 'next'
-import { Inter, JetBrains_Mono } from 'next/font/google'
+import { Montserrat, JetBrains_Mono } from 'next/font/google'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import type { ReactNode } from 'react'
@@ -9,7 +9,18 @@ import { QueryProvider } from '@/components/providers/query-provider'
 import { ThemeScript } from '@/components/providers/theme-script'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' })
+/*
+ * The design specifies Gotham, falling back to Montserrat. Gotham is licensed
+ * and not redistributable, so Montserrat is what actually ships — it is the
+ * fallback the design itself names, and the geometric sans the mark is drawn
+ * against.
+ */
+const sans = Montserrat({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans',
+  display: 'swap',
+})
 
 // The meta typeface: every task id, count, status label and section heading is
 // set in it, so it loads with the app rather than on demand.
@@ -24,7 +35,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#09090b',
+  themeColor: '#0A0C10',
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -41,7 +52,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <head>
         <ThemeScript />
       </head>
-      <body className={`${inter.variable} ${mono.variable} font-sans antialiased`}>
+      <body className={`${sans.variable} ${mono.variable} font-sans antialiased`}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <QueryProvider>{children}</QueryProvider>
           <Toaster />

@@ -80,7 +80,7 @@ export function NewDocumentDialog({ scope }: { scope: KanbanScope }) {
                 maxLength={200}
                 placeholder="Architecture decision record"
               />
-              {fieldError ? <p className="text-xs text-destructive">{fieldError}</p> : null}
+              {fieldError ? <p className="text-nav text-destructive">{fieldError}</p> : null}
             </div>
 
             <DialogFooter>

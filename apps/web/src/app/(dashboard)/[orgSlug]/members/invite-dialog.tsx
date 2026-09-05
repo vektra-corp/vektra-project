@@ -105,12 +105,12 @@ export function InviteDialog({
                 placeholder="colleague@company.com"
               />
               {fieldError('email') ? (
-                <p className="text-xs text-destructive">{fieldError('email')}</p>
+                <p className="text-nav text-destructive">{fieldError('email')}</p>
               ) : null}
             </div>
 
             <fieldset className="space-y-2">
-              <legend className="pb-1 text-sm font-medium">Role</legend>
+              <legend className="pb-1 text-ui font-medium">Role</legend>
               {grantable.map((candidate) => (
                 <label
                   key={candidate}
@@ -125,10 +125,10 @@ export function InviteDialog({
                     className="mt-0.5 accent-[hsl(var(--primary))]"
                   />
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-medium">
+                    <span className="block text-base font-medium">
                       {ORG_ROLE_LABELS[candidate]}
                     </span>
-                    <span className="block pt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    <span className="block pt-0.5 text-nav leading-relaxed text-muted-foreground">
                       {ORG_ROLE_DESCRIPTIONS[candidate]}
                     </span>
                   </span>
@@ -138,19 +138,19 @@ export function InviteDialog({
 
             {workspaces.length > 0 ? (
               <fieldset className="space-y-2">
-                <legend className="pb-1 text-sm font-medium">Add to workspaces</legend>
+                <legend className="pb-1 text-ui font-medium">Add to workspaces</legend>
                 <div className="space-y-1.5">
                   {workspaces.map((workspace) => (
                     <label
                       key={workspace.id}
-                      className="flex cursor-pointer items-center gap-2.5 text-[13px]"
+                      className="flex cursor-pointer items-center gap-2.5 text-base"
                     >
                       <Checkbox name="workspace_ids" value={workspace.id} size="sm" />
                       {workspace.name}
                     </label>
                   ))}
                 </div>
-                <p className="text-xs text-faint">
+                <p className="text-nav text-faint">
                   Without a workspace they can sign in but will not see any projects.
                 </p>
               </fieldset>

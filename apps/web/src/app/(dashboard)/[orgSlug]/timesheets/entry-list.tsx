@@ -71,7 +71,7 @@ export function EntryList({
 
   if (entries.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-border px-4 py-12 text-center text-[13px] text-faint">
+      <p className="rounded-lg border border-dashed border-border px-4 py-12 text-center text-base text-faint">
         No time logged this week.
       </p>
     )
@@ -104,7 +104,7 @@ export function EntryList({
               {dayEntries.map((entry) => (
                 <li key={entry.id} className="flex items-center gap-3 px-4 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px]">
+                    <p className="truncate text-base">
                       {entry.description || <span className="text-faint">No description</span>}
                     </p>
                     <p className="label-meta pt-1 text-faint">
@@ -123,7 +123,7 @@ export function EntryList({
                     <span className="label-meta text-faint">Billable</span>
                   </label>
 
-                  <span className="w-20 text-end font-mono text-[13px] tabular-nums">
+                  <span className="w-20 text-end font-mono text-base tabular-nums">
                     {formatDuration(entry.durationMinutes)}
                   </span>
 

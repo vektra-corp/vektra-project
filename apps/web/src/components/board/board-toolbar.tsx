@@ -67,8 +67,11 @@ export function BoardToolbar({
   }))
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
+    <div className="border-border flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-5 py-2.5">
       <ProjectViewTabs base={base} />
+
+      {/* The design rules off the view switcher from the view/filter controls. */}
+      <span className="bg-input hidden h-[18px] w-px sm:block" aria-hidden />
 
       <SavedViewMenu
         scope={scope}
@@ -78,7 +81,7 @@ export function BoardToolbar({
         activeIsShared={view.is_shared}
       />
 
-      <SegmentedGroup className="border-transparent bg-transparent p-0">
+      <SegmentedGroup>
         <FilterChip param="status" label="Status" options={statusOptions} />
         <FilterChip param="assignee" label="Assignee" options={assigneeOptions} />
         <FilterChip param="priority" label="Priority" options={priorityOptions} />
@@ -87,15 +90,15 @@ export function BoardToolbar({
 
       <div className="ms-auto flex items-center gap-3">
         <div className="hidden items-center gap-2.5 sm:flex">
-          <p className="label-meta whitespace-nowrap text-faint">
-            <span className="text-foreground">{donePoints}</span>
+          <p className="text-faint whitespace-nowrap font-mono text-col tracking-[0.06em]">
+            <span className="text-muted-foreground">{donePoints}</span>
             <span className="px-1">/</span>
-            {totalPoints} pts
+            {totalPoints} PTS
           </p>
           <Progress
             value={donePoints}
             max={totalPoints || 1}
-            className="w-20"
+            className="w-[100px]"
             aria-label="Points completed"
           />
         </div>

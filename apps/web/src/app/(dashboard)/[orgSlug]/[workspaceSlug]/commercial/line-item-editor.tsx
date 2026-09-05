@@ -84,7 +84,7 @@ export function LineItemEditor({
     <div className="space-y-3">
       <div className="overflow-hidden rounded-lg border border-border bg-surface">
         <div className="scrollbar-slim overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[720px] text-ui">
             <thead>
               <tr className="border-b border-border-subtle">
                 <th className="label-meta px-3 py-2 text-start text-faint">Description</th>
@@ -162,7 +162,7 @@ export function LineItemEditor({
                     <td className="px-3 py-1.5 text-end">
                       <span
                         className={cn(
-                          'text-[13px] tabular-nums',
+                          'text-base tabular-nums',
                           // The discount is capped at the gross, matching the
                           // trigger, so flag a value that will be clamped.
                           item.discount > line.gross ? 'text-warning' : 'text-muted-foreground',
@@ -261,7 +261,7 @@ function Total({
       <dd
         className={cn(
           'tabular-nums',
-          emphasis ? 'text-sm font-semibold' : 'text-[13px] text-muted-foreground',
+          emphasis ? 'text-ui font-semibold' : 'text-base text-muted-foreground',
         )}
       >
         {formatCurrency(value, currency, locale)}

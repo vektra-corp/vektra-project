@@ -9,8 +9,8 @@ export default function ForbiddenPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
       <ShieldX className="h-10 w-10 text-muted-foreground" aria-hidden />
-      <h1 className="text-2xl font-semibold">Access denied</h1>
-      <p className="max-w-sm text-sm text-muted-foreground">
+      <h1 className="text-head font-semibold">Access denied</h1>
+      <p className="max-w-sm text-ui text-muted-foreground">
         You are not a member of this organization, or your access has been removed.
       </p>
       <Button asChild variant="outline">

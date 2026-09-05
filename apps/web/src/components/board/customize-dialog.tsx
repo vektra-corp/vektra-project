@@ -109,7 +109,7 @@ export function CustomizeDialog({
                   id="group-by"
                   name="group_by"
                   defaultValue={view.group_by}
-                  className="flex h-9 w-full rounded-md border border-input bg-surface-raised px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                  className="flex h-9 w-full rounded-md border border-input bg-card px-3 text-ui focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
                 >
                   {KANBAN_GROUP_BY.filter(
                     // These two need the custom-fields module; offering them now
@@ -130,7 +130,7 @@ export function CustomizeDialog({
                     id="sort-by"
                     name="sort_by"
                     defaultValue={view.sort_by}
-                    className="flex h-9 min-w-0 flex-1 rounded-md border border-input bg-surface-raised px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                    className="flex h-9 min-w-0 flex-1 rounded-md border border-input bg-card px-3 text-ui focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
                   >
                     {KANBAN_SORT_BY.map((option) => (
                       <option key={option} value={option}>
@@ -142,7 +142,7 @@ export function CustomizeDialog({
                     name="sort_order"
                     defaultValue={view.sort_order}
                     aria-label="Sort direction"
-                    className="flex h-9 rounded-md border border-input bg-surface-raised px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                    className="flex h-9 rounded-md border border-input bg-card px-2 text-ui focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
                   >
                     <option value="asc">Asc</option>
                     <option value="desc">Desc</option>
@@ -152,12 +152,12 @@ export function CustomizeDialog({
             </div>
 
             <fieldset className="space-y-2">
-              <legend className="pb-1 text-sm font-medium">Show on cards</legend>
+              <legend className="pb-1 text-ui font-medium">Show on cards</legend>
               <div className="grid grid-cols-2 gap-1.5">
                 {KANBAN_CARD_FIELDS.map((field) => (
                   <label
                     key={field}
-                    className="flex cursor-pointer items-center gap-2.5 text-[13px]"
+                    className="flex cursor-pointer items-center gap-2.5 text-base"
                   >
                     <Checkbox
                       name="card_fields"
@@ -174,8 +174,8 @@ export function CustomizeDialog({
             <input type="hidden" name="card_color_by" value={view.card_color_by} />
 
             <fieldset className="space-y-1.5">
-              <legend className="pb-1 text-sm font-medium">Display</legend>
-              <label className="flex cursor-pointer items-center gap-2.5 text-[13px]">
+              <legend className="pb-1 text-ui font-medium">Display</legend>
+              <label className="flex cursor-pointer items-center gap-2.5 text-base">
                 <Checkbox
                   name="show_empty_columns"
                   size="sm"
@@ -183,12 +183,12 @@ export function CustomizeDialog({
                 />
                 Show empty columns
               </label>
-              <label className="flex cursor-pointer items-center gap-2.5 text-[13px]">
+              <label className="flex cursor-pointer items-center gap-2.5 text-base">
                 <Checkbox name="compact_mode" size="sm" defaultChecked={view.compact_mode} />
                 Compact cards
               </label>
               {canShare ? (
-                <label className="flex cursor-pointer items-center gap-2.5 text-[13px]">
+                <label className="flex cursor-pointer items-center gap-2.5 text-base">
                   <Checkbox name="is_shared" size="sm" defaultChecked={view.is_shared} />
                   Share with everyone on this project
                 </label>

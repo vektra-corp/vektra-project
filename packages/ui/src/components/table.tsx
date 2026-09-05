@@ -14,7 +14,7 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
     <div className="scrollbar-slim w-full overflow-x-auto">
       <table
         ref={ref}
-        className={cn('w-full caption-bottom border-collapse text-sm', className)}
+        className={cn('w-full caption-bottom border-collapse text-ui', className)}
         {...props}
       />
     </div>
@@ -59,7 +59,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      'label-meta text-faint h-9 px-3 text-start align-middle [&:has([role=checkbox])]:pe-0',
+      'label-meta text-subtle h-9 px-3 text-start align-middle font-normal [&:has([role=checkbox])]:pe-0',
       className,
     )}
     {...props}
@@ -83,7 +83,7 @@ const TableCaption = React.forwardRef<
   HTMLTableCaptionElement,
   React.HTMLAttributes<HTMLTableCaptionElement>
 >(({ className, ...props }, ref) => (
-  <caption ref={ref} className={cn('text-muted-foreground mt-3 text-sm', className)} {...props} />
+  <caption ref={ref} className={cn('text-muted-foreground mt-3 text-ui', className)} {...props} />
 ))
 TableCaption.displayName = 'TableCaption'
 

@@ -77,13 +77,13 @@ export function MfaPanel({
     <section className="rounded-lg border border-border bg-surface shadow-card">
       <header className="flex flex-wrap items-center gap-3 border-b border-border-subtle px-5 py-4">
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold">
+          <h2 className="text-ui font-semibold">
             Two-step verification
             <Badge variant={isEnrolled ? 'success' : 'secondary'} shape="meta" className="ms-2">
               {isEnrolled ? 'On' : 'Off'}
             </Badge>
           </h2>
-          <p className="pt-1 text-[13px] text-muted-foreground">
+          <p className="pt-1 text-base text-muted-foreground">
             A code from an authenticator app, asked for after your password.
           </p>
         </div>
@@ -111,7 +111,7 @@ export function MfaPanel({
 
         {enrolment ? (
           <>
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               Scan this with your authenticator app, then enter the code it shows.
             </p>
 
@@ -131,7 +131,7 @@ export function MfaPanel({
 
             <div>
               <p className="label-meta pb-1 text-faint">Or enter this key by hand</p>
-              <code className="block break-all rounded-md border border-border-subtle bg-surface-raised p-2.5 font-mono text-[11px]">
+              <code className="block break-all rounded-md border border-border-subtle bg-card p-2.5 font-mono text-[11px]">
                 {enrolment.secret}
               </code>
             </div>
@@ -170,7 +170,7 @@ export function MfaPanel({
             </div>
           </>
         ) : isEnrolled ? (
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             You will be asked for a code each time you sign in. Keep a backup of your
             authenticator — without it and without an admin, you cannot get in.
           </p>

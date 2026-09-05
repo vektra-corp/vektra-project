@@ -47,8 +47,8 @@ export function SessionList({
     <section className="rounded-lg border border-border bg-surface shadow-card">
       <header className="flex flex-wrap items-center gap-3 border-b border-border-subtle px-5 py-4">
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold">Where you are signed in</h2>
-          <p className="pt-1 text-[13px] text-muted-foreground">
+          <h2 className="text-ui font-semibold">Where you are signed in</h2>
+          <p className="pt-1 text-base text-muted-foreground">
             Revoking stops a device from renewing its access. It loses access within an
             hour and cannot sign back in without your password.
           </p>
@@ -73,7 +73,7 @@ export function SessionList({
       </header>
 
       {sessions.length === 0 ? (
-        <p className="px-5 py-8 text-center text-[13px] text-muted-foreground">
+        <p className="px-5 py-8 text-center text-base text-muted-foreground">
           No sessions recorded yet. They appear here after your next sign-in.
         </p>
       ) : (
@@ -83,7 +83,7 @@ export function SessionList({
               <Monitor className="h-4 w-4 shrink-0 text-faint" aria-hidden />
 
               <div className="min-w-0 flex-1">
-                <p className="text-[13px]">
+                <p className="text-base">
                   {session.device ?? 'Unknown device'}
                   {session.isCurrent ? (
                     <Badge variant="success" shape="meta" className="ms-2">
@@ -91,7 +91,7 @@ export function SessionList({
                     </Badge>
                   ) : null}
                 </p>
-                <p className="pt-0.5 text-xs text-faint">
+                <p className="pt-0.5 text-nav text-faint">
                   {session.ipAddress ? `${session.ipAddress} · ` : ''}
                   last active {formatWhen[session.id] ?? session.lastActive}
                 </p>

@@ -141,18 +141,18 @@ export default async function TaskDetailPage({
           <div>
             <Link
               href={`${projectBase}/board`}
-              className="text-muted-foreground text-xs hover:underline"
+              className="text-muted-foreground text-nav hover:underline"
             >
               &larr; Back to board
             </Link>
             <div className="mt-2 flex flex-wrap items-center gap-3">
-              <span className="text-muted-foreground text-sm tabular-nums">
+              <span className="text-muted-foreground text-ui tabular-nums">
                 #{task.task_number}
               </span>
-              <h1 className="text-xl font-semibold">{task.title}</h1>
+              <h1 className="text-head font-semibold">{task.title}</h1>
               <TaskStatusBadge status={task.status as never} />
             </div>
-            <p className="text-muted-foreground mt-1 text-xs">
+            <p className="text-muted-foreground mt-1 text-nav">
               Created {formatRelativeTime(task.created_at, locale)}
               {assigner ? ` · assigned by ${assigner.full_name}` : ''}
             </p>
@@ -261,7 +261,7 @@ export default async function TaskDetailPage({
                 }}
               />
 
-              <dl className="space-y-3 border-t pt-4 text-sm">
+              <dl className="space-y-3 border-t pt-4 text-ui">
                 <div className="flex items-center justify-between gap-2">
                   <dt className="text-muted-foreground">Assignee</dt>
                   <dd className="flex items-center gap-2">

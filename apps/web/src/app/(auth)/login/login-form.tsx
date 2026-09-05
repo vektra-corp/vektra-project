@@ -59,7 +59,7 @@ export function LoginForm({ next }: { next?: string }) {
           aria-describedby={fieldError('email') ? 'email-error' : undefined}
         />
         {fieldError('email') ? (
-          <p id="email-error" className="text-xs text-destructive">
+          <p id="email-error" className="text-nav text-destructive">
             {fieldError('email')}
           </p>
         ) : null}
@@ -70,7 +70,7 @@ export function LoginForm({ next }: { next?: string }) {
           <Label htmlFor="password">{t('password')}</Label>
           <Link
             href="/forgot-password"
-            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+            className="text-nav text-muted-foreground hover:text-foreground hover:underline"
           >
             {t('forgot_password')}
           </Link>
@@ -85,7 +85,7 @@ export function LoginForm({ next }: { next?: string }) {
           hideLabel={t('hide_password')}
         />
         {fieldError('password') ? (
-          <p className="text-xs text-destructive">{fieldError('password')}</p>
+          <p className="text-nav text-destructive">{fieldError('password')}</p>
         ) : null}
       </div>
 

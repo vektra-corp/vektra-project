@@ -65,7 +65,7 @@ export default async function TemplatesPage({
           <div className="flex flex-wrap items-start gap-3">
             <div className="min-w-0 flex-1">
               <h1 className="text-base font-semibold tracking-tight">PDF templates</h1>
-              <p className="pt-1 text-[13px] text-muted-foreground">
+              <p className="pt-1 text-base text-muted-foreground">
                 How generated documents look. A document uses its own template if it has
                 one, otherwise the default for its type.
               </p>
@@ -74,13 +74,13 @@ export default async function TemplatesPage({
           </div>
 
           {records.length === 0 ? (
-            <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-[13px] text-muted-foreground">
+            <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-base text-muted-foreground">
               No templates yet. Documents render with the built-in layout until you add one.
             </p>
           ) : (
             records.map((record) => (
               <section key={record.id} className="space-y-3">
-                <h2 className="text-sm font-semibold">
+                <h2 className="text-ui font-semibold">
                   {record.name}
                   <span className="label-meta ps-2 text-faint">
                     {record.docType.replace('_', ' ')}

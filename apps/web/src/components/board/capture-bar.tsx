@@ -109,7 +109,7 @@ export function CaptureBar({
           disabled={pending}
           aria-label="Capture a task"
           placeholder="Capture anything — Ship read-only banner @jonas #infra !high ~3 fri"
-          className="placeholder:text-faint min-w-0 flex-1 bg-transparent text-[13px] outline-none disabled:opacity-50"
+          className="placeholder:text-faint min-w-0 flex-1 bg-transparent text-base outline-none disabled:opacity-50"
         />
 
         {hints.length > 0 ? (
@@ -135,7 +135,7 @@ export function CaptureBar({
           Create
         </Button>
       </div>
-      {error ? <p className="text-destructive pt-1.5 text-xs">{error}</p> : null}
+      {error ? <p className="text-destructive pt-1.5 text-nav">{error}</p> : null}
     </div>
   )
 }

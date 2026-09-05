@@ -37,11 +37,45 @@ const client = new pg.Client({ connectionString: url, ssl: { rejectUnauthorized:
 
 await client.connect()
 
+// The leading number in the filename, which is what the CLI's history table
+// keys on: `00025_session_management.sql` -> `00025`.
+const version = file.split('/').pop()?.match(/^(\d+)/)?.[1] ?? null
+
 try {
   await client.query('BEGIN')
   await client.query(sql)
+
+  /*
+   * Record it the way `supabase db push` would.
+   *
+   * Without this the CLI's history table drifts: it said 24 applied while 32
+   * files were on disk, because everything from 00025 onward went in through
+   * this script. That matters beyond tidiness — deploy.yml runs `supabase db
+   * push`, which trusts the table to decide what is outstanding, so a stale
+   * history means a deploy either replays applied migrations or skips real
+   * ones.
+   *
+   * Inside the same transaction as the migration, so a rollback un-records it
+   * too and the two can never disagree.
+   */
+  if (version) {
+    await client.query('CREATE SCHEMA IF NOT EXISTS supabase_migrations')
+    await client.query(
+      `CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations (
+         version text PRIMARY KEY,
+         statements text[],
+         name text
+       )`,
+    )
+    await client.query(
+      `INSERT INTO supabase_migrations.schema_migrations (version, name)
+       VALUES ($1, $2) ON CONFLICT (version) DO NOTHING`,
+      [version, file.split('/').pop()],
+    )
+  }
+
   await client.query('COMMIT')
-  console.log(`Applied ${file}`)
+  console.log(`Applied ${file}${version ? ` (recorded as ${version})` : ''}`)
 } catch (error) {
   await client.query('ROLLBACK')
   console.error(`Failed, rolled back: ${file}`)

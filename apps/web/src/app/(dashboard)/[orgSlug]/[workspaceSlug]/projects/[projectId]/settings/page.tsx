@@ -45,8 +45,8 @@ export default async function ProjectSettingsPage({
         {custom.fields.length > 0 ? (
           <section className="rounded-lg border border-border bg-surface shadow-card">
             <div className="border-b border-border-subtle px-5 py-4">
-              <h2 className="text-sm font-semibold">Custom fields</h2>
-              <p className="pt-1 text-[13px] text-muted-foreground">
+              <h2 className="text-ui font-semibold">Custom fields</h2>
+              <p className="pt-1 text-base text-muted-foreground">
                 Defined for projects in organization settings.
               </p>
             </div>

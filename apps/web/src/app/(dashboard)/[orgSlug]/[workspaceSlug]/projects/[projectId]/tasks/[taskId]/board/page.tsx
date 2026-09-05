@@ -54,8 +54,8 @@ export default async function SubtaskBoardPage({
       <PageBody className="pt-4">
         <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">
           <Lock className="h-6 w-6 text-faint" aria-hidden />
-          <p className="pt-3 text-[13px] font-medium">Subtask boards are not on your plan</p>
-          <p className="pt-1 max-w-sm text-[13px] text-muted-foreground">
+          <p className="pt-3 text-base font-medium">Subtask boards are not on your plan</p>
+          <p className="pt-1 max-w-sm text-base text-muted-foreground">
             Running subtasks on their own Kanban is included from Growth upward. The
             checklist on the task itself is always available.
           </p>
@@ -125,7 +125,7 @@ export default async function SubtaskBoardPage({
           </Button>
           <div className="min-w-0">
             <h1 className="truncate text-base font-semibold tracking-tight">{task.title}</h1>
-            <p className="pt-0.5 text-[13px] text-muted-foreground">
+            <p className="pt-0.5 text-base text-muted-foreground">
               {cards.length} subtask{cards.length === 1 ? '' : 's'}
             </p>
           </div>

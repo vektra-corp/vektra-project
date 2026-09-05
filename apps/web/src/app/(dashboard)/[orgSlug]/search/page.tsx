@@ -64,7 +64,7 @@ export default async function SearchPage({
           <SearchInput initialQuery={query} />
 
           {!query ? (
-            <p className="py-10 text-center text-[13px] text-muted-foreground">
+            <p className="py-10 text-center text-base text-muted-foreground">
               Start typing to search tasks and projects.
             </p>
           ) : (
@@ -93,12 +93,12 @@ export default async function SearchPage({
                           {href ? (
                             <Link
                               href={href}
-                              className="min-w-0 flex-1 truncate text-[13px] transition-colors hover:text-primary"
+                              className="min-w-0 flex-1 truncate text-base transition-colors hover:text-primary"
                             >
                               {task.title}
                             </Link>
                           ) : (
-                            <span className="min-w-0 flex-1 truncate text-[13px]">{task.title}</span>
+                            <span className="min-w-0 flex-1 truncate text-base">{task.title}</span>
                           )}
                           <TaskPriorityIcon priority={task.priority as never} />
                           <TaskStatusBadge status={task.status as never} />
@@ -127,12 +127,12 @@ export default async function SearchPage({
                           {href ? (
                             <Link
                               href={href}
-                              className="min-w-0 flex-1 truncate text-[13px] transition-colors hover:text-primary"
+                              className="min-w-0 flex-1 truncate text-base transition-colors hover:text-primary"
                             >
                               {project.name}
                             </Link>
                           ) : (
-                            <span className="min-w-0 flex-1 truncate text-[13px]">
+                            <span className="min-w-0 flex-1 truncate text-base">
                               {project.name}
                             </span>
                           )}

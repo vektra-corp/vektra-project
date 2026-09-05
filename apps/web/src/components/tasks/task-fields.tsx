@@ -24,7 +24,7 @@ interface FieldValues {
 }
 
 const selectClass =
-  'h-8 w-full rounded-md border border-input bg-background px-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50'
+  'h-8 w-full rounded-md border border-input bg-background px-2 text-ui shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50'
 
 /**
  * Inline task fields. Each control saves on change rather than behind a Save
@@ -82,10 +82,10 @@ export function TaskFields({
 
   return (
     <div className="space-y-3">
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {error ? <p className="text-nav text-destructive">{error}</p> : null}
 
       <div className="space-y-1.5">
-        <Label htmlFor="task-status" className="text-xs text-muted-foreground">
+        <Label htmlFor="task-status" className="text-nav text-muted-foreground">
           Status
         </Label>
         <select
@@ -104,7 +104,7 @@ export function TaskFields({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="task-priority" className="text-xs text-muted-foreground">
+        <Label htmlFor="task-priority" className="text-nav text-muted-foreground">
           Priority
         </Label>
         <select
@@ -123,7 +123,7 @@ export function TaskFields({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="task-assignee" className="text-xs text-muted-foreground">
+        <Label htmlFor="task-assignee" className="text-nav text-muted-foreground">
           Assignee
         </Label>
         <select
@@ -144,7 +144,7 @@ export function TaskFields({
 
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1.5">
-          <Label htmlFor="task-start" className="text-xs text-muted-foreground">
+          <Label htmlFor="task-start" className="text-nav text-muted-foreground">
             Start
           </Label>
           <input
@@ -157,7 +157,7 @@ export function TaskFields({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="task-due" className="text-xs text-muted-foreground">
+          <Label htmlFor="task-due" className="text-nav text-muted-foreground">
             Due
           </Label>
           <input

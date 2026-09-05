@@ -184,8 +184,8 @@ export default async function ReportsPage({
       <PageBody>
         <div className="space-y-4">
           <div>
-            <h1 className="text-2xl font-semibold">Task report</h1>
-            <p className="text-muted-foreground text-sm">
+            <h1 className="text-head font-semibold">Task report</h1>
+            <p className="text-muted-foreground text-ui">
               {tasks?.length ?? 0} tasks{(tasks?.length ?? 0) === 100 ? ' (first 100)' : ''}
             </p>
           </div>
@@ -200,9 +200,9 @@ export default async function ReportsPage({
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-ui">
                   <caption className="sr-only">Tasks across all projects</caption>
-                  <thead className="text-muted-foreground border-b text-left text-xs uppercase tracking-wide">
+                  <thead className="text-muted-foreground border-b text-left text-nav uppercase tracking-wide">
                     <tr>
                       {columns.map((column) => (
                         <th

@@ -138,6 +138,43 @@ Dependabot (`.github/dependabot.yml`) raises the bumps weekly so the pins do not
 quietly rot. Review each one; do not merge them blind, because that gives back
 exactly what pinning bought.
 
+## Moving the database to another Supabase project
+
+Done once already, from `ap-southeast-2` (Sydney) to `ap-south-1`, because the
+round trip dominated every page. The steps, for the next time:
+
+1. Create the new project. Note its connection string (**port 5432**, not the
+   pooler), project URL, anon key and service-role key.
+
+2. Apply the schema with the CLI, not with `scripts/apply-migration.mjs`:
+
+   ```bash
+   npx supabase db push --db-url "$NEW_SUPABASE_DB_URL"
+   ```
+
+   `db push` writes `supabase_migrations.schema_migrations` as it goes, which is
+   what `deploy.yml` later reads to decide what is outstanding.
+
+3. Seed, if the target is a development project:
+
+   ```bash
+   SUPABASE_DB_URL="$NEW_SUPABASE_DB_URL" pnpm db:seed
+   ```
+
+4. Verify before switching anything over:
+
+   ```bash
+   SUPABASE_DB_URL="$NEW_SUPABASE_DB_URL" pnpm db:check
+   SUPABASE_DB_URL="$NEW_SUPABASE_DB_URL" ALLOW_DESTRUCTIVE_TESTS=true pnpm test:rls
+   ```
+
+5. Only then point `apps/web/.env.local` and the Vercel environment variables at
+   the new project, and redo the Supabase console steps in section 4 above — auth
+   redirect URLs, SMTP and email templates are per project and do not come across.
+
+Storage objects are NOT moved by any of this. There were none at the time; if
+there are, copy them separately before switching.
+
 ## Rolling back
 
 Vercel keeps every deployment; promoting a previous one is instant and is the

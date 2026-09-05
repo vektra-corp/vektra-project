@@ -34,7 +34,7 @@ export default async function PortalLayout({
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border-subtle px-5">
         <Link href={`/portal/${portal.orgSlug}`} className="flex items-center gap-2.5">
           <BrandMark />
-          <span className="text-[13px] font-semibold">{portal.orgName}</span>
+          <span className="text-base font-semibold">{portal.orgName}</span>
         </Link>
 
         <Badge variant="outline" shape="meta">
@@ -43,7 +43,7 @@ export default async function PortalLayout({
 
         <div className="ms-auto flex items-center gap-3">
           <div className="hidden text-end sm:block">
-            <p className="text-[13px] font-medium leading-tight">{portal.fullName}</p>
+            <p className="text-base font-medium leading-tight">{portal.fullName}</p>
             <p className="label-meta-sm pt-1 text-faint">{portal.email}</p>
           </div>
           <Avatar className="h-7 w-7">

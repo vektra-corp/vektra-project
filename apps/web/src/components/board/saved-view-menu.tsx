@@ -72,7 +72,7 @@ export function SavedViewMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         disabled={pending}
-        className="inline-flex h-7 select-none items-center gap-2 rounded-md border border-border-subtle bg-surface px-2.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+        className="inline-flex h-7 select-none items-center gap-2 rounded-md border border-border-subtle bg-surface px-2.5 text-base text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
       >
         {activeName}
         {activeIsShared ? (
@@ -134,7 +134,7 @@ export function SavedViewMenu({
         ))}
 
         {views.length === 0 ? (
-          <p className="px-2 py-3 text-center text-xs text-faint">
+          <p className="px-2 py-3 text-center text-nav text-faint">
             Customize the board to save a view.
           </p>
         ) : null}

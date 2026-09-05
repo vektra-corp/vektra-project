@@ -118,7 +118,7 @@ export function AttachmentList({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-medium">
+        <h2 className="text-ui font-medium">
           Attachments{' '}
           <span className="tabular-nums text-muted-foreground">{attachments.length}</span>
         </h2>
@@ -147,10 +147,10 @@ export function AttachmentList({
         ) : null}
       </div>
 
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {error ? <p className="text-nav text-destructive">{error}</p> : null}
 
       {attachments.length === 0 ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <p className="flex items-center gap-2 text-ui text-muted-foreground">
           <Paperclip className="h-4 w-4" aria-hidden />
           No files attached.
         </p>
@@ -163,8 +163,8 @@ export function AttachmentList({
             >
               <FileText className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm">{attachment.file_name}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="truncate text-ui">{attachment.file_name}</p>
+                <p className="text-nav text-muted-foreground">
                   {formatFileSize(attachment.file_size, locale)}
                 </p>
               </div>

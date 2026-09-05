@@ -87,7 +87,7 @@ export default async function AuditLogPage({
       <div className="space-y-4 pb-10">
         <div>
           <h1 className="text-base font-semibold tracking-tight">Audit log</h1>
-          <p className="pt-1 text-[13px] text-muted-foreground">
+          <p className="pt-1 text-base text-muted-foreground">
             Every sensitive action in this organization. Entries cannot be edited or
             removed, including by an owner.
           </p>
@@ -101,12 +101,12 @@ export default async function AuditLogPage({
         />
 
         {entries.length === 0 ? (
-          <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-[13px] text-muted-foreground">
+          <p className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-base text-muted-foreground">
             Nothing recorded yet.
           </p>
         ) : (
           <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-card">
-            <table className="w-full text-[13px]">
+            <table className="w-full text-base">
               <thead>
                 <tr className="border-b border-border-subtle">
                   <th className="label-meta px-4 py-2.5 text-start text-faint">When</th>

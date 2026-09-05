@@ -70,7 +70,7 @@ export function PortalComments({
             </Avatar>
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-2">
-                <span className="text-[13px] font-medium">{comment.authorName}</span>
+                <span className="text-base font-medium">{comment.authorName}</span>
                 <span className="label-meta text-faint">
                   {formatRelativeTime(comment.createdAt, locale)}
                 </span>
@@ -80,7 +80,7 @@ export function PortalComments({
           </li>
         ))}
         {comments.length === 0 ? (
-          <li className="text-[13px] text-faint">No comments yet.</li>
+          <li className="text-base text-faint">No comments yet.</li>
         ) : null}
       </ul>
 
@@ -100,7 +100,7 @@ export function PortalComments({
             minHeight="min-h-[72px]"
             onSubmit={submit}
           />
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {error ? <p className="text-nav text-destructive">{error}</p> : null}
           <Button type="submit" size="sm" loading={pending}>
             Comment
           </Button>

@@ -147,7 +147,7 @@ export function ReportFilters({
 function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="w-16 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <span className="w-16 shrink-0 text-nav font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
       <div className="flex flex-wrap gap-1.5">{children}</div>
@@ -173,7 +173,7 @@ function Chip({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'rounded-full border px-2.5 py-1 text-xs transition-colors',
+        'rounded-full border px-2.5 py-1 text-nav transition-colors',
         active
           ? 'border-primary bg-primary text-primary-foreground'
           : 'border-input text-muted-foreground hover:bg-accent hover:text-accent-foreground',

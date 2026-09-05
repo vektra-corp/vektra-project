@@ -78,13 +78,13 @@ export function Timer({
         </span>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium">
+          <p className="truncate text-base font-medium">
             {running.description || 'Untitled work'}
           </p>
           <p className="label-meta pt-1 text-faint">{running.projectName}</p>
         </div>
 
-        <span className="font-mono text-lg tabular-nums">{elapsed(running.startedAt, now)}</span>
+        <span className="font-mono text-head tabular-nums">{elapsed(running.startedAt, now)}</span>
 
         <Button variant="subtle" size="sm" loading={pending} onClick={stop}>
           <Pause className="h-3.5 w-3.5" aria-hidden />

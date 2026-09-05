@@ -43,7 +43,7 @@ export function UserMenu({
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-medium leading-tight">{profile.full_name}</p>
+            <p className="truncate text-base font-medium leading-tight">{profile.full_name}</p>
             <p className="label-meta-sm text-faint truncate pt-1">{orgRole}</p>
           </div>
         </DropdownMenuTrigger>

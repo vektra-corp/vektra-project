@@ -83,7 +83,7 @@ export default async function CommercialDocPage({
           </Link>
 
           <div className="flex flex-wrap items-center gap-2 pt-2">
-            <h1 className="text-lg font-semibold tracking-tight">{doc.doc_number}</h1>
+            <h1 className="text-head font-semibold tracking-tight">{doc.doc_number}</h1>
             <Badge variant={statusVariant(doc.status)} shape="meta">
               {doc.status.replace('_', ' ')}
             </Badge>
@@ -128,7 +128,7 @@ export default async function CommercialDocPage({
           </div>
 
           {doc.converted_to_id ? (
-            <p className="pt-2 text-[13px] text-muted-foreground">
+            <p className="pt-2 text-base text-muted-foreground">
               Converted to{' '}
               <Link
                 href={`/${params.orgSlug}/${params.workspaceSlug}/commercial/invoices/${doc.converted_to_id}`}
@@ -176,7 +176,7 @@ export default async function CommercialDocPage({
 
         <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-card">
           <div className="scrollbar-slim overflow-x-auto">
-            <table className="w-full min-w-[520px] text-sm">
+            <table className="w-full min-w-[520px] text-ui">
               <thead>
                 <tr className="border-b border-border-subtle">
                   <th className="label-meta px-4 py-2 text-start text-faint">Description</th>
@@ -189,24 +189,24 @@ export default async function CommercialDocPage({
               <tbody>
                 {!lineItems?.length ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-[13px] text-faint">
+                    <td colSpan={5} className="px-4 py-8 text-center text-base text-faint">
                       No line items.
                     </td>
                   </tr>
                 ) : (
                   lineItems.map((item) => (
                     <tr key={item.id} className="border-b border-border-subtle last:border-0">
-                      <td className="px-4 py-2.5 text-[13px]">{item.description}</td>
-                      <td className="px-3 py-2.5 text-end text-[13px] tabular-nums">
+                      <td className="px-4 py-2.5 text-base">{item.description}</td>
+                      <td className="px-3 py-2.5 text-end text-base tabular-nums">
                         {item.quantity}
                       </td>
-                      <td className="px-3 py-2.5 text-end text-[13px] tabular-nums">
+                      <td className="px-3 py-2.5 text-end text-base tabular-nums">
                         {money(Number(item.unit_price))}
                       </td>
-                      <td className="px-3 py-2.5 text-end text-[13px] tabular-nums text-muted-foreground">
+                      <td className="px-3 py-2.5 text-end text-base tabular-nums text-muted-foreground">
                         {Number(item.tax_rate)}%
                       </td>
-                      <td className="px-4 py-2.5 text-end text-[13px] tabular-nums">
+                      <td className="px-4 py-2.5 text-end text-base tabular-nums">
                         {money(Number(item.line_total))}
                       </td>
                     </tr>
@@ -243,13 +243,13 @@ export default async function CommercialDocPage({
             {doc.notes ? (
               <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="label-meta pb-2 text-faint">Notes</p>
-                <p className="whitespace-pre-wrap text-[13px] text-muted-foreground">{doc.notes}</p>
+                <p className="whitespace-pre-wrap text-base text-muted-foreground">{doc.notes}</p>
               </div>
             ) : null}
             {doc.terms ? (
               <div className="rounded-lg border border-border bg-surface p-4 shadow-card">
                 <p className="label-meta pb-2 text-faint">Terms</p>
-                <p className="whitespace-pre-wrap text-[13px] text-muted-foreground">{doc.terms}</p>
+                <p className="whitespace-pre-wrap text-base text-muted-foreground">{doc.terms}</p>
               </div>
             ) : null}
           </div>
@@ -277,7 +277,7 @@ function Fact({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <dt className="label-meta text-faint">{label}</dt>
-      <dd className="pt-1.5 text-[13px]">{value}</dd>
+      <dd className="pt-1.5 text-base">{value}</dd>
     </div>
   )
 }
@@ -298,7 +298,7 @@ function Row({
       <dt className={`label-meta ${emphasis ? 'text-muted-foreground' : 'text-faint'}`}>{label}</dt>
       <dd
         className={`tabular-nums ${
-          emphasis ? 'text-sm font-semibold' : 'text-[13px]'
+          emphasis ? 'text-ui font-semibold' : 'text-base'
         } ${tone === 'warning' ? 'text-warning' : tone === 'success' ? 'text-success' : ''}`}
       >
         {value}

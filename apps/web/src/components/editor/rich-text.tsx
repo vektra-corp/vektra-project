@@ -95,9 +95,9 @@ function renderNodes(nodes: Node[] | undefined, keyPrefix: string): ReactNode[] 
       case 'heading': {
         const level = Number(node.attrs?.level ?? 2)
         const sizes: Record<number, string> = {
-          1: 'text-lg font-semibold',
+          1: 'text-head font-semibold',
           2: 'text-base font-semibold',
-          3: 'text-sm font-semibold',
+          3: 'text-ui font-semibold',
         }
         const Tag = (level === 1 ? 'h1' : level === 2 ? 'h2' : 'h3') as 'h1' | 'h2' | 'h3'
         return [
@@ -130,7 +130,7 @@ function renderNodes(nodes: Node[] | undefined, keyPrefix: string): ReactNode[] 
         return [
           <pre
             key={key}
-            className="scrollbar-slim overflow-x-auto rounded-md bg-surface-raised p-3 font-mono text-xs"
+            className="scrollbar-slim overflow-x-auto rounded-md bg-card p-3 font-mono text-nav"
           >
             <code>{renderNodes(node.content, key)}</code>
           </pre>,
@@ -158,7 +158,7 @@ export function RichTextView({ doc, className }: { doc: unknown; className?: str
   if (!root?.content?.length) return null
 
   return (
-    <div className={cn('space-y-2 text-sm leading-relaxed', className)}>
+    <div className={cn('space-y-2 text-ui leading-relaxed', className)}>
       {renderNodes(root.content, 'n')}
     </div>
   )

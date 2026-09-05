@@ -15,7 +15,7 @@ const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
 /* Shared row geometry: one definition keeps items, checkbox items and radio
  * items on the same baseline and inset, whatever the mix inside a menu. */
 const itemClass =
-  'relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none transition-colors ' +
+  'relative flex cursor-default select-none items-center gap-2 rounded-md px-2 py-1.5 text-ui outline-none transition-colors ' +
   'focus:bg-surface-hover focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 ' +
   '[&>svg]:h-4 [&>svg]:w-4 [&>svg]:shrink-0 [&>svg]:text-faint'
 

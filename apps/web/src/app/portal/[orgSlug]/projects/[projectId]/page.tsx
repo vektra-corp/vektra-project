@@ -98,13 +98,13 @@ export default async function PortalProjectPage({
           &larr; All shared projects
         </Link>
         <div className="flex flex-wrap items-center gap-2 pt-2">
-          <h1 className="text-lg font-semibold tracking-tight">{project.name}</h1>
+          <h1 className="text-head font-semibold tracking-tight">{project.name}</h1>
           <Badge variant={project.status === 'active' ? 'success' : 'secondary'} shape="meta">
             {project.status.replace('_', ' ')}
           </Badge>
         </div>
         {project.description ? (
-          <p className="pt-2 text-[13px] text-muted-foreground">{project.description}</p>
+          <p className="pt-2 text-base text-muted-foreground">{project.description}</p>
         ) : null}
       </div>
 
@@ -113,7 +113,7 @@ export default async function PortalProjectPage({
           <h2 className="label-meta text-faint">Published documents</h2>
           <ul className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border bg-surface">
             {documents.map((document) => (
-              <li key={document.id} className="px-4 py-2.5 text-[13px]">
+              <li key={document.id} className="px-4 py-2.5 text-base">
                 {document.title}
               </li>
             ))}
@@ -125,7 +125,7 @@ export default async function PortalProjectPage({
         <h2 className="label-meta text-faint">Work items</h2>
 
         {!tasks?.length ? (
-          <p className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-[13px] text-faint">
+          <p className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-base text-faint">
             Nothing to show yet.
           </p>
         ) : (
@@ -137,7 +137,7 @@ export default async function PortalProjectPage({
               >
                 <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-4 py-3">
                   <span className="label-meta text-faint">#{task.task_number}</span>
-                  <span className="min-w-0 flex-1 text-[13px] font-medium">{task.title}</span>
+                  <span className="min-w-0 flex-1 text-base font-medium">{task.title}</span>
                   <DueDate
                     dueDate={task.due_date}
                     today={today}

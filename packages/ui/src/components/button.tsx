@@ -5,30 +5,37 @@ import * as React from 'react'
 import { cn } from '../utils'
 
 const buttonVariants = cva(
-  'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-colors ' +
+  'inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md transition-colors ' +
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-surface-hover',
-        /* The default chrome button on a dark surface: raised panel + hairline. */
-        subtle: 'border border-border bg-surface-raised text-foreground hover:bg-surface-hover',
+        /*
+         * The solid action. On dark this is near-white on near-black, not the
+         * teal accent: teal carries state (live, on track, in progress), so
+         * spending it on every "New project" would drain it of meaning.
+         */
+        default: 'bg-btn text-btn-ink font-semibold hover:bg-btn/90',
+        /* Teal fill, for the one place an action *is* the accent. */
+        accent: 'bg-primary text-primary-foreground font-semibold hover:bg-primary/90',
+        destructive: 'bg-destructive text-destructive-foreground font-semibold hover:bg-destructive/90',
+        secondary: 'bg-chip text-foreground hover:bg-surface-hover',
+        /* The default chrome button: hairline outline, no fill. */
+        subtle: 'border border-input text-muted-foreground hover:bg-surface-hover hover:text-foreground',
         outline:
-          'border border-border bg-transparent text-muted-foreground hover:bg-surface-hover hover:text-foreground',
+          'border border-input bg-transparent text-muted-foreground hover:bg-surface-hover hover:text-foreground',
         ghost: 'text-muted-foreground hover:bg-surface-hover hover:text-foreground',
         /* "+ Add issue" at the foot of a Kanban column. */
         dashed:
-          'border border-dashed border-border text-faint hover:border-input hover:bg-surface-raised/60 hover:text-muted-foreground',
+          'border border-dashed border-border text-faint hover:border-input hover:bg-chip hover:text-muted-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {
-        xs: 'h-6 rounded px-1.5 text-xs',
-        sm: 'h-7 px-2.5 text-[13px]',
-        default: 'h-9 px-3.5 text-sm',
-        lg: 'h-10 px-6 text-sm',
-        icon: 'h-9 w-9',
+        xs: 'h-6 rounded-sm px-1.5 text-meta',
+        sm: 'h-7 px-2.5 text-ui',
+        default: 'h-8 px-3 text-ui',
+        lg: 'h-10 px-5 text-base',
+        icon: 'h-8 w-8',
         'icon-sm': 'h-7 w-7',
         'icon-xs': 'h-6 w-6',
       },

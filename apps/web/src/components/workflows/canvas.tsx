@@ -275,7 +275,7 @@ export function WorkflowCanvas({
                 onPointerDown={(event) => startDrag(event, node)}
                 onClick={() => (connectingFrom ? connect(node.id) : setSelectedId(node.id))}
                 className={cn(
-                  'absolute flex cursor-grab flex-col justify-center rounded-lg border bg-surface-raised px-3 shadow-card transition-colors active:cursor-grabbing',
+                  'absolute flex cursor-grab flex-col justify-center rounded-lg border bg-card px-3 shadow-card transition-colors active:cursor-grabbing',
                   selectedId === node.id ? 'border-primary' : 'border-border',
                   nodeProblems.length > 0 && 'border-destructive',
                   canReceive && 'ring-2 ring-primary/50',
@@ -294,7 +294,7 @@ export function WorkflowCanvas({
                   aria-hidden
                 />
                 <p className="label-meta ps-1 text-faint">{WORKFLOW_NODE_LABELS[node.type]}</p>
-                <p className="truncate ps-1 text-[13px]">
+                <p className="truncate ps-1 text-base">
                   {node.type === 'action' && node.action_type
                     ? WORKFLOW_ACTION_LABELS[node.action_type]
                     : node.type === 'delay'
@@ -328,7 +328,7 @@ export function WorkflowCanvas({
           })}
 
           {graph.nodes.length === 0 ? (
-            <p className="absolute inset-0 flex items-center justify-center text-[13px] text-faint">
+            <p className="absolute inset-0 flex items-center justify-center text-base text-faint">
               Add a node to begin.
             </p>
           ) : null}
@@ -341,7 +341,7 @@ export function WorkflowCanvas({
                 // Problems have no stable id of their own.
                 // eslint-disable-next-line react/no-array-index-key
                 key={index}
-                className="text-[13px] text-destructive"
+                className="text-base text-destructive"
               >
                 {problem.message}
               </li>
@@ -381,7 +381,7 @@ function NodeInspector({
     return (
       <aside className="rounded-lg border border-border bg-surface p-4 shadow-card">
         <p className="label-meta text-faint">Inspector</p>
-        <p className="pt-2 text-[13px] text-muted-foreground">
+        <p className="pt-2 text-base text-muted-foreground">
           Select a node to configure it.
         </p>
       </aside>
@@ -397,7 +397,7 @@ function NodeInspector({
     })
 
   const inputClass =
-    'flex h-9 w-full rounded-md border border-input bg-surface-raised px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60'
+    'flex h-9 w-full rounded-md border border-input bg-card px-3 text-ui focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60'
 
   return (
     <aside className="space-y-3 rounded-lg border border-border bg-surface p-4 shadow-card">
@@ -474,7 +474,7 @@ function NodeInspector({
         </label>
       ) : null}
 
-      <p className="border-t border-border-subtle pt-3 text-xs text-faint">
+      <p className="border-t border-border-subtle pt-3 text-nav text-faint">
         {graph.edges.filter((edge) => edge.source === node.id).length} outgoing ·{' '}
         {graph.edges.filter((edge) => edge.target === node.id).length} incoming
       </p>

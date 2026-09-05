@@ -61,7 +61,7 @@ export function TaskDescription({
     return (
       <section className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-medium">Description</h2>
+          <h2 className="text-ui font-medium">Description</h2>
           {canEdit ? (
             <Button variant="ghost" size="xs" onClick={() => setEditing(true)}>
               <Pencil className="h-3 w-3" aria-hidden />
@@ -73,7 +73,7 @@ export function TaskDescription({
         {hasContent ? (
           <RichTextView doc={description} />
         ) : (
-          <p className="text-sm text-faint">
+          <p className="text-ui text-faint">
             {canEdit ? 'No description yet — add one.' : 'No description.'}
           </p>
         )}
@@ -83,7 +83,7 @@ export function TaskDescription({
 
   return (
     <section className="space-y-2">
-      <h2 className="text-sm font-medium">Description</h2>
+      <h2 className="text-ui font-medium">Description</h2>
       <form
         ref={formRef}
         onSubmit={(event) => {
@@ -98,7 +98,7 @@ export function TaskDescription({
           placeholder="Add context, acceptance criteria, links…"
           onSubmit={save}
         />
-        {error ? <p className="text-xs text-destructive">{error}</p> : null}
+        {error ? <p className="text-nav text-destructive">{error}</p> : null}
         <div className="flex items-center gap-2">
           <Button type="submit" size="sm" loading={pending}>
             Save

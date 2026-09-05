@@ -49,8 +49,8 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
       <PageBody>
         <div className="max-w-3xl space-y-6">
           <div>
-            <h1 className="text-2xl font-semibold">Billing</h1>
-            <p className="text-muted-foreground text-sm">
+            <h1 className="text-head font-semibold">Billing</h1>
+            <p className="text-muted-foreground text-ui">
               Manage your subscription and see what your plan includes.
             </p>
           </div>
@@ -76,7 +76,7 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
                 ) : null}
               </div>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+            <CardContent className="space-y-2 text-ui">
               {organization?.trial_ends_at && organization.status === 'trial' ? (
                 <p className="text-muted-foreground">
                   Trial ends{' '}
@@ -142,7 +142,7 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
               <CardContent>
                 <dl className="grid gap-3 sm:grid-cols-2">
                   {usage.map((row) => (
-                    <div key={row.metric} className="flex justify-between text-sm">
+                    <div key={row.metric} className="flex justify-between text-ui">
                       <dt className="text-muted-foreground">{row.metric}</dt>
                       <dd className="tabular-nums">
                         {row.current_value}
@@ -162,7 +162,7 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
 
 function Limit({ label, value }: { label: string; value: number | null }) {
   return (
-    <div className="flex justify-between text-sm">
+    <div className="flex justify-between text-ui">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="tabular-nums">{value === null ? 'Unlimited' : value.toLocaleString()}</dd>
     </div>
@@ -171,7 +171,7 @@ function Limit({ label, value }: { label: string; value: number | null }) {
 
 function Feature({ label, enabled }: { label: string; enabled: boolean }) {
   return (
-    <div className="flex justify-between text-sm">
+    <div className="flex justify-between text-ui">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className={enabled ? '' : 'text-muted-foreground'}>
         {enabled ? 'Included' : 'Not included'}

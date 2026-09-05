@@ -54,10 +54,10 @@ export function RevenueTile({
         <Icon className={cn('h-3.5 w-3.5', style.icon)} aria-hidden />
         <span className="label-meta text-faint">{label}</span>
       </div>
-      <p className={cn('pt-3 text-xl font-semibold tabular-nums', style.value)}>
+      <p className={cn('pt-3 text-head font-semibold tabular-nums', style.value)}>
         {formatCurrency(value, currency, locale)}
       </p>
-      {caption ? <p className="pt-1 text-xs text-muted-foreground">{caption}</p> : null}
+      {caption ? <p className="pt-1 text-nav text-muted-foreground">{caption}</p> : null}
     </div>
   )
 }
@@ -82,7 +82,7 @@ export function RevenueTrend({
 
   if (inCurrency.length === 0) {
     return (
-      <Widget title="Revenue trend" className="h-full">
+      <Widget title="Revenue trend" category="revenue" className="h-full">
         <WidgetEmpty>No invoices issued yet.</WidgetEmpty>
       </Widget>
     )
@@ -91,7 +91,7 @@ export function RevenueTrend({
   const peak = Math.max(...inCurrency.map((month) => month.invoicedRevenue), 1)
 
   return (
-    <Widget title={`Revenue trend · ${currency}`} className="h-full">
+    <Widget title={`Revenue trend · ${currency}`} category="revenue" className="h-full">
       <ul className="space-y-2 overflow-y-auto px-4 py-3">
         {inCurrency.map((month) => {
           const pct = Math.round((month.invoicedRevenue / peak) * 100)
@@ -109,7 +109,7 @@ export function RevenueTrend({
                   style={{ width: `${Math.max(pct, month.invoicedRevenue > 0 ? 2 : 0)}%` }}
                 />
               </span>
-              <span className="w-28 shrink-0 text-end text-[13px] tabular-nums text-muted-foreground">
+              <span className="w-28 shrink-0 text-end text-base tabular-nums text-muted-foreground">
                 {formatCurrency(month.invoicedRevenue, month.currency, locale)}
               </span>
             </li>

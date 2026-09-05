@@ -37,7 +37,7 @@ export function DataTable<T>({
   className,
 }: DataTableProps<T>) {
   return (
-    <div className={cn('border-border bg-surface overflow-hidden rounded-lg border', className)}>
+    <div className={cn('border-border bg-card overflow-hidden rounded-lg border', className)}>
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
@@ -53,7 +53,7 @@ export function DataTable<T>({
             <TableRow className="hover:bg-transparent">
               <TableCell
                 colSpan={columns.length}
-                className="text-muted-foreground py-10 text-center text-sm"
+                className="text-muted-foreground py-10 text-center text-ui"
               >
                 {empty}
               </TableCell>

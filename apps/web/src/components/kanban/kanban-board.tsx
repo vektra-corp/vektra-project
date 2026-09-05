@@ -222,9 +222,9 @@ export function KanbanBoard({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
+    <div className="flex min-h-0 flex-1 flex-col">
       {error ? (
-        <Alert variant="destructive" className="mx-5">
+        <Alert variant="destructive" className="mx-5 mb-3">
           <AlertCircle aria-hidden />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -237,7 +237,14 @@ export function KanbanBoard({
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveId(null)}
       >
-        <div className="scrollbar-slim flex flex-1 items-start gap-5 overflow-x-auto px-5 pb-6">
+        {/*
+          * The design separates columns with a 1px rule that runs the full
+          * height of the board. That is this gap: a 1px grid gutter over a
+          * line-coloured ground, with each column painting its own background
+          * back over the cell. A border on the column itself could not do it —
+          * it would stop at the last card rather than reaching the floor.
+          */}
+        <div className="scrollbar-slim bg-border grid flex-1 grid-flow-col justify-start gap-px overflow-x-auto">
           {columns.map((column) => (
             <KanbanColumn
               key={column.id}
@@ -255,7 +262,7 @@ export function KanbanBoard({
         {/* Follows the cursor so the card stays legible over other columns. */}
         <DragOverlay>
           {activeCard ? (
-            <ul className="w-[264px]">
+            <ul className="w-[272px]">
               <KanbanCard card={activeCard} href="#" today={today} view={view} isOverlay />
             </ul>
           ) : null}

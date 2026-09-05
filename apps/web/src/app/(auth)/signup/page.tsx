@@ -13,12 +13,12 @@ export default async function SignupPage() {
   return (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">{t('signup_title')}</CardTitle>
+        <CardTitle className="text-head">{t('signup_title')}</CardTitle>
         <CardDescription>{t('signup_subtitle', { days: TRIAL_DAYS })}</CardDescription>
       </CardHeader>
       <CardContent>
         <SignupForm />
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-6 text-center text-ui text-muted-foreground">
           {t('have_account')}{' '}
           <Link href="/login" className="font-medium text-primary hover:underline">
             {t('sign_in')}

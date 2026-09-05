@@ -50,15 +50,15 @@ export default async function DataPage({ params }: { params: { orgSlug: string }
       <div className="max-w-3xl space-y-5 pb-10">
         <div>
           <h1 className="text-base font-semibold tracking-tight">Import and export</h1>
-          <p className="pt-1 text-[13px] text-muted-foreground">
+          <p className="pt-1 text-base text-muted-foreground">
             Move data in and out as CSV. Exports contain only what you can already see.
           </p>
         </div>
 
         <section className="rounded-lg border border-border bg-surface shadow-card">
           <header className="border-b border-border-subtle px-5 py-4">
-            <h2 className="text-sm font-semibold">Export</h2>
-            <p className="pt-1 text-[13px] text-muted-foreground">
+            <h2 className="text-ui font-semibold">Export</h2>
+            <p className="pt-1 text-base text-muted-foreground">
               Downloads immediately. Opens in Excel, Numbers or Sheets.
             </p>
           </header>
@@ -87,7 +87,7 @@ export default async function DataPage({ params }: { params: { orgSlug: string }
         {jobs && jobs.length > 0 ? (
           <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-card">
             <header className="border-b border-border-subtle px-5 py-3">
-              <h2 className="text-sm font-semibold">History</h2>
+              <h2 className="text-ui font-semibold">History</h2>
             </header>
             <ul className="divide-y divide-border-subtle">
               {jobs.map((job) => {
@@ -99,7 +99,7 @@ export default async function DataPage({ params }: { params: { orgSlug: string }
                 return (
                   <li
                     key={job.id}
-                    className="flex flex-wrap items-center gap-2 px-5 py-2.5 text-[13px]"
+                    className="flex flex-wrap items-center gap-2 px-5 py-2.5 text-base"
                   >
                     <Badge
                       variant={

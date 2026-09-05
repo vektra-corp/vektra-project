@@ -164,15 +164,15 @@ export function DashboardGrid({
                 {addable.map((type) => (
                   <DropdownMenuItem key={type} onSelect={() => addWidget(type)}>
                     <span className="min-w-0">
-                      <span className="block text-[13px]">{WIDGET_SPECS[type].label}</span>
-                      <span className="block text-xs text-faint">
+                      <span className="block text-base">{WIDGET_SPECS[type].label}</span>
+                      <span className="block text-nav text-faint">
                         {WIDGET_SPECS[type].description}
                       </span>
                     </span>
                   </DropdownMenuItem>
                 ))}
                 {addable.length === 0 ? (
-                  <p className="px-2 py-3 text-center text-xs text-faint">
+                  <p className="px-2 py-3 text-center text-nav text-faint">
                     Every widget is already placed.
                   </p>
                 ) : null}
@@ -275,7 +275,7 @@ export function DashboardGrid({
 
                   <div className={cn('h-full', editing && 'pointer-events-none select-none')}>
                     {widgets[placement.type] ?? (
-                      <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border text-xs text-faint">
+                      <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border text-nav text-faint">
                         {WIDGET_SPECS[placement.type].label} is unavailable
                       </div>
                     )}

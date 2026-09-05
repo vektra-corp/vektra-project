@@ -60,7 +60,7 @@ export default async function ContactsPage({
   return (
     <>
       <div className="flex items-center gap-3 px-5 pb-3">
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           {rows.length} {rows.length === 1 ? 'contact' : 'contacts'}
         </p>
         <div className="ms-auto">
@@ -72,8 +72,8 @@ export default async function ContactsPage({
         {rows.length === 0 ? (
           <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">
             <ContactIcon className="h-6 w-6 text-faint" aria-hidden />
-            <p className="pt-3 text-[13px] text-muted-foreground">No contacts yet.</p>
-            <p className="pt-1 text-xs text-faint">
+            <p className="pt-3 text-base text-muted-foreground">No contacts yet.</p>
+            <p className="pt-1 text-nav text-faint">
               Add a client or vendor before raising a document.
             </p>
           </div>
@@ -82,7 +82,7 @@ export default async function ContactsPage({
             {rows.map((contact) => (
               <li key={contact.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium">
+                  <p className="truncate text-base font-medium">
                     {contact.contactName}
                     {contact.companyName ? (
                       <span className="ps-2 text-muted-foreground">{contact.companyName}</span>

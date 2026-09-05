@@ -64,7 +64,7 @@ export default async function WorkflowPage({
             <div className="min-w-0 flex-1">
               <h1 className="text-base font-semibold tracking-tight">{workflow.name}</h1>
               {workflow.description ? (
-                <p className="pt-1 text-[13px] text-muted-foreground">{workflow.description}</p>
+                <p className="pt-1 text-base text-muted-foreground">{workflow.description}</p>
               ) : null}
             </div>
             {canEdit ? (
@@ -86,7 +86,7 @@ export default async function WorkflowPage({
           ) : null}
 
           {workflow.trigger_type === 'schedule' ? (
-            <p className="rounded-lg border border-border-subtle bg-surface px-4 py-2.5 text-xs">
+            <p className="rounded-lg border border-border-subtle bg-surface px-4 py-2.5 text-nav">
               <span className="label-meta pe-2 text-faint">Schedule</span>
               <span className="text-muted-foreground">
                 {describeSchedule(parseSchedule((workflow.trigger_config as { schedule?: unknown })?.schedule))}
@@ -110,7 +110,7 @@ export default async function WorkflowPage({
               <h2 className="label-meta text-faint">Recent runs</h2>
             </header>
             {!runs?.length ? (
-              <p className="px-4 py-8 text-center text-[13px] text-faint">
+              <p className="px-4 py-8 text-center text-base text-faint">
                 This workflow has not run yet.
               </p>
             ) : (
@@ -143,7 +143,7 @@ export default async function WorkflowPage({
             )}
           </section>
 
-          <p className="text-xs text-faint">
+          <p className="text-nav text-faint">
             Active workflows are dispatched every couple of minutes from the event log. Delays,
             task creation and outbound webhooks are recorded as skipped — those actions are not
             implemented yet.{' '}

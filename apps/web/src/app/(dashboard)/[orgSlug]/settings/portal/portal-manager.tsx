@@ -81,7 +81,7 @@ export function PortalManager({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           External people see only the projects ticked below, and never internal comments.
         </p>
         <Button size="sm" onClick={() => setOpen(true)} disabled={atLimit}>
@@ -103,7 +103,7 @@ export function PortalManager({
 
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border bg-surface shadow-card">
         {portalUsers.length === 0 ? (
-          <li className="px-4 py-10 text-center text-sm text-muted-foreground">
+          <li className="px-4 py-10 text-center text-ui text-muted-foreground">
             No external users yet.
           </li>
         ) : (
@@ -141,7 +141,7 @@ export function PortalManager({
               <Label htmlFor="portal-name">Full name</Label>
               <Input id="portal-name" name="full_name" required autoFocus maxLength={120} />
               {fieldError('full_name') ? (
-                <p className="text-xs text-destructive">{fieldError('full_name')}</p>
+                <p className="text-nav text-destructive">{fieldError('full_name')}</p>
               ) : null}
             </div>
 
@@ -149,7 +149,7 @@ export function PortalManager({
               <Label htmlFor="portal-email">Email</Label>
               <Input id="portal-email" name="email" type="email" required />
               {fieldError('email') ? (
-                <p className="text-xs text-destructive">{fieldError('email')}</p>
+                <p className="text-nav text-destructive">{fieldError('email')}</p>
               ) : null}
             </div>
 
@@ -204,7 +204,7 @@ function PortalUserRowItem({
     <li className="px-4 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-medium">{user.fullName}</p>
+          <p className="truncate text-base font-medium">{user.fullName}</p>
           <p className="label-meta pt-1 text-faint">{user.email}</p>
         </div>
         <Badge variant={user.status === 'active' ? 'success' : 'outline'} shape="meta">
@@ -222,7 +222,7 @@ function PortalUserRowItem({
             {projects.map((project) => (
               <label
                 key={project.id}
-                className="flex cursor-pointer items-center gap-2.5 text-[13px]"
+                className="flex cursor-pointer items-center gap-2.5 text-base"
               >
                 <Checkbox
                   size="sm"
@@ -235,7 +235,7 @@ function PortalUserRowItem({
           </div>
         </fieldset>
       ) : (
-        <p className="pt-2 text-xs text-faint">Create a project before sharing one.</p>
+        <p className="pt-2 text-nav text-faint">Create a project before sharing one.</p>
       )}
     </li>
   )

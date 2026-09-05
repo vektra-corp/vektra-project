@@ -31,7 +31,7 @@ export function ForgotPasswordForm() {
   // Success is reported whether or not the address is registered, so this screen
   // cannot be used to enumerate accounts.
   if (state?.ok) {
-    return <p className="py-8 text-center text-[13px] text-muted-foreground">{tCommon('loading')}</p>
+    return <p className="py-8 text-center text-base text-muted-foreground">{tCommon('loading')}</p>
   }
 
   const emailError = state && !state.ok ? state.fieldErrors?.email?.[0] : undefined
@@ -48,7 +48,7 @@ export function ForgotPasswordForm() {
           required
           aria-invalid={Boolean(emailError)}
         />
-        {emailError ? <p className="text-xs text-destructive">{emailError}</p> : null}
+        {emailError ? <p className="text-nav text-destructive">{emailError}</p> : null}
       </div>
       <SubmitButton label={t('send_reset_link')} />
     </form>

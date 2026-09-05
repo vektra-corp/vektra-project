@@ -136,7 +136,7 @@ export function DocumentEditor({
             className="h-9 max-w-md text-base font-semibold"
           />
         ) : (
-          <h1 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight">
+          <h1 className="min-w-0 flex-1 truncate text-head font-semibold tracking-tight">
             {document.title}
           </h1>
         )}
@@ -212,7 +212,7 @@ export function DocumentEditor({
             minHeight="min-h-[320px]"
             onSubmit={saveBody}
           />
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {error ? <p className="text-nav text-destructive">{error}</p> : null}
           <div className="flex items-center gap-2">
             <Button type="submit" size="sm" loading={pending}>
               Save
@@ -234,7 +234,7 @@ export function DocumentEditor({
       ) : hasContent ? (
         <RichTextView doc={document.content} className="rounded-lg border border-border bg-surface p-5 shadow-card" />
       ) : (
-        <p className="rounded-lg border border-dashed border-border px-5 py-10 text-center text-[13px] text-faint">
+        <p className="rounded-lg border border-dashed border-border px-5 py-10 text-center text-base text-faint">
           {canEdit ? 'This document is empty — add some content.' : 'This document is empty.'}
         </p>
       )}

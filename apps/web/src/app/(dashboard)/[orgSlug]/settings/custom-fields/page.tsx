@@ -58,7 +58,7 @@ export default async function CustomFieldsPage({ params }: { params: { orgSlug: 
     <PageBody>
       <div className="max-w-3xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             Extra fields on tasks, projects, contacts and commercial documents.
           </p>
           <FieldDialog orgSlug={params.orgSlug} />
@@ -67,7 +67,7 @@ export default async function CustomFieldsPage({ params }: { params: { orgSlug: 
         {rows.length === 0 ? (
           <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">
             <SlidersHorizontal className="h-6 w-6 text-faint" aria-hidden />
-            <p className="pt-3 text-[13px] text-muted-foreground">No custom fields yet.</p>
+            <p className="pt-3 text-base text-muted-foreground">No custom fields yet.</p>
           </div>
         ) : (
           CUSTOM_FIELD_ENTITIES.map((entity) => {
@@ -91,7 +91,7 @@ export default async function CustomFieldsPage({ params }: { params: { orgSlug: 
                       <span className="label-meta w-8 shrink-0 text-faint">{field.position}</span>
 
                       <div className="min-w-0 flex-1">
-                        <p className="flex items-center gap-2 text-[13px] font-medium">
+                        <p className="flex items-center gap-2 text-base font-medium">
                           <span className="truncate">{field.name}</span>
                           {field.isRequired ? (
                             <Badge variant="warning" shape="meta">

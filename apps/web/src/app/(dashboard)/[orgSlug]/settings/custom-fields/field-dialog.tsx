@@ -189,7 +189,7 @@ export function FieldDialog({ orgSlug, field }: { orgSlug: string; field?: Field
                 />
               </Field>
 
-              <label className="flex cursor-pointer items-end gap-2.5 pb-2 text-[13px]">
+              <label className="flex cursor-pointer items-end gap-2.5 pb-2 text-base">
                 <Checkbox name="is_required" size="sm" defaultChecked={field?.isRequired} />
                 Required
               </label>

@@ -66,13 +66,13 @@ export default async function EditCommercialDocPage({
     return (
       <PageBody className="pt-2">
         <div className="mx-auto max-w-md rounded-lg border border-dashed border-border px-5 py-12 text-center">
-          <p className="text-[13px] font-medium">{doc.doc_number} can no longer be edited</p>
-          <p className="pt-1.5 text-[13px] text-muted-foreground">
+          <p className="text-base font-medium">{doc.doc_number} can no longer be edited</p>
+          <p className="pt-1.5 text-base text-muted-foreground">
             It is {doc.status.replace('_', ' ')}, and the other party already has this version.
           </p>
           <Link
             href={`${base}/${doc.id}`}
-            className="mt-4 inline-block text-[13px] text-primary hover:underline"
+            className="mt-4 inline-block text-base text-primary hover:underline"
           >
             Back to the document
           </Link>

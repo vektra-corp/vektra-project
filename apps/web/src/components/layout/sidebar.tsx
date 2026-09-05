@@ -1,5 +1,6 @@
 import type { OrgRole } from '@pm/shared/constants'
 import { Kbd, Separator } from '@pm/ui'
+import { ChevronDown, Search } from 'lucide-react'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { BrandMark } from './brand-mark'
@@ -112,36 +113,41 @@ export async function Sidebar({
   }))
 
   return (
-    <aside className="border-border-subtle bg-surface hidden w-64 shrink-0 flex-col border-e md:flex">
-      <div className="flex items-center gap-2.5 px-3 py-3">
+    <aside className="border-border bg-surface hidden w-[242px] shrink-0 flex-col border-e px-3 py-3.5 md:flex">
+      <Link
+        href={`/${orgSlug}/settings/general`}
+        className="hover:bg-surface-hover/60 flex items-center gap-[9px] rounded-lg px-1.5 py-1 transition-colors"
+      >
         <BrandMark />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold leading-tight">{orgName}</p>
-          <p className="label-meta-sm text-faint truncate pt-1">{t('workspaceCaption')}</p>
+          <p className="truncate text-base font-semibold tracking-[0.02em] leading-tight">
+            {orgName}
+          </p>
+          <p className="label-meta text-faint truncate pt-1 tracking-[0.08em]">
+            {t('workspaceCaption')}
+          </p>
         </div>
-      </div>
+        <span
+          className="border-input text-faint grid h-[18px] w-[18px] shrink-0 place-items-center rounded-[5px] border text-[9px]"
+          aria-hidden
+        >
+          <ChevronDown className="h-2.5 w-2.5" />
+        </span>
+      </Link>
 
-      <div className="px-3 pb-1">
+      <div className="pt-[15px]">
         <Link
           href={`/${orgSlug}/search`}
-          className="border-border-subtle bg-surface-raised text-faint hover:border-border hover:text-muted-foreground flex h-9 items-center gap-2 rounded-lg border px-2.5 text-[13px] transition-colors"
+          className="border-border bg-sunk text-faint hover:border-input hover:text-muted-foreground flex items-center gap-2 rounded-lg border px-2.5 py-[7px] text-nav transition-colors"
         >
-          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" aria-hidden>
-            <circle cx="7" cy="7" r="4.25" stroke="currentColor" strokeWidth="1.5" />
-            <path
-              d="m10.5 10.5 3 3"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </svg>
+          <Search className="h-3 w-3 shrink-0" aria-hidden />
           <span className="flex-1 text-start">{t('jumpTo')}</span>
           <Kbd>⌘K</Kbd>
         </Link>
       </div>
 
-      <nav className="scrollbar-slim flex-1 overflow-y-auto px-2 pb-4" aria-label="Primary">
-        <ul className="space-y-px pt-2">
+      <nav className="scrollbar-slim -mx-1 flex-1 overflow-y-auto px-1 pb-4" aria-label="Primary">
+        <ul className="space-y-0.5 pt-[15px]">
           {primary.map((item) => (
             <SidebarItem key={item.key} item={item} />
           ))}
@@ -194,7 +200,7 @@ export async function Sidebar({
 
         {workspaces.length === 0 ? (
           <SidebarSection title={t('work')}>
-            <li className="text-faint px-2.5 py-2 text-[13px]">{t('noWorkspaces')}</li>
+            <li className="text-faint px-2.5 py-2 text-base">{t('noWorkspaces')}</li>
           </SidebarSection>
         ) : null}
 
@@ -255,7 +261,7 @@ export async function Sidebar({
         ) : null}
       </nav>
 
-      <div className="mt-auto px-2 pb-2">
+      <div className="mt-auto pt-2">
         <Separator className="mb-2" />
         {atLeast('admin') ? (
           <ul className="space-y-px pb-1">

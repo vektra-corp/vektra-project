@@ -135,7 +135,7 @@ export function NewWorkflowDialog({ scope }: { scope: Scope }) {
             {trigger === 'schedule' ? <ScheduleFields /> : null}
 
             {trigger === 'webhook' ? (
-              <p className="rounded-md border border-border-subtle bg-surface-raised px-3 py-2 text-xs text-muted-foreground">
+              <p className="rounded-md border border-border-subtle bg-card px-3 py-2 text-nav text-muted-foreground">
                 A trigger URL is generated when you create this workflow. It is shown once
                 and cannot be retrieved later — copy it before closing.
               </p>
@@ -160,7 +160,7 @@ function ScheduleFields() {
   const [frequency, setFrequency] = useState('daily')
 
   return (
-    <div className="space-y-3 rounded-md border border-border-subtle bg-surface-raised p-3">
+    <div className="space-y-3 rounded-md border border-border-subtle bg-card p-3">
       <div
         onChange={(event) => {
           const target = event.target as HTMLSelectElement
@@ -219,7 +219,7 @@ function ScheduleFields() {
         </Field>
       </div>
 
-      <p className="text-xs text-faint">Times are in the organization&apos;s timezone.</p>
+      <p className="text-nav text-faint">Times are in the organization&apos;s timezone.</p>
     </div>
   )
 }
@@ -245,7 +245,7 @@ function TokenReveal({ token, onDone }: { token: string; onDone: () => void }) {
         </AlertDescription>
       </Alert>
 
-      <code className="block break-all rounded-md border border-border-subtle bg-surface-raised p-3 font-mono text-[11px] text-muted-foreground">
+      <code className="block break-all rounded-md border border-border-subtle bg-card p-3 font-mono text-[11px] text-muted-foreground">
         {url}
       </code>
 
@@ -298,7 +298,7 @@ export function WebhookTrigger({
   }
 
   return (
-    <div className="space-y-2 rounded-lg border border-border-subtle bg-surface px-4 py-3 text-xs">
+    <div className="space-y-2 rounded-lg border border-border-subtle bg-surface px-4 py-3 text-nav">
       <div className="flex flex-wrap items-center gap-2">
         <span className="label-meta text-faint">Webhook</span>
         <span className="text-muted-foreground">
@@ -325,7 +325,7 @@ export function WebhookTrigger({
           <p className="text-muted-foreground">
             Copy this now — the old URL has stopped working and this one will not be shown again.
           </p>
-          <code className="block break-all rounded-md border border-border-subtle bg-surface-raised p-2.5 font-mono text-[11px] text-muted-foreground">
+          <code className="block break-all rounded-md border border-border-subtle bg-card p-2.5 font-mono text-[11px] text-muted-foreground">
             {`${typeof window === 'undefined' ? '' : window.location.origin}/api/webhooks/workflows/${token}`}
           </code>
         </>

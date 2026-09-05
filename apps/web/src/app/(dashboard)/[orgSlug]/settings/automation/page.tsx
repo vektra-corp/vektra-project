@@ -84,7 +84,7 @@ export default async function AutomationSettingsPage({
     <PageBody>
       <div className="max-w-3xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-base text-muted-foreground">
             Assign new tasks automatically. Rules run every couple of minutes against tasks created
             in the last hour that still have no assignee.
           </p>
@@ -98,8 +98,8 @@ export default async function AutomationSettingsPage({
         {rows.length === 0 ? (
           <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">
             <Workflow className="h-6 w-6 text-faint" aria-hidden />
-            <p className="pt-3 text-[13px] text-muted-foreground">No assignment rules yet.</p>
-            <p className="pt-1 max-w-sm text-xs text-faint">
+            <p className="pt-3 text-base text-muted-foreground">No assignment rules yet.</p>
+            <p className="pt-1 max-w-sm text-nav text-faint">
               A rule with no conditions catches every new task; add a priority or label to narrow
               it.
             </p>
@@ -115,7 +115,7 @@ export default async function AutomationSettingsPage({
                     }`}
                     aria-hidden
                   />
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                  <span className="min-w-0 flex-1 truncate text-base font-medium">
                     {rule.name}
                   </span>
 
@@ -163,7 +163,7 @@ export default async function AutomationSettingsPage({
                 </p>
 
                 {rule.assigneePool.length > 0 ? (
-                  <p className="pt-1 text-xs text-muted-foreground">
+                  <p className="pt-1 text-nav text-muted-foreground">
                     {rule.assigneePool
                       .map((userId) => nameFor.get(userId) ?? 'Unknown')
                       .join(' → ')}

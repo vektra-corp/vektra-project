@@ -81,11 +81,11 @@ export function CustomFieldInputs({
   }
 
   const inputClass =
-    'flex h-9 w-full rounded-md border border-input bg-surface-raised px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:opacity-60'
+    'flex h-9 w-full rounded-md border border-input bg-card px-3 text-ui focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 disabled:opacity-60'
 
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-medium">Custom fields</h2>
+      <h2 className="text-ui font-medium">Custom fields</h2>
 
       <dl className="space-y-3">
         {fields.map((field) => {
@@ -146,7 +146,7 @@ export function CustomFieldInputs({
                 />
               )}
 
-              {error ? <p className="text-xs text-destructive">{error}</p> : null}
+              {error ? <p className="text-nav text-destructive">{error}</p> : null}
             </div>
           )
         })}

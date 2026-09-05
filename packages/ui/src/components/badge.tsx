@@ -8,17 +8,24 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: 'border-transparent bg-primary text-primary-foreground',
-        secondary: 'border-transparent bg-surface-hover text-muted-foreground',
+        secondary: 'border-transparent bg-chip text-muted-foreground',
         destructive: 'border-transparent bg-destructive/15 text-destructive',
         success: 'border-transparent bg-success/15 text-success',
         warning: 'border-transparent bg-warning/15 text-warning',
-        outline: 'border-border text-muted-foreground',
+        outline: 'border-input text-muted-foreground',
+        /* Carries its colour from the caller (priority, status, health). */
+        bare: 'border-transparent bg-chip',
       },
-      /* The Vektra chrome uses tracked monospace caps for every status chip;
-       * `pill` is the rounded sans form used for labels and plan names. */
+      /*
+       * Three shapes, all from the design:
+       *  meta  — tracked monospace caps, for section and column labels
+       *  chip  — the 11.5px status tag on cards and table rows
+       *  pill  — the rounded sans form used for labels and plan names
+       */
       shape: {
-        meta: 'label-meta rounded px-1.5 py-1',
-        pill: 'rounded-full px-2.5 py-0.5 text-xs font-medium',
+        meta: 'label-meta rounded-sm px-1.5 py-1',
+        chip: 'rounded-sm px-2 py-[3px] text-micro font-medium',
+        pill: 'rounded-full px-2.5 py-0.5 text-micro font-medium',
       },
     },
     defaultVariants: { variant: 'default', shape: 'pill' },

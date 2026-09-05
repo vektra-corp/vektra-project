@@ -16,12 +16,12 @@ export default async function LoginPage({
   return (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">{t('login_title')}</CardTitle>
+        <CardTitle className="text-head">{t('login_title')}</CardTitle>
         <CardDescription>{t('login_subtitle')}</CardDescription>
       </CardHeader>
       <CardContent>
         <LoginForm next={searchParams.next} />
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-6 text-center text-ui text-muted-foreground">
           {t('no_account')}{' '}
           <Link href="/signup" className="font-medium text-primary hover:underline">
             {t('sign_up')}

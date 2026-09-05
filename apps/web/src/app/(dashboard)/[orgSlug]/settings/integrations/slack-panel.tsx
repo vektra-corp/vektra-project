@@ -85,8 +85,8 @@ export function SlackPanel({
     return (
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface px-5 py-4 shadow-card">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">Slack</p>
-          <p className="pt-1 text-[13px] text-muted-foreground">
+          <p className="text-ui font-medium">Slack</p>
+          <p className="pt-1 text-base text-muted-foreground">
             Post activity to a channel. We ask only for permission to post — never to read
             your messages.
           </p>
@@ -105,15 +105,15 @@ export function SlackPanel({
     <div className="rounded-lg border border-border bg-surface shadow-card">
       <div className="flex flex-wrap items-center gap-3 border-b border-border-subtle px-5 py-4">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">
+          <p className="text-ui font-medium">
             Slack
             {config.teamName ? (
-              <span className="ps-2 text-[13px] font-normal text-muted-foreground">
+              <span className="ps-2 text-base font-normal text-muted-foreground">
                 {config.teamName}
               </span>
             ) : null}
           </p>
-          <p className="pt-1 text-[13px] text-muted-foreground">
+          <p className="pt-1 text-base text-muted-foreground">
             {config.channelName
               ? `Posting to #${config.channelName}`
               : 'Choose a channel to start posting.'}
@@ -181,7 +181,7 @@ export function SlackPanel({
                 const hidden = event.target.form?.elements.namedItem('channelName')
                 if (hidden instanceof HTMLInputElement) hidden.value = name
               }}
-              className="h-9 w-full rounded-md border border-border bg-surface-raised px-3 text-[13px]"
+              className="h-9 w-full rounded-md border border-border bg-card px-3 text-base"
             >
               <option value="">No channel</option>
               {channels.map((channel) => (
@@ -191,7 +191,7 @@ export function SlackPanel({
               ))}
             </select>
           ) : (
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               {config.channelName
                 ? `Currently #${config.channelName}. Load channels to change it.`
                 : 'Load channels to choose where to post.'}
@@ -207,12 +207,12 @@ export function SlackPanel({
           <legend className="label-meta pb-1 text-faint">Events to post</legend>
           {groupEvents().map(([resource, events]) => (
             <div key={resource} className="space-y-1.5">
-              <p className="text-xs font-medium capitalize text-muted-foreground">
+              <p className="text-nav font-medium capitalize text-muted-foreground">
                 {resource.replace('_', ' ')}
               </p>
               <div className="grid gap-1.5 sm:grid-cols-2">
                 {events.map((event) => (
-                  <label key={event} className="flex items-center gap-2 text-[13px]">
+                  <label key={event} className="flex items-center gap-2 text-base">
                     <Checkbox
                       name="events"
                       value={event}

@@ -34,7 +34,7 @@ export function ProjectProgressList({
             <div className="flex items-center justify-between gap-3">
               <Link
                 href={`/${orgSlug}/${project.workspaceSlug}/projects/${project.id}/board`}
-                className="min-w-0 truncate text-[13px] transition-colors hover:text-primary"
+                className="min-w-0 truncate text-base transition-colors hover:text-primary"
               >
                 {project.name}
               </Link>

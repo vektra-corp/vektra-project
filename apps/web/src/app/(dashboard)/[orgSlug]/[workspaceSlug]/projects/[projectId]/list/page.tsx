@@ -75,7 +75,7 @@ export default async function ListPage({
       cell: (row) => (
         <Link
           href={`${base}/tasks/${row.id}`}
-          className="text-foreground hover:text-primary text-[13px] transition-colors"
+          className="text-foreground hover:text-primary text-base transition-colors"
         >
           {row.title}
         </Link>
@@ -108,7 +108,7 @@ export default async function ListPage({
                 {initials(row.assignee.full_name)}
               </AvatarFallback>
             </Avatar>
-            <span className="text-muted-foreground truncate text-[13px]">
+            <span className="text-muted-foreground truncate text-base">
               {row.assignee.full_name}
             </span>
           </span>

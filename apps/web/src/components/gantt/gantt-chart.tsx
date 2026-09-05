@@ -213,7 +213,7 @@ export function GanttChart({
                   style={{ height: ROW_HEIGHT }}
                 >
                   <span className="label-meta shrink-0 text-faint">#{entry.task.taskNumber}</span>
-                  <span className="min-w-0 flex-1 truncate text-[13px]">{entry.task.title}</span>
+                  <span className="min-w-0 flex-1 truncate text-base">{entry.task.title}</span>
                 </div>
               ))}
             </div>
@@ -306,14 +306,14 @@ export function GanttChart({
             {unscheduled.map((task) => (
               <li
                 key={task.id}
-                className="rounded-md border border-dashed border-border px-2.5 py-1.5 text-[13px] text-muted-foreground"
+                className="rounded-md border border-dashed border-border px-2.5 py-1.5 text-base text-muted-foreground"
               >
                 <span className="label-meta pe-2 text-faint">#{task.taskNumber}</span>
                 {task.title}
               </li>
             ))}
           </ul>
-          <p className="pt-2 text-xs text-faint">
+          <p className="pt-2 text-nav text-faint">
             Give these a start or due date to place them on the timeline.
           </p>
         </div>

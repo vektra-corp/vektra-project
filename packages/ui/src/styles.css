@@ -3,126 +3,155 @@
 @tailwind utilities;
 
 /*
- * Vektra design tokens.
+ * Vektra design tokens — see docs/design/vektra-tokens.md for the source values.
  *
  * The product is dark-first: `:root` carries the dark palette so the app paints
  * correctly before any theme class is applied and there is no light flash on
  * first render. `[data-theme='light']` opts back out. Every colour is an HSL
  * triple so Tailwind's opacity modifiers (bg-surface/60) keep working.
+ *
+ * The design specifies its hairlines as translucent white/ink over a panel
+ * (rgba(255,255,255,.07) and friends). Those are stored here pre-composited
+ * against the panel they sit on: a solid line renders identically on the
+ * surface it was designed for and, unlike an alpha, does not shift when it
+ * crosses a card, a menu or a drag preview.
  */
 @layer base {
   :root {
-    /* Canvas and panels, darkest to lightest. */
-    --background: 240 10% 3.9%;
-    --surface: 240 9% 5.1%;
-    --surface-raised: 240 7% 8.6%;
-    --surface-hover: 240 7% 11%;
-    --surface-overlay: 240 7% 10%;
+    /* Canvas and panels, darkest to lightest: bg → panel → card. */
+    --background: 220 23% 5%;
+    --surface: 218 25% 6.3%;
+    --surface-raised: 216 23% 8.6%;
+    --surface-hover: 218 11% 13%;
+    --surface-overlay: 216 23% 8.6%;
+    /* Recessed wells: inputs, search fields, mini-view tiles. */
+    --sunk: 216 26% 7.5%;
 
-    --foreground: 240 9% 91%;
-    --muted: 240 6% 14%;
-    --muted-foreground: 240 5% 62%;
-    --faint: 240 5% 42%;
+    /* Four text tiers: ink → ink2 → ink3 → ink4. */
+    --foreground: 218 26% 91.6%;
+    --muted: 218 11% 13%;
+    --muted-foreground: 218 13% 65%;
+    --faint: 218 10% 47%;
+    --subtle: 220 13% 35%;
 
-    --card: 240 7% 8.6%;
-    --card-foreground: 240 9% 91%;
+    --card: 216 23% 8.6%;
+    --card-foreground: 218 26% 91.6%;
 
-    --popover: 240 7% 10%;
-    --popover-foreground: 240 9% 91%;
+    --popover: 216 23% 8.6%;
+    --popover-foreground: 218 26% 91.6%;
 
-    --primary: 252 95% 70%;
-    --primary-foreground: 240 10% 6%;
+    /* Teal is the accent; the *button* is near-white on dark (design's --btn). */
+    --primary: 171 70% 45%;
+    --primary-foreground: 220 23% 5%;
+    --btn: 218 36% 96%;
+    --btn-ink: 220 23% 5%;
 
-    --secondary: 240 6% 14%;
-    --secondary-foreground: 240 9% 91%;
+    --secondary: 218 11% 13%;
+    --secondary-foreground: 218 26% 91.6%;
 
-    --accent: 240 6% 14%;
-    --accent-foreground: 240 9% 91%;
+    --accent: 218 11% 13%;
+    --accent-foreground: 218 26% 91.6%;
 
-    --destructive: 350 89% 60%;
+    --destructive: 0 66% 65%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 6% 14.5%;
-    --border-subtle: 240 6% 11%;
-    --input: 240 6% 16%;
-    --ring: 252 95% 70%;
+    --border: 218 11% 13%;
+    --border-subtle: 218 11% 10.5%;
+    --input: 218 8% 17.5%;
+    --ring: 171 70% 45%;
 
-    /* Brand mark gradient. */
-    --brand: 252 95% 70%;
-    --brand-from: 220 95% 68%;
-    --brand-to: 282 88% 68%;
+    /* Neutral fill for count pills, avatars and inert chips. */
+    --chip: 218 10% 12%;
+
+    /* Brand: the mark's teal → purple sweep, reused by progress fills. */
+    --brand: 171 70% 45%;
+    --brand-from: 171 70% 45%;
+    --brand-to: 277 82% 52%;
 
     /* Column / workflow status accents. */
-    --status-backlog: 240 5% 52%;
-    --status-progress: 158 74% 52%;
-    --status-review: 330 82% 68%;
-    --status-done: 258 90% 74%;
+    --status-backlog: 218 10% 47%;
+    --status-progress: 171 70% 45%;
+    --status-testing: 37 56% 50%;
+    --status-review: 271 91% 65%;
+    --status-done: 215 50% 47%;
 
     /* Priority stripe + label colours. */
-    --priority-critical: 340 85% 62%;
-    --priority-high: 40 92% 58%;
-    --priority-medium: 240 5% 38%;
-    --priority-low: 240 5% 30%;
+    --priority-critical: 0 66% 65%;
+    --priority-high: 37 56% 50%;
+    --priority-medium: 218 10% 47%;
+    --priority-low: 220 13% 35%;
 
-    --success: 158 74% 46%;
-    --warning: 40 92% 58%;
-    --danger: 350 89% 60%;
+    --success: 171 70% 45%;
+    --warning: 37 56% 50%;
+    --danger: 0 66% 65%;
 
-    --track: 240 6% 16%;
+    --track: 218 10% 12%;
 
-    --radius: 0.625rem;
+    /* Cards are 9px; md → 7px (buttons, tabs), sm → 5px (chips). */
+    --radius: 0.5625rem;
   }
 
   [data-theme='light'] {
-    --background: 240 20% 99%;
-    --surface: 0 0% 100%;
+    --background: 240 14% 99%;
+    --surface: 225 20% 96%;
     --surface-raised: 0 0% 100%;
-    --surface-hover: 240 20% 96%;
+    --surface-hover: 225 8% 92%;
     --surface-overlay: 0 0% 100%;
+    --sunk: 220 23% 95%;
 
-    --foreground: 240 20% 12%;
-    --muted: 240 20% 96%;
-    --muted-foreground: 240 6% 45%;
-    --faint: 240 6% 58%;
+    --foreground: 222 22% 11.6%;
+    --muted: 225 20% 96%;
+    --muted-foreground: 218 11% 40%;
+    --faint: 218 10% 56%;
+    --subtle: 218 12% 69%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 20% 12%;
+    --card-foreground: 222 22% 11.6%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 20% 12%;
+    --popover-foreground: 222 22% 11.6%;
 
-    --primary: 252 82% 58%;
+    --primary: 171 83% 33%;
     --primary-foreground: 0 0% 100%;
+    --btn: 222 22% 11.6%;
+    --btn-ink: 0 0% 100%;
 
-    --secondary: 240 20% 96%;
-    --secondary-foreground: 240 20% 12%;
+    --secondary: 225 20% 96%;
+    --secondary-foreground: 222 22% 11.6%;
 
-    --accent: 240 20% 96%;
-    --accent-foreground: 240 20% 12%;
+    --accent: 225 20% 96%;
+    --accent-foreground: 222 22% 11.6%;
 
-    --destructive: 350 78% 48%;
+    --destructive: 0 50% 53%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 15% 90%;
-    --border-subtle: 240 15% 94%;
-    --input: 240 15% 88%;
-    --ring: 252 82% 58%;
+    --border: 225 8% 88%;
+    --border-subtle: 225 8% 92%;
+    --input: 225 7% 82%;
+    --ring: 171 83% 33%;
 
-    --status-backlog: 240 5% 55%;
-    --status-progress: 158 64% 38%;
-    --status-review: 330 72% 55%;
-    --status-done: 258 70% 58%;
+    --chip: 225 12% 94%;
 
-    --priority-critical: 340 78% 50%;
-    --priority-high: 32 92% 45%;
-    --priority-medium: 240 5% 55%;
-    --priority-low: 240 5% 65%;
+    --brand: 171 83% 33%;
+    --brand-from: 171 83% 33%;
+    --brand-to: 273 79% 44%;
 
-    --success: 158 64% 38%;
-    --warning: 32 92% 45%;
-    --danger: 350 78% 48%;
+    --status-backlog: 218 10% 56%;
+    --status-progress: 171 83% 33%;
+    --status-testing: 39 77% 32%;
+    --status-review: 273 79% 44%;
+    --status-done: 215 59% 27%;
 
-    --track: 240 15% 90%;
+    --priority-critical: 0 50% 53%;
+    --priority-high: 39 77% 32%;
+    --priority-medium: 218 10% 56%;
+    --priority-low: 218 12% 69%;
+
+    --success: 171 83% 33%;
+    --warning: 39 77% 32%;
+    --danger: 0 50% 53%;
+
+    --track: 225 12% 94%;
   }
 }
 
@@ -141,6 +170,10 @@
 
   body {
     @apply bg-background text-foreground;
+    /* The design sets its body copy at 13px with a hair of negative tracking;
+       everything else is sized relative to that. */
+    font-size: 13px;
+    letter-spacing: -0.005em;
     font-feature-settings:
       'rlig' 1,
       'calt' 1;
@@ -161,24 +194,37 @@
    * The meta typeface. Every id, count, section heading and status label in the
    * Vektra UI is monospace, uppercase and widely tracked; this is that treatment
    * in one place so the rhythm cannot drift between components.
+   *
+   * Three sizes, matching the design: section labels (9px/.14em), column and
+   * toolbar labels (10px/.12em), and inline ids and counts (9.5px, untracked
+   * because they sit mid-sentence rather than as headings).
    */
   .label-meta {
-    @apply font-mono text-[10px] font-medium uppercase leading-none tracking-[0.14em];
+    @apply font-mono text-[9px] font-normal uppercase leading-none tracking-[0.14em];
+  }
+
+  .label-meta-lg {
+    @apply font-mono text-[10px] font-normal uppercase leading-none tracking-[0.12em];
   }
 
   .label-meta-sm {
     @apply font-mono text-[9px] font-medium uppercase leading-none tracking-[0.16em];
   }
 
-  /* Thin, dark scrollbars that do not interrupt a dark surface. */
+  /* Ids, point counts, timestamps — mono but not a heading, so no tracking. */
+  .label-id {
+    @apply font-mono text-[9.5px] font-normal leading-none tabular-nums;
+  }
+
+  /* Thin scrollbars that do not interrupt a panel. */
   .scrollbar-slim {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) transparent;
+    scrollbar-color: hsl(var(--input)) transparent;
   }
 
   .scrollbar-slim::-webkit-scrollbar {
-    height: 8px;
-    width: 8px;
+    height: 9px;
+    width: 9px;
   }
 
   .scrollbar-slim::-webkit-scrollbar-track {
@@ -186,11 +232,11 @@
   }
 
   .scrollbar-slim::-webkit-scrollbar-thumb {
-    border-radius: 9999px;
-    background-color: hsl(var(--border));
+    border-radius: 8px;
+    background-color: hsl(var(--input));
   }
 
   .scrollbar-slim::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(var(--input));
+    background-color: hsl(var(--subtle));
   }
 }

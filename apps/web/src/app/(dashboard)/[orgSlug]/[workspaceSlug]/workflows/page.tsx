@@ -48,7 +48,7 @@ export default async function WorkflowsPage({
       <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: 'Workflows' }]} />
 
       <div className="flex items-center gap-3 px-5 py-3">
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Run actions automatically when something happens.
         </p>
         <div className="ms-auto">
@@ -60,8 +60,8 @@ export default async function WorkflowsPage({
         {!workflows?.length ? (
           <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">
             <Split className="h-6 w-6 text-faint" aria-hidden />
-            <p className="pt-3 text-[13px] text-muted-foreground">No workflows yet.</p>
-            <p className="pt-1 max-w-sm text-xs text-faint">
+            <p className="pt-3 text-base text-muted-foreground">No workflows yet.</p>
+            <p className="pt-1 max-w-sm text-nav text-faint">
               A workflow reacts to an event, checks a condition, and does something.
             </p>
           </div>
@@ -86,7 +86,7 @@ export default async function WorkflowsPage({
                     />
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-medium">{workflow.name}</p>
+                      <p className="truncate text-base font-medium">{workflow.name}</p>
                       <p className="label-meta pt-1 text-faint">
                         {TRIGGER_LABELS[workflow.trigger_type] ?? workflow.trigger_type}
                         <span className="px-1.5 opacity-50">·</span>

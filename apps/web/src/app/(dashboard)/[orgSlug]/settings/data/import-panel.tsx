@@ -85,8 +85,8 @@ export function ImportPanel({
   return (
     <section className="rounded-lg border border-border bg-surface shadow-card">
       <header className="border-b border-border-subtle px-5 py-4">
-        <h2 className="text-sm font-semibold">Import from CSV</h2>
-        <p className="pt-1 text-[13px] text-muted-foreground">
+        <h2 className="text-ui font-semibold">Import from CSV</h2>
+        <p className="pt-1 text-base text-muted-foreground">
           The file is read and checked before anything is saved.
         </p>
       </header>
@@ -101,7 +101,7 @@ export function ImportPanel({
               id="import-entity"
               value={entity}
               onChange={(event) => setEntity(event.target.value as 'tasks' | 'contacts')}
-              className="h-9 w-full rounded-md border border-border bg-surface-raised px-3 text-[13px]"
+              className="h-9 w-full rounded-md border border-border bg-card px-3 text-base"
             >
               {IMPORTABLE_ENTITIES.map((value) => (
                 <option key={value} value={value}>
@@ -120,7 +120,7 @@ export function ImportPanel({
                 id="import-project"
                 value={projectId}
                 onChange={(event) => setProjectId(event.target.value)}
-                className="h-9 w-full rounded-md border border-border bg-surface-raised px-3 text-[13px]"
+                className="h-9 w-full rounded-md border border-border bg-card px-3 text-base"
               >
                 {projects.map((project) => (
                   <option key={project.id} value={project.id}>
@@ -143,7 +143,7 @@ export function ImportPanel({
               name="file"
               accept=".csv,text/csv"
               required
-              className="block w-full text-[13px] file:me-3 file:rounded-md file:border-0 file:bg-surface-raised file:px-3 file:py-1.5 file:text-[13px] file:text-foreground"
+              className="block w-full text-base file:me-3 file:rounded-md file:border-0 file:bg-card file:px-3 file:py-1.5 file:text-base file:text-foreground"
             />
           </div>
           <InspectButton />
@@ -158,7 +158,7 @@ export function ImportPanel({
 
         {preview?.ok ? (
           <>
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               {preview.data.totalRows} row{preview.data.totalRows === 1 ? '' : 's'} found.
               Check the column mapping below.
             </p>
@@ -168,7 +168,7 @@ export function ImportPanel({
                 <div key={field.key} className="flex flex-wrap items-center gap-3">
                   <label
                     htmlFor={`map-${field.key}`}
-                    className="w-40 shrink-0 text-[13px]"
+                    className="w-40 shrink-0 text-base"
                   >
                     {field.label}
                     {field.required ? <span className="text-destructive"> *</span> : null}
@@ -184,7 +184,7 @@ export function ImportPanel({
                         return next
                       })
                     }
-                    className="h-8 w-56 rounded-md border border-border bg-surface-raised px-2 text-[13px]"
+                    className="h-8 w-56 rounded-md border border-border bg-card px-2 text-base"
                   >
                     <option value="">— not imported —</option>
                     {preview.data.headers.map((header) => (
@@ -194,7 +194,7 @@ export function ImportPanel({
                     ))}
                   </select>
                   {field.hint ? (
-                    <span className="text-xs text-faint">{field.hint}</span>
+                    <span className="text-nav text-faint">{field.hint}</span>
                   ) : null}
                 </div>
               ))}

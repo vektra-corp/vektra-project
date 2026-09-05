@@ -20,11 +20,12 @@ const SegmentedGroup = React.forwardRef<HTMLDivElement, SegmentedProps>(
     <div
       ref={ref}
       role="group"
-      className={cn(
-        'border-border-subtle bg-surface inline-flex items-center gap-0.5 rounded-lg border p-0.5',
-        size === 'sm' && 'p-px',
-        className,
-      )}
+      /*
+       * Bare by default. The design draws these as a loose row of pills with
+       * only the selected one filled — no enclosing track — so the switcher
+       * reads as part of the toolbar rather than as a control sitting on it.
+       */
+      className={cn('inline-flex items-center gap-0.5', className)}
       {...props}
     />
   ),
@@ -47,12 +48,10 @@ function segmentedItemClass({
   size?: 'sm' | 'default'
 }) {
   return cn(
-    'inline-flex select-none items-center gap-1.5 rounded-md font-medium transition-colors',
+    'inline-flex select-none items-center gap-1.5 rounded-md transition-colors',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
-    size === 'sm' ? 'h-6 px-2 text-xs' : 'h-7 px-2.5 text-[13px]',
-    active
-      ? 'bg-surface-hover text-foreground shadow-card'
-      : 'text-muted-foreground hover:text-foreground',
+    size === 'sm' ? 'h-6 px-2 text-nav' : 'h-7 px-2.5 text-ui',
+    active ? 'bg-chip text-foreground font-semibold' : 'text-faint hover:text-foreground',
   )
 }
 

@@ -31,7 +31,7 @@ export function TaskPriorityIcon({
   const Icon = style.icon
 
   return (
-    <span className={cn('label-meta inline-flex items-center gap-1', style.className)}>
+    <span className={cn('label-id inline-flex items-center gap-1 uppercase', style.className)}>
       <Icon className="h-3 w-3" strokeWidth={2.5} aria-hidden />
       <span className={showLabel ? '' : 'sr-only'}>
         {style.label}
@@ -49,18 +49,29 @@ export const PRIORITY_STRIPE: Record<Priority, string> = {
   low: 'hsl(var(--priority-low))',
 }
 
+/*
+ * Status chips carry their colour on the text over one neutral fill, rather
+ * than each tinting its own background. On a dark ground five different
+ * translucent fills read as five different panel colours; one fill with five
+ * inks keeps the row calm and still tells them apart.
+ */
 const STATUS_STYLES: Record<TaskStatus, { className: string; label: string }> = {
-  todo: { className: 'bg-surface-hover text-muted-foreground', label: 'To Do' },
-  in_progress: { className: 'bg-status-progress/15 text-status-progress', label: 'In Progress' },
-  in_review: { className: 'bg-status-review/15 text-status-review', label: 'In Review' },
-  done: { className: 'bg-status-done/15 text-status-done', label: 'Done' },
-  cancelled: { className: 'bg-surface-hover text-faint line-through', label: 'Cancelled' },
+  todo: { className: 'text-muted-foreground', label: 'To Do' },
+  in_progress: { className: 'text-status-progress', label: 'In Progress' },
+  in_review: { className: 'text-status-review', label: 'In Review' },
+  done: { className: 'text-status-done', label: 'Done' },
+  cancelled: { className: 'text-faint line-through', label: 'Cancelled' },
 }
 
 export function TaskStatusBadge({ status }: { status: TaskStatus }) {
   const style = STATUS_STYLES[status]
   return (
-    <span className={cn('label-meta inline-flex rounded px-1.5 py-1', style.className)}>
+    <span
+      className={cn(
+        'bg-chip inline-flex rounded-sm px-2 py-[3px] text-micro font-medium uppercase',
+        style.className,
+      )}
+    >
       {style.label}
     </span>
   )
@@ -89,11 +100,11 @@ export function DueDate({
   return (
     <span
       className={cn(
-        'label-meta tabular-nums',
+        'label-id uppercase tabular-nums',
         overdue ? 'text-destructive' : dueToday ? 'text-warning' : 'text-faint',
       )}
     >
-      {overdue ? 'Overdue ' : ''}
+      {overdue ? 'OVERDUE ' : ''}
       {dueDate.slice(5)}
     </span>
   )

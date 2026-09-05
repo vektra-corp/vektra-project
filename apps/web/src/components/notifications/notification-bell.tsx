@@ -43,12 +43,12 @@ export async function NotificationBell({ orgSlug }: { orgSlug: string }) {
 
       <div className="absolute end-0 z-50 mt-2 w-80 rounded-md border bg-popover p-2 shadow-lg">
         <div className="flex items-center justify-between px-2 pb-2">
-          <span className="text-sm font-medium">Notifications</span>
+          <span className="text-ui font-medium">Notifications</span>
           {unread > 0 ? <Badge variant="secondary">{unread}</Badge> : null}
         </div>
 
         {unread === 0 ? (
-          <p className="px-2 py-6 text-center text-sm text-muted-foreground">
+          <p className="px-2 py-6 text-center text-ui text-muted-foreground">
             You are all caught up.
           </p>
         ) : (
@@ -60,8 +60,8 @@ export async function NotificationBell({ orgSlug }: { orgSlug: string }) {
                 | null
               const body = (
                 <div className="rounded-md px-2 py-2 hover:bg-accent">
-                  <p className="text-sm font-medium leading-snug">{notification.title}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-ui font-medium leading-snug">{notification.title}</p>
+                  <p className="text-nav text-muted-foreground">
                     {notification.body} · {formatRelativeTime(notification.created_at, locale)}
                   </p>
                 </div>

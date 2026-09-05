@@ -21,7 +21,7 @@ export function MfaChallengeForm({ next }: { next?: string }) {
     <form action={formAction} className="space-y-5">
       <div>
         <h1 className="text-base font-semibold tracking-tight">Two-step verification</h1>
-        <p className="pt-1 text-[13px] text-muted-foreground">
+        <p className="pt-1 text-base text-muted-foreground">
           Enter the six-digit code from your authenticator app.
         </p>
       </div>
@@ -36,7 +36,7 @@ export function MfaChallengeForm({ next }: { next?: string }) {
       {next ? <input type="hidden" name="next" value={next} /> : null}
 
       <div className="space-y-2">
-        <label htmlFor="mfa-code" className="text-sm font-medium">
+        <label htmlFor="mfa-code" className="text-ui font-medium">
           Code
         </label>
         <Input
@@ -51,13 +51,13 @@ export function MfaChallengeForm({ next }: { next?: string }) {
           required
           autoFocus
           placeholder="123456"
-          className="text-center font-mono text-lg tracking-[0.4em]"
+          className="text-center font-mono text-head tracking-[0.4em]"
         />
       </div>
 
       <SubmitButton />
 
-      <p className="text-xs text-faint">
+      <p className="text-nav text-faint">
         Lost your device? An owner or admin of your organization can remove the factor
         for you.
       </p>

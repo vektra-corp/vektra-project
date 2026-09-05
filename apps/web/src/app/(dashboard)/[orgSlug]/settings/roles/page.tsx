@@ -32,14 +32,14 @@ export default async function RolesSettingsPage({ params }: { params: { orgSlug:
           {ORG_ROLES.map((role) => (
             <div key={role} className="rounded-lg border border-border bg-surface p-4 shadow-card">
               <div className="flex items-center gap-2">
-                <h2 className="text-[13px] font-semibold">{ORG_ROLE_LABELS[role]}</h2>
+                <h2 className="text-base font-semibold">{ORG_ROLE_LABELS[role]}</h2>
                 {role === auth.orgRole ? (
                   <Badge variant="secondary" shape="meta">
                     You
                   </Badge>
                 ) : null}
               </div>
-              <p className="pt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+              <p className="pt-1.5 text-base leading-relaxed text-muted-foreground">
                 {ORG_ROLE_DESCRIPTIONS[role]}
               </p>
             </div>
@@ -48,8 +48,8 @@ export default async function RolesSettingsPage({ params }: { params: { orgSlug:
 
         <div className="overflow-hidden rounded-lg border border-border bg-surface shadow-card">
           <div className="border-b border-border-subtle px-5 py-4">
-            <h2 className="text-sm font-semibold">Permission matrix</h2>
-            <p className="pt-1 text-[13px] text-muted-foreground">
+            <h2 className="text-ui font-semibold">Permission matrix</h2>
+            <p className="pt-1 text-base text-muted-foreground">
               System roles are fixed. Custom roles are an Enterprise feature and arrive with the
               commercial modules.
             </p>
@@ -76,7 +76,7 @@ export default async function RolesSettingsPage({ params }: { params: { orgSlug:
 
                   return (
                     <TableRow key={`${module}.${action}`}>
-                      <TableCell className="text-[13px]">
+                      <TableCell className="text-base">
                         <span className="text-muted-foreground">{module}</span>
                         <span className="px-1 text-faint">.</span>
                         <span>{action}</span>

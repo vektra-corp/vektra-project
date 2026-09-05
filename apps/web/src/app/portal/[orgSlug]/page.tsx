@@ -37,8 +37,8 @@ export default async function PortalHomePage({ params }: { params: { orgSlug: st
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight">Shared with you</h1>
-        <p className="pt-1 text-[13px] text-muted-foreground">
+        <h1 className="text-head font-semibold tracking-tight">Shared with you</h1>
+        <p className="pt-1 text-base text-muted-foreground">
           {projects.length === 0
             ? 'Nothing has been shared with you yet.'
             : `${projects.length} project${projects.length === 1 ? '' : 's'} from ${portal.orgName}.`}
@@ -48,8 +48,8 @@ export default async function PortalHomePage({ params }: { params: { orgSlug: st
       {projects.length === 0 ? (
         <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">
           <FolderKanban className="h-6 w-6 text-faint" aria-hidden />
-          <p className="pt-3 text-[13px] text-muted-foreground">No shared projects.</p>
-          <p className="pt-1 text-xs text-faint">
+          <p className="pt-3 text-base text-muted-foreground">No shared projects.</p>
+          <p className="pt-1 text-nav text-faint">
             Someone at {portal.orgName} needs to grant you access.
           </p>
         </div>
@@ -62,7 +62,7 @@ export default async function PortalHomePage({ params }: { params: { orgSlug: st
                 className="block rounded-lg border border-border bg-surface p-4 shadow-card transition-colors hover:border-input"
               >
                 <div className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                  <span className="min-w-0 flex-1 truncate text-base font-medium">
                     {project.name}
                   </span>
                   <Badge variant={project.status === 'active' ? 'success' : 'secondary'} shape="meta">
@@ -70,7 +70,7 @@ export default async function PortalHomePage({ params }: { params: { orgSlug: st
                   </Badge>
                 </div>
                 {project.description ? (
-                  <p className="line-clamp-2 pt-2 text-[13px] text-muted-foreground">
+                  <p className="line-clamp-2 pt-2 text-base text-muted-foreground">
                     {project.description}
                   </p>
                 ) : null}

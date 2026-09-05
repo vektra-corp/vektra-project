@@ -52,8 +52,8 @@ export default async function DocumentsPage({
         {!documents?.length ? (
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-16 text-center">
             <FileText className="h-6 w-6 text-faint" aria-hidden />
-            <p className="pt-3 text-[13px] text-muted-foreground">No documents in this project.</p>
-            <p className="pt-1 text-xs text-faint">
+            <p className="pt-3 text-base text-muted-foreground">No documents in this project.</p>
+            <p className="pt-1 text-nav text-faint">
               Specs, decisions and notes that outlive a single task.
             </p>
           </div>
@@ -71,7 +71,7 @@ export default async function DocumentsPage({
                     className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-hover/50"
                   >
                     <FileText className="h-4 w-4 shrink-0 text-faint" aria-hidden />
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                    <span className="min-w-0 flex-1 truncate text-base font-medium">
                       {document.title}
                     </span>
 

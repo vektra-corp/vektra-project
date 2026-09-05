@@ -244,13 +244,14 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
     my_open_tasks: (
       <Widget
         title="My open tasks"
+        category="pm"
         className="h-full"
         action={{ label: 'All', href: `/${params.orgSlug}/my-tasks` }}
       >
         {mine.length === 0 ? (
           <WidgetEmpty>Nothing assigned to you right now.</WidgetEmpty>
         ) : (
-          <ul className="divide-y divide-border-subtle overflow-y-auto">
+          <ul className="divide-y divide-border overflow-y-auto">
             {mine.slice(0, 12).map((task) => {
               const slug = projectSlugs.get(task.project_id)
               const href = slug
@@ -263,12 +264,12 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
                   {href ? (
                     <Link
                       href={href}
-                      className="min-w-0 flex-1 truncate text-[13px] transition-colors hover:text-primary"
+                      className="min-w-0 flex-1 truncate text-base transition-colors hover:text-primary"
                     >
                       {task.title}
                     </Link>
                   ) : (
-                    <span className="min-w-0 flex-1 truncate text-[13px]">{task.title}</span>
+                    <span className="min-w-0 flex-1 truncate text-base">{task.title}</span>
                   )}
                   <DueDate dueDate={task.due_date} today={today} isClosed={false} />
                 </li>
@@ -279,7 +280,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
       </Widget>
     ),
     project_progress: (
-      <Widget title="Project progress" className="h-full">
+      <Widget title="Project progress" category="pm" className="h-full">
         {progressRows.length === 0 ? (
           <WidgetEmpty>No active projects yet.</WidgetEmpty>
         ) : (
@@ -290,11 +291,11 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
       </Widget>
     ),
     recent_activity: (
-      <Widget title="Recent activity" className="h-full">
+      <Widget title="Recent activity" category="pm" className="h-full">
         {activity.length === 0 ? (
           <WidgetEmpty>Nothing has changed yet.</WidgetEmpty>
         ) : (
-          <ul className="divide-y divide-border-subtle overflow-y-auto">
+          <ul className="divide-y divide-border overflow-y-auto">
             {activity.map((task) => {
               const slug = projectSlugs.get(task.project_id)
               const href = slug
@@ -307,19 +308,19 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
                     {task.assignee?.avatar_url ? (
                       <AvatarImage src={task.assignee.avatar_url} alt="" />
                     ) : null}
-                    <AvatarFallback className="bg-surface-hover text-[9px] font-medium uppercase text-muted-foreground">
+                    <AvatarFallback className="bg-chip text-[9px] font-medium uppercase text-muted-foreground">
                       {initials(task.assignee?.full_name ?? '?')}
                     </AvatarFallback>
                   </Avatar>
                   {href ? (
                     <Link
                       href={href}
-                      className="min-w-0 flex-1 truncate text-[13px] transition-colors hover:text-primary"
+                      className="min-w-0 flex-1 truncate text-base transition-colors hover:text-primary"
                     >
                       {task.title}
                     </Link>
                   ) : (
-                    <span className="min-w-0 flex-1 truncate text-[13px]">{task.title}</span>
+                    <span className="min-w-0 flex-1 truncate text-base">{task.title}</span>
                   )}
                   <span className="label-meta shrink-0 text-faint">
                     {formatRelativeTime(task.updated_at, locale)}
@@ -334,20 +335,21 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
     my_leave: (
       <Widget
         title="My leave"
+        category="hr"
         className="h-full"
         action={{ label: 'Request', href: `/${params.orgSlug}/team/leave` }}
       >
         {!leaveBalances.data?.length ? (
           <WidgetEmpty>{me ? 'No leave allocated yet.' : 'No employee record.'}</WidgetEmpty>
         ) : (
-          <ul className="divide-y divide-border-subtle overflow-y-auto">
+          <ul className="divide-y divide-border overflow-y-auto">
             {leaveBalances.data.map((balance) => {
               const type = Array.isArray(balance.leave_type)
                 ? balance.leave_type[0]
                 : balance.leave_type
               return (
                 <li key={balance.id} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="min-w-0 flex-1 truncate text-[13px]">
+                  <span className="min-w-0 flex-1 truncate text-base">
                     {type?.name ?? 'Leave'}
                   </span>
                   <span className="label-meta tabular-nums text-faint">
@@ -364,13 +366,14 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
     pending_approvals: (
       <Widget
         title="Leave approvals"
+        category="hr"
         className="h-full"
         action={{ label: 'All', href: `/${params.orgSlug}/team/leave` }}
       >
         {!pendingApprovals.data?.length ? (
           <WidgetEmpty>Nothing to approve.</WidgetEmpty>
         ) : (
-          <ul className="divide-y divide-border-subtle overflow-y-auto">
+          <ul className="divide-y divide-border overflow-y-auto">
             {pendingApprovals.data.map((request) => {
               const employee = Array.isArray(request.employee)
                 ? request.employee[0]
@@ -383,7 +386,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
 
               return (
                 <li key={request.id} className="flex items-center gap-3 px-4 py-2.5">
-                  <span className="min-w-0 flex-1 truncate text-[13px]">
+                  <span className="min-w-0 flex-1 truncate text-base">
                     {profile?.full_name ?? 'Unknown'}
                   </span>
                   <span className="label-meta text-faint">
@@ -397,7 +400,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
       </Widget>
     ),
     team_workload: (
-      <Widget title="Team workload" className="h-full">
+      <Widget title="Team workload" category="pm" className="h-full">
         <WidgetEmpty>Workload analytics arrive with timesheets in Phase 3.</WidgetEmpty>
       </Widget>
     ),

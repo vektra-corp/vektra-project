@@ -60,7 +60,7 @@ export function CommentThread({
 
   return (
     <section className="space-y-4">
-      <h2 className="text-sm font-medium">
+      <h2 className="text-ui font-medium">
         Comments <span className="tabular-nums text-muted-foreground">{comments.length}</span>
       </h2>
 
@@ -77,14 +77,14 @@ export function CommentThread({
             </Avatar>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium">
+                <span className="text-ui font-medium">
                   {comment.author?.full_name ?? 'Unknown'}
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-nav text-muted-foreground">
                   {formatRelativeTime(comment.created_at, locale)}
                 </span>
                 {comment.is_edited ? (
-                  <span className="text-xs text-muted-foreground">(edited)</span>
+                  <span className="text-nav text-muted-foreground">(edited)</span>
                 ) : null}
                 {comment.is_internal ? (
                   <Badge variant="secondary" className="text-[10px]">
@@ -97,7 +97,7 @@ export function CommentThread({
           </li>
         ))}
         {comments.length === 0 ? (
-          <li className="text-sm text-muted-foreground">No comments yet.</li>
+          <li className="text-ui text-muted-foreground">No comments yet.</li>
         ) : null}
       </ul>
 
@@ -117,9 +117,9 @@ export function CommentThread({
             minHeight="min-h-[84px]"
             onSubmit={submit}
           />
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {error ? <p className="text-nav text-destructive">{error}</p> : null}
           <div className="flex items-center justify-between gap-3">
-            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <label className="flex cursor-pointer items-center gap-2 text-nav text-muted-foreground">
               <Checkbox name="is_internal" size="sm" />
               Internal only (hidden from portal users)
             </label>

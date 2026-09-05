@@ -45,9 +45,9 @@ export function SettingsForm({
       className="rounded-lg border border-border bg-surface shadow-card"
     >
       <div className="border-b border-border-subtle px-5 py-4">
-        <h2 className="text-sm font-semibold">{title}</h2>
+        <h2 className="text-ui font-semibold">{title}</h2>
         {description ? (
-          <p className="pt-1 text-[13px] text-muted-foreground">{description}</p>
+          <p className="pt-1 text-base text-muted-foreground">{description}</p>
         ) : null}
       </div>
 
@@ -68,7 +68,7 @@ export function SettingsForm({
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-5 py-3">
-        <div className="text-xs text-faint">{footer}</div>
+        <div className="text-nav text-faint">{footer}</div>
         <SubmitButton label={submitLabel} />
       </div>
     </form>
@@ -95,8 +95,8 @@ export function Field({
     <div className={cn('space-y-1.5', className)}>
       <Label htmlFor={id}>{label}</Label>
       {children}
-      {hint && !error ? <p className="text-xs text-faint">{hint}</p> : null}
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {hint && !error ? <p className="text-nav text-faint">{hint}</p> : null}
+      {error ? <p className="text-nav text-destructive">{error}</p> : null}
     </div>
   )
 }
@@ -118,7 +118,7 @@ export function SelectField({
       id={id}
       name={name}
       defaultValue={defaultValue}
-      className="flex h-9 w-full rounded-md border border-input bg-surface-raised px-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+      className="flex h-9 w-full rounded-md border border-input bg-card px-3 text-ui transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>

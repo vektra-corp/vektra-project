@@ -174,7 +174,7 @@ export default async function TimesheetsPage({
           </div>
 
           {period?.status === 'rejected' && period.rejection_note ? (
-            <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-[13px] text-destructive">
+            <p className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-base text-destructive">
               Returned by your manager: {period.rejection_note}
             </p>
           ) : null}
@@ -197,7 +197,7 @@ export default async function TimesheetsPage({
                           </AvatarFallback>
                         </Avatar>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[13px]">{profile?.full_name ?? 'Unknown'}</p>
+                          <p className="truncate text-base">{profile?.full_name ?? 'Unknown'}</p>
                           <p className="label-meta pt-1 text-faint">
                             {row.period_start} → {row.period_end}
                           </p>

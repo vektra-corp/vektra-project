@@ -61,7 +61,7 @@ export function FilterChip({
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          'inline-flex h-7 select-none items-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium transition-colors',
+          'inline-flex h-7 select-none items-center gap-1.5 rounded-md px-2.5 text-base font-medium transition-colors',
           'focus-visible:ring-ring/60 focus-visible:outline-none focus-visible:ring-2',
           active
             ? 'bg-surface-hover text-foreground shadow-card'
@@ -79,7 +79,7 @@ export function FilterChip({
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {options.length === 0 ? (
-          <p className="text-faint px-2 py-3 text-center text-xs">Nothing to filter by</p>
+          <p className="text-faint px-2 py-3 text-center text-nav">Nothing to filter by</p>
         ) : (
           options.map((option) => (
             <DropdownMenuCheckboxItem

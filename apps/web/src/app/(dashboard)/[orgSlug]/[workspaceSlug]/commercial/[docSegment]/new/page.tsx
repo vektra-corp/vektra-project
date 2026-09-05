@@ -62,7 +62,7 @@ export default async function NewCommercialDocPage({
         <h1 className="text-base font-semibold tracking-tight">
           New {DOC_TYPE_LABELS[docType].singular.toLowerCase()}
         </h1>
-        <p className="pt-1 text-[13px] text-muted-foreground">
+        <p className="pt-1 text-base text-muted-foreground">
           Saved as a draft. The number is assigned now and never reused.
         </p>
       </div>

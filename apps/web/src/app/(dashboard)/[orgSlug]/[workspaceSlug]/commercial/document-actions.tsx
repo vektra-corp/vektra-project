@@ -192,7 +192,7 @@ export function DocumentActions({
           </DialogHeader>
 
           <div className="space-y-1.5">
-            <label htmlFor="payment-amount" className="text-sm font-medium">
+            <label htmlFor="payment-amount" className="text-ui font-medium">
               Amount
             </label>
             <Input

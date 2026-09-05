@@ -49,7 +49,7 @@ export function KanbanColumn({
   if (collapsed) {
     return (
       <section
-        className="border-border-subtle bg-surface/40 flex w-11 shrink-0 flex-col items-center gap-3 rounded-lg border py-3"
+        className="bg-background flex w-11 shrink-0 flex-col items-center gap-3 py-3.5"
         aria-label={`${column.name} column, collapsed`}
       >
         <button
@@ -66,46 +66,49 @@ export function KanbanColumn({
           aria-hidden
         />
         {/* Vertical label keeps a collapsed column readable without a tooltip. */}
-        <span className="label-meta text-muted-foreground [writing-mode:vertical-rl]">
+        <span className="label-meta-lg text-muted-foreground [writing-mode:vertical-rl]">
           {column.name}
         </span>
-        <span className="text-faint font-mono text-[10px] tabular-nums">{cards.length}</span>
+        <span className="text-subtle font-mono text-col tabular-nums">{cards.length}</span>
       </section>
     )
   }
 
   return (
-    <section className="flex w-[264px] shrink-0 flex-col" aria-label={`${column.name} column`}>
-      <header className="flex h-8 items-center gap-2 px-1">
+    <section
+      className="bg-background flex min-h-0 w-[272px] shrink-0 flex-col"
+      aria-label={`${column.name} column`}
+    >
+      <header className="flex items-center gap-2 px-3 pb-2.5 pt-3">
         <span
-          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          className="h-[5px] w-[5px] shrink-0 rounded-full"
           style={{ backgroundColor: accent }}
           aria-hidden
         />
-        <h2 className="label-meta text-muted-foreground truncate">{column.name}</h2>
-        <span className="text-faint font-mono text-[10px] tabular-nums">{cards.length}</span>
+        <h2 className="label-meta-lg text-muted-foreground truncate">{column.name}</h2>
+        <span className="text-subtle font-mono text-col tabular-nums">{cards.length}</span>
 
         <span className="ms-auto flex items-center gap-2">
           {column.wip_limit !== null ? (
             <span
               className={cn(
-                'label-meta tabular-nums',
-                overLimit ? 'text-destructive' : atLimit ? 'text-warning' : 'text-faint',
+                'font-mono text-meta tabular-nums',
+                overLimit ? 'text-destructive' : atLimit ? 'text-warning' : 'text-subtle',
               )}
               title={`Work-in-progress limit: ${column.wip_limit}`}
             >
               WIP {cards.length}/{column.wip_limit}
             </span>
           ) : (
-            <span className="label-meta text-faint tabular-nums">{points} pts</span>
+            <span className="text-subtle font-mono text-meta tabular-nums">{points} PTS</span>
           )}
           <button
             type="button"
             onClick={() => setCollapsed(true)}
-            className="text-faint hover:text-foreground transition-colors"
+            className="text-subtle hover:text-foreground transition-colors"
             aria-label={`Collapse ${column.name}`}
           >
-            <ChevronsLeftRight className="h-3.5 w-3.5" aria-hidden />
+            <ChevronsLeftRight className="h-3 w-3" aria-hidden />
           </button>
         </span>
       </header>
@@ -113,12 +116,12 @@ export function KanbanColumn({
       <div
         ref={setNodeRef}
         className={cn(
-          'flex min-h-32 flex-1 flex-col gap-2 rounded-lg p-1 transition-colors',
+          'scrollbar-slim flex min-h-0 flex-1 flex-col gap-[9px] overflow-y-auto px-2.5 pb-3 transition-colors',
           isOver && 'bg-primary/5 ring-primary/25 ring-1 ring-inset',
         )}
       >
         <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-[9px]">
             {cards.map((card) => (
               <KanbanCard
                 key={card.id}

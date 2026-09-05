@@ -25,12 +25,26 @@ const config: Omit<Config, 'content'> = {
           hover: 'hsl(var(--surface-hover))',
           overlay: 'hsl(var(--surface-overlay))',
         },
-        /* Third text tier, below muted-foreground. */
+        /* Third and fourth text tiers, below muted-foreground. */
         faint: 'hsl(var(--faint))',
+        subtle: 'hsl(var(--subtle))',
         track: 'hsl(var(--track))',
+        /* Recessed wells: inputs, search fields, mini-view tiles. */
+        sunk: 'hsl(var(--sunk))',
+        /* Neutral fill for count pills, avatars and inert chips. */
+        chip: 'hsl(var(--chip))',
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
+        },
+        /*
+         * The solid action button. On dark it is near-white on near-black, not
+         * the teal accent — teal is reserved for state and emphasis, so a page
+         * full of primary buttons does not read as a page full of alerts.
+         */
+        btn: {
+          DEFAULT: 'hsl(var(--btn))',
+          ink: 'hsl(var(--btn-ink))',
         },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
@@ -76,6 +90,7 @@ const config: Omit<Config, 'content'> = {
         status: {
           backlog: 'hsl(var(--status-backlog))',
           progress: 'hsl(var(--status-progress))',
+          testing: 'hsl(var(--status-testing))',
           review: 'hsl(var(--status-review))',
           done: 'hsl(var(--status-done))',
         },
@@ -85,17 +100,39 @@ const config: Omit<Config, 'content'> = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      fontSize: {
+        /*
+         * The design's own steps. Named so components stop hand-rolling
+         * arbitrary bracket sizes that drift apart over time.
+         *
+         * None of these may reuse a colour token name: `text-*` resolves both
+         * scales, and a collision silently wins for colour — `text-card` would
+         * paint a title in the card's own background and render it invisible.
+         * Hence `task` and `tag` rather than `card` and `chip`.
+         */
+        meta: ['9px', { lineHeight: '1' }],
+        id: ['9.5px', { lineHeight: '1' }],
+        col: ['10px', { lineHeight: '1' }],
+        tag: ['10.5px', { lineHeight: '1.2' }],
+        micro: ['11.5px', { lineHeight: '1.3' }],
+        nav: ['12px', { lineHeight: '1.3' }],
+        ui: ['12.5px', { lineHeight: '1.35' }],
+        base: ['13px', { lineHeight: '1.45' }],
+        task: ['13.5px', { lineHeight: '1.35' }],
+        head: ['18px', { lineHeight: '1.25' }],
+      },
       fontFamily: {
         sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
       boxShadow: {
-        // Dark surfaces need a hairline highlight rather than a drop shadow to
-        // read as raised, so every elevation pairs an inset top edge with depth.
-        card: '0 1px 2px 0 rgb(0 0 0 / 0.4), inset 0 1px 0 0 rgb(255 255 255 / 0.03)',
-        raised: '0 4px 12px -2px rgb(0 0 0 / 0.5), inset 0 1px 0 0 rgb(255 255 255 / 0.04)',
-        overlay: '0 16px 40px -8px rgb(0 0 0 / 0.65), inset 0 1px 0 0 rgb(255 255 255 / 0.05)',
-        drag: '0 20px 44px -12px rgb(0 0 0 / 0.75), inset 0 1px 0 0 rgb(255 255 255 / 0.06)',
+        // The design keeps resting surfaces flat and separates them with a
+        // hairline instead of a shadow; only things that genuinely float —
+        // menus, dialogs, a card under the cursor — cast one.
+        card: 'none',
+        raised: '0 14px 34px rgb(0 0 0 / 0.32)',
+        overlay: '0 18px 44px rgb(0 0 0 / 0.4)',
+        drag: '0 20px 44px -12px rgb(0 0 0 / 0.75)',
       },
       keyframes: {
         'accordion-down': {

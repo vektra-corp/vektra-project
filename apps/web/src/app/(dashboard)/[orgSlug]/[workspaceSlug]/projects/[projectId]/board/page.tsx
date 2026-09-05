@@ -41,7 +41,7 @@ export default async function BoardPage({
 
   if (!board) {
     return (
-      <div className="text-muted-foreground flex flex-1 items-center justify-center p-10 text-sm">
+      <div className="text-muted-foreground flex flex-1 items-center justify-center p-10 text-ui">
         This project has no board yet.
       </div>
     )

@@ -42,15 +42,16 @@ export function StatTile({
     <>
       <div className="flex items-center gap-2">
         <Icon className={cn('h-3.5 w-3.5', effective.icon)} aria-hidden />
-        <span className="label-meta text-faint">{label}</span>
+        <span className="text-faint truncate font-mono text-[11px]">{label}</span>
       </div>
-      <p className={cn('pt-3 text-2xl font-semibold tabular-nums', effective.value)}>{value}</p>
-      {caption ? <p className="pt-1 text-xs text-muted-foreground">{caption}</p> : null}
+      <p className={cn('pt-3 text-[26px] font-semibold leading-none tabular-nums', effective.value)}>
+        {value}
+      </p>
+      {caption ? <p className="text-faint pt-2 text-ui">{caption}</p> : null}
     </>
   )
 
-  const className =
-    'block rounded-lg border border-border bg-surface p-4 shadow-card transition-colors'
+  const className = 'border-border bg-card block rounded-lg border p-4 transition-colors'
 
   return href ? (
     <Link href={href} className={cn(className, 'hover:border-input')}>

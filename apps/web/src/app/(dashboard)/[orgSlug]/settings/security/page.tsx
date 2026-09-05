@@ -76,7 +76,7 @@ export default async function SecurityPage({ params }: { params: { orgSlug: stri
       <div className="max-w-3xl space-y-5 pb-10">
         <div>
           <h1 className="text-base font-semibold tracking-tight">Security</h1>
-          <p className="pt-1 text-[13px] text-muted-foreground">
+          <p className="pt-1 text-base text-muted-foreground">
             Your active sessions on this account.
           </p>
         </div>

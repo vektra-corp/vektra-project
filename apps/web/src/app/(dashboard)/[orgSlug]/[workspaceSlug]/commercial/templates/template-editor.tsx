@@ -233,7 +233,7 @@ export function TemplateEditor({
         <fieldset className="space-y-2">
           <legend className="label-meta pb-1 text-faint">Line-item columns</legend>
           {PDF_COLUMNS.map((column) => (
-            <label key={column} className="flex items-center gap-2 text-[13px]">
+            <label key={column} className="flex items-center gap-2 text-base">
               <Checkbox
                 name="columns"
                 value={column}
@@ -255,7 +255,7 @@ export function TemplateEditor({
               ['showLogo', 'Organization logo', t.showLogo],
             ] as const
           ).map(([name, label, checked]) => (
-            <label key={name} className="flex items-center gap-2 text-[13px]">
+            <label key={name} className="flex items-center gap-2 text-base">
               <Checkbox name={name} defaultChecked={checked} />
               {label}
             </label>
@@ -331,7 +331,7 @@ export function TemplateEditor({
           <Skeleton className="h-[42rem] w-full rounded-lg" />
         )}
 
-        <p className="text-xs text-faint">
+        <p className="text-nav text-faint">
           Rendered from sample data. The logo is not shown in previews.
         </p>
       </div>

@@ -71,7 +71,7 @@ export default async function MembersPage({ params }: { params: { orgSlug: strin
       <PageBody className="pt-2">
         <div className="max-w-3xl space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-base text-muted-foreground">
               Everyone with access to this organization.
             </p>
             <InviteDialog
@@ -92,7 +92,7 @@ export default async function MembersPage({ params }: { params: { orgSlug: strin
                 </Avatar>
 
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 text-[13px] font-medium">
+                  <p className="flex items-center gap-2 text-base font-medium">
                     <span className="truncate">{member.fullName}</span>
                     {member.userId === auth.userId ? (
                       <Badge variant="secondary" shape="meta">

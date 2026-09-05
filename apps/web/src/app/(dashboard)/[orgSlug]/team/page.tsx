@@ -105,8 +105,8 @@ export default async function TeamPage({ params }: { params: { orgSlug: string }
         {rows.length === 0 ? (
           <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">
             <Users className="h-6 w-6 text-faint" aria-hidden />
-            <p className="pt-3 text-[13px] text-muted-foreground">No employee records yet.</p>
-            <p className="pt-1 text-xs text-faint">
+            <p className="pt-3 text-base text-muted-foreground">No employee records yet.</p>
+            <p className="pt-1 text-nav text-faint">
               {canManage
                 ? 'Add a record for each member to track leave and rates.'
                 : 'An admin needs to create these.'}
@@ -124,7 +124,7 @@ export default async function TeamPage({ params }: { params: { orgSlug: string }
                 </Avatar>
 
                 <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 text-[13px] font-medium">
+                  <p className="flex items-center gap-2 text-base font-medium">
                     <span className="truncate">{record.fullName}</span>
                     {record.employeeCode ? (
                       <span className="label-meta text-faint">{record.employeeCode}</span>

@@ -48,8 +48,8 @@ export default async function TimelinePage({
         <PageBody>
           <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">
             <Lock className="h-6 w-6 text-faint" aria-hidden />
-            <p className="pt-3 text-[13px] font-medium">Timeline is not on your plan</p>
-            <p className="pt-1 max-w-sm text-[13px] text-muted-foreground">
+            <p className="pt-3 text-base font-medium">Timeline is not on your plan</p>
+            <p className="pt-1 max-w-sm text-base text-muted-foreground">
               Gantt scheduling and task dependencies are included from Growth upward.
             </p>
             <Button asChild size="sm" className="mt-4">
@@ -113,7 +113,7 @@ export default async function TimelinePage({
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-8">
         {rows.length === 0 ? (
-          <p className="mx-5 rounded-lg border border-dashed border-border px-4 py-16 text-center text-[13px] text-faint">
+          <p className="mx-5 rounded-lg border border-dashed border-border px-4 py-16 text-center text-base text-faint">
             No tasks to schedule yet.
           </p>
         ) : (

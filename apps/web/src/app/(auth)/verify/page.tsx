@@ -21,7 +21,7 @@ export default function VerifyPage({
   return (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl">Check your email</CardTitle>
+        <CardTitle className="text-head">Check your email</CardTitle>
         <CardDescription>
           We sent a six-digit code to <span className="text-foreground">{email}</span>. It expires
           in an hour.
@@ -35,7 +35,7 @@ export default function VerifyPage({
           nextPath={type === 'recovery' ? '/reset-password' : '/onboarding'}
         />
 
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-center text-nav text-muted-foreground">
           Wrong address?{' '}
           <Link href="/signup" className="text-primary hover:underline">
             Start again

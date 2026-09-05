@@ -63,14 +63,14 @@ export function VersionHistory({
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border bg-surface shadow-card">
         <li className="flex items-center gap-2 px-3 py-2.5">
           <span className="label-meta text-foreground">v{currentVersion}</span>
-          <span className="flex-1 text-[13px] text-muted-foreground">Current</span>
+          <span className="flex-1 text-base text-muted-foreground">Current</span>
         </li>
 
         {versions.map((version) => (
           <li key={version.id} className="px-3 py-2.5">
             <div className="flex items-center gap-2">
               <span className="label-meta text-faint">v{version.version}</span>
-              <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
+              <span className="min-w-0 flex-1 truncate text-base text-muted-foreground">
                 {version.editorName}
               </span>
               <Button
@@ -98,7 +98,7 @@ export function VersionHistory({
             <p className="label-meta pt-1 text-faint">{version.createdAt}</p>
 
             {previewing === version.version ? (
-              <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-border-subtle bg-surface-raised p-3">
+              <div className="mt-2 max-h-64 overflow-y-auto rounded-md border border-border-subtle bg-card p-3">
                 <RichTextView doc={version.content} />
               </div>
             ) : null}
@@ -106,14 +106,14 @@ export function VersionHistory({
         ))}
 
         {versions.length === 0 ? (
-          <li className="px-3 py-6 text-center text-xs text-faint">
+          <li className="px-3 py-6 text-center text-nav text-faint">
             No earlier versions yet.
           </li>
         ) : null}
       </ul>
 
       {canRestore && versions.length > 0 ? (
-        <p className="px-1 text-xs leading-relaxed text-faint">
+        <p className="px-1 text-nav leading-relaxed text-faint">
           Restoring writes the old body as a new version. Nothing is lost.
         </p>
       ) : null}

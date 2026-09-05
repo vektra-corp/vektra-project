@@ -43,7 +43,7 @@ export function KanbanQuickAdd({ scope, columnId }: { scope: KanbanScope; column
         type="button"
         variant="dashed"
         size="sm"
-        className="h-9 w-full justify-start gap-1.5 text-[13px]"
+        className="h-9 w-full justify-start gap-1.5 text-base"
         onClick={() => {
           setOpen(true)
           requestAnimationFrame(() => inputRef.current?.focus())
@@ -58,7 +58,7 @@ export function KanbanQuickAdd({ scope, columnId }: { scope: KanbanScope; column
   return (
     <div
       className={cn(
-        'border-border bg-surface-raised shadow-card rounded-lg border p-2',
+        'border-border bg-card shadow-card rounded-lg border p-2',
         error && 'border-destructive/50',
       )}
     >
@@ -68,7 +68,7 @@ export function KanbanQuickAdd({ scope, columnId }: { scope: KanbanScope; column
         placeholder="What needs doing?"
         aria-label="Task title"
         disabled={pending}
-        className="placeholder:text-faint w-full resize-none bg-transparent text-[13px] leading-snug outline-none"
+        className="placeholder:text-faint w-full resize-none bg-transparent text-base leading-snug outline-none"
         onKeyDown={(event) => {
           // Enter submits, Shift+Enter would be a newline the title cannot hold.
           if (event.key === 'Enter' && !event.shiftKey) {
@@ -78,7 +78,7 @@ export function KanbanQuickAdd({ scope, columnId }: { scope: KanbanScope; column
           if (event.key === 'Escape') setOpen(false)
         }}
       />
-      {error ? <p className="text-destructive pb-1 text-xs">{error}</p> : null}
+      {error ? <p className="text-destructive pb-1 text-nav">{error}</p> : null}
       <div className="flex items-center gap-1.5 pt-1">
         <Button type="button" size="xs" loading={pending} onClick={submit}>
           Add

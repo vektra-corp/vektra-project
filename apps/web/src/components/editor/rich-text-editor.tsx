@@ -170,7 +170,7 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: cn(
-          'prose-none focus:outline-none px-3 py-2.5 text-sm leading-relaxed',
+          'prose-none focus:outline-none px-3 py-2.5 text-ui leading-relaxed',
           '[&_p]:my-0 [&_ul]:list-disc [&_ol]:list-decimal [&_ul,&_ol]:ps-5 [&_li]:my-0.5',
           '[&_blockquote]:border-s-2 [&_blockquote]:border-border [&_blockquote]:ps-3',
           '[&_code]:rounded [&_code]:bg-surface-hover [&_code]:px-1 [&_code]:font-mono [&_code]:text-[0.9em]',
@@ -206,7 +206,7 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-lg border border-input bg-surface-raised transition-colors focus-within:ring-2 focus-within:ring-ring/60',
+        'overflow-hidden rounded-lg border border-input bg-card transition-colors focus-within:ring-2 focus-within:ring-ring/60',
         className,
       )}
     >

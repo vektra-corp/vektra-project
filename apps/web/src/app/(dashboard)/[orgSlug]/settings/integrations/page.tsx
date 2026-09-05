@@ -75,7 +75,7 @@ export default async function IntegrationsPage({
       <div className="max-w-3xl space-y-5 pb-10">
         <div>
           <h1 className="text-base font-semibold tracking-tight">Integrations</h1>
-          <p className="pt-1 text-[13px] text-muted-foreground">
+          <p className="pt-1 text-base text-muted-foreground">
             Send activity from this organization to the tools your team already uses.
           </p>
         </div>
@@ -99,13 +99,13 @@ export default async function IntegrationsPage({
         {deliveries && deliveries.length > 0 ? (
           <section className="overflow-hidden rounded-lg border border-border bg-surface shadow-card">
             <header className="border-b border-border-subtle px-5 py-3">
-              <h2 className="text-sm font-semibold">Recent deliveries</h2>
+              <h2 className="text-ui font-semibold">Recent deliveries</h2>
             </header>
             <ul className="divide-y divide-border-subtle">
               {deliveries.map((delivery) => (
                 <li
                   key={delivery.id}
-                  className="flex flex-wrap items-center gap-2 px-5 py-2.5 text-[13px]"
+                  className="flex flex-wrap items-center gap-2 px-5 py-2.5 text-base"
                 >
                   <Badge
                     variant={

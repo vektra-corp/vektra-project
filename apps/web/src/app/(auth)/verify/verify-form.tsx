@@ -75,9 +75,9 @@ export function VerifyForm({
             required
             placeholder="000000"
             aria-invalid={Boolean(error)}
-            className="text-center font-mono text-lg tracking-[0.4em]"
+            className="text-center font-mono text-head tracking-[0.4em]"
           />
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {error ? <p className="text-nav text-destructive">{error}</p> : null}
         </div>
 
         <SubmitButton />

@@ -3,6 +3,7 @@
 import { cn } from '@pm/ui'
 import {
   ChevronDown,
+  ChevronRight,
   CalendarRange,
   CircleDot,
   Columns3,
@@ -38,6 +39,10 @@ import { useState, type ReactNode } from 'react'
  * boundary — passing one throws "Functions cannot be passed directly to Client
  * Components" at request time, which no type check catches. A string crosses
  * fine and is resolved here.
+ *
+ * The design draws these as geometric unicode glyphs (◍ ◈ ⋔). Those have patchy
+ * font coverage and fall back to tofu boxes on Windows, so we keep Lucide and
+ * match the design's weight instead: a 14px box, 3.5 icon, third ink tier.
  */
 const ICONS = {
   CalendarRange,
@@ -73,6 +78,8 @@ export interface NavItem {
   /** Absent for a destination that is not built yet — see `SidebarItem`. */
   href?: string
   count?: number | null
+  /** Amber count, for a total that wants attention (overdue, unapproved). */
+  countTone?: 'neutral' | 'attention'
   /** Exact match only. Without it a parent stays lit on every child route. */
   exact?: boolean
 }
@@ -83,8 +90,9 @@ function useIsActive() {
     exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)
 }
 
+/** 13px row, 10px gutter between icon and label — the design's nav rhythm. */
 const rowClass =
-  'group flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-[13px] transition-colors'
+  'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-base transition-colors'
 
 /**
  * One navigation row.
@@ -100,21 +108,27 @@ export function SidebarItem({ item, indent = false }: { item: NavItem; indent?: 
 
   const body = (
     <>
-      <Icon
-        className={cn(
-          'h-4 w-4 shrink-0 transition-colors',
-          active ? 'text-foreground' : 'text-faint group-hover:text-muted-foreground',
-        )}
-        aria-hidden
-      />
+      <span className="flex w-3.5 shrink-0 justify-center" aria-hidden>
+        <Icon
+          className={cn(
+            'h-3.5 w-3.5 transition-colors',
+            active ? 'text-foreground' : 'text-faint group-hover:text-muted-foreground',
+          )}
+        />
+      </span>
       <span className="min-w-0 flex-1 truncate text-start">{item.label}</span>
       {item.count ? (
-        <span className="text-faint font-mono text-[10px] font-medium tabular-nums">
+        <span
+          className={cn(
+            'label-id',
+            item.countTone === 'attention' ? 'text-warning' : 'text-faint',
+          )}
+        >
           {item.count}
         </span>
       ) : null}
       {!item.href ? (
-        <span className="label-meta-sm bg-surface-hover text-faint rounded px-1 py-0.5">soon</span>
+        <span className="label-meta bg-chip text-subtle rounded-sm px-1 py-0.5">soon</span>
       ) : null}
     </>
   )
@@ -125,7 +139,7 @@ export function SidebarItem({ item, indent = false }: { item: NavItem; indent?: 
         <span
           aria-disabled
           title={`${item.label} arrives in a later phase`}
-          className={cn(rowClass, indent && 'ps-8', 'text-faint/70 cursor-default')}
+          className={cn(rowClass, indent && 'ps-8', 'text-subtle cursor-default')}
         >
           {body}
         </span>
@@ -140,9 +154,9 @@ export function SidebarItem({ item, indent = false }: { item: NavItem; indent?: 
         aria-current={active ? 'page' : undefined}
         className={cn(
           rowClass,
-          indent && 'ps-8',
+          indent && 'ps-8 text-nav',
           active
-            ? 'bg-surface-hover text-foreground font-medium'
+            ? 'bg-surface-hover text-foreground'
             : 'text-muted-foreground hover:bg-surface-hover/60 hover:text-foreground',
         )}
       >
@@ -171,18 +185,18 @@ export function SidebarSection({
           type="button"
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
-          className="label-meta text-faint hover:text-muted-foreground flex w-full items-center gap-1.5 px-2.5 pb-1.5 transition-colors"
+          className="label-meta text-subtle hover:text-faint flex w-full items-center gap-1.5 px-2.5 pb-2 transition-colors"
         >
           <span className="flex-1 text-start">{title}</span>
           <ChevronDown
-            className={cn('h-3 w-3 transition-transform', !open && 'rtl-flip -rotate-90')}
+            className={cn('h-2.5 w-2.5 transition-transform', !open && 'rtl-flip -rotate-90')}
             aria-hidden
           />
         </button>
       ) : (
-        <h2 className="label-meta text-faint px-2.5 pb-1.5">{title}</h2>
+        <h2 className="label-meta text-subtle px-2.5 pb-2">{title}</h2>
       )}
-      {open ? <ul className="space-y-px">{children}</ul> : null}
+      {open ? <ul className="space-y-0.5">{children}</ul> : null}
     </div>
   )
 }
@@ -199,7 +213,8 @@ export interface SidebarProject {
  *
  * Expansion follows the route rather than local state, so arriving at a board
  * by any means — a link, a refresh, the back button — shows the same open
- * project, and only one project is ever expanded.
+ * project, and only one project is ever expanded. A collapsed project shows a
+ * right chevron, an open one a down chevron, matching the design.
  */
 export function SidebarProjectGroup({
   orgSlug,
@@ -213,6 +228,7 @@ export function SidebarProjectGroup({
   const isActive = useIsActive()
   const base = `/${orgSlug}/${project.workspaceSlug}/projects/${project.id}`
   const inProject = isActive(base)
+  const Chevron = inProject ? ChevronDown : ChevronRight
 
   return (
     <>
@@ -220,32 +236,27 @@ export function SidebarProjectGroup({
         <Link
           href={`${base}/board`}
           className={cn(
-            rowClass,
+            'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-ui transition-colors',
             inProject
-              ? 'text-foreground font-medium'
+              ? 'bg-surface-hover text-foreground'
               : 'text-muted-foreground hover:bg-surface-hover/60 hover:text-foreground',
           )}
         >
-          <span
-            className="h-2 w-2 shrink-0 rounded-full"
-            style={{ backgroundColor: project.color ?? 'hsl(var(--status-progress))' }}
-            aria-hidden
-          />
+          <span className="flex w-3.5 shrink-0 justify-center" aria-hidden>
+            <span
+              className="h-[7px] w-[7px] rounded-full"
+              style={{ backgroundColor: project.color ?? 'hsl(var(--status-progress))' }}
+            />
+          </span>
           <span className="min-w-0 flex-1 truncate text-start">{project.name}</span>
-          <ChevronDown
-            className={cn(
-              'text-faint h-3 w-3 transition-transform',
-              !inProject && 'rtl-flip -rotate-90',
-            )}
-            aria-hidden
-          />
+          <Chevron className="text-subtle rtl-flip h-2.5 w-2.5 shrink-0" aria-hidden />
         </Link>
       </li>
 
       {inProject ? (
         <li>
           {/* The rule aligns with the project dot above, tying the views to it. */}
-          <ul className="before:bg-border-subtle relative space-y-px before:absolute before:inset-y-1 before:start-[15px] before:w-px">
+          <ul className="before:bg-border-subtle relative space-y-0.5 before:absolute before:inset-y-1 before:start-[17px] before:w-px">
             {views.map((view) => (
               <SidebarItem key={view.key} item={view} indent />
             ))}

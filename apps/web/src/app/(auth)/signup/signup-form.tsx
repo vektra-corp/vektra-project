@@ -36,7 +36,7 @@ export function SignupForm() {
   // above the input it wants filled in.
   if (state?.ok) {
     return (
-      <p className="py-8 text-center text-[13px] text-muted-foreground">{tCommon('loading')}</p>
+      <p className="py-8 text-center text-base text-muted-foreground">{tCommon('loading')}</p>
     )
   }
 
@@ -63,7 +63,7 @@ export function SignupForm() {
         <Label htmlFor="full_name">{t('full_name')}</Label>
         <Input id="full_name" name="full_name" autoComplete="name" required />
         {fieldError('full_name') ? (
-          <p className="text-xs text-destructive">{fieldError('full_name')}</p>
+          <p className="text-nav text-destructive">{fieldError('full_name')}</p>
         ) : null}
       </div>
 
@@ -71,7 +71,7 @@ export function SignupForm() {
         <Label htmlFor="organization_name">{t('organization_name')}</Label>
         <Input id="organization_name" name="organization_name" autoComplete="organization" required />
         {fieldError('organization_name') ? (
-          <p className="text-xs text-destructive">{fieldError('organization_name')}</p>
+          <p className="text-nav text-destructive">{fieldError('organization_name')}</p>
         ) : null}
       </div>
 
@@ -79,7 +79,7 @@ export function SignupForm() {
         <Label htmlFor="email">{t('email')}</Label>
         <Input id="email" name="email" type="email" autoComplete="email" required />
         {fieldError('email') ? (
-          <p className="text-xs text-destructive">{fieldError('email')}</p>
+          <p className="text-nav text-destructive">{fieldError('email')}</p>
         ) : null}
       </div>
 
@@ -95,7 +95,7 @@ export function SignupForm() {
           hideLabel={t('hide_password')}
         />
         {fieldError('password') ? (
-          <p className="text-xs text-destructive">{fieldError('password')}</p>
+          <p className="text-nav text-destructive">{fieldError('password')}</p>
         ) : null}
       </div>
 
@@ -110,7 +110,7 @@ export function SignupForm() {
           hideLabel={t('hide_password')}
         />
         {fieldError('confirm_password') ? (
-          <p className="text-xs text-destructive">{fieldError('confirm_password')}</p>
+          <p className="text-nav text-destructive">{fieldError('confirm_password')}</p>
         ) : null}
       </div>
 
@@ -122,12 +122,12 @@ export function SignupForm() {
           required
           className="mt-1 h-4 w-4 rounded border-input"
         />
-        <Label htmlFor="accept_terms" className="text-xs font-normal leading-relaxed">
+        <Label htmlFor="accept_terms" className="text-nav font-normal leading-relaxed">
           {t('accept_terms')}
         </Label>
       </div>
       {fieldError('accept_terms') ? (
-        <p className="text-xs text-destructive">{fieldError('accept_terms')}</p>
+        <p className="text-nav text-destructive">{fieldError('accept_terms')}</p>
       ) : null}
 
       <SubmitButton label={t('sign_up')} />

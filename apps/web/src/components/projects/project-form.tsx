@@ -52,7 +52,7 @@ export function ProjectForm({
         <Label htmlFor="name">Project name</Label>
         <Input id="name" name="name" required autoFocus maxLength={150} />
         {fieldError('name') ? (
-          <p className="text-xs text-destructive">{fieldError('name')}</p>
+          <p className="text-nav text-destructive">{fieldError('name')}</p>
         ) : null}
       </div>
 
@@ -63,7 +63,7 @@ export function ProjectForm({
           name="description"
           rows={3}
           maxLength={5000}
-          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-ui shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         />
       </div>
 
@@ -74,7 +74,7 @@ export function ProjectForm({
             id="priority"
             name="priority"
             defaultValue="medium"
-            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-ui shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             {PRIORITIES.map((priority) => (
               <option key={priority} value={priority} className="capitalize">
@@ -90,7 +90,7 @@ export function ProjectForm({
             id="visibility"
             name="visibility"
             defaultValue="workspace"
-            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-ui shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <option value="workspace">Workspace members</option>
             <option value="organization">Everyone in the organization</option>
@@ -107,7 +107,7 @@ export function ProjectForm({
           <Label htmlFor="end_date">End date</Label>
           <Input id="end_date" name="end_date" type="date" />
           {fieldError('end_date') ? (
-            <p className="text-xs text-destructive">{fieldError('end_date')}</p>
+            <p className="text-nav text-destructive">{fieldError('end_date')}</p>
           ) : null}
         </div>
       </div>

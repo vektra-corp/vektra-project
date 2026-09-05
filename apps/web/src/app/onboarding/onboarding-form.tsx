@@ -57,14 +57,14 @@ export function OnboardingForm({
           }}
         />
         {fieldError('name') ? (
-          <p className="text-xs text-destructive">{fieldError('name')}</p>
+          <p className="text-nav text-destructive">{fieldError('name')}</p>
         ) : null}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="slug">{t('slug_label')}</Label>
         <div className="flex items-center rounded-md border border-input focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-          <span className="ps-3 text-sm text-muted-foreground">app.example.com/</span>
+          <span className="ps-3 text-ui text-muted-foreground">app.example.com/</span>
           <Input
             id="slug"
             name="slug"
@@ -78,9 +78,9 @@ export function OnboardingForm({
             }}
           />
         </div>
-        <p className="text-xs text-muted-foreground">{t('slug_help')}</p>
+        <p className="text-nav text-muted-foreground">{t('slug_help')}</p>
         {slugError ? (
-          <p className="text-xs text-destructive">
+          <p className="text-nav text-destructive">
             {slugError === 'onboarding.slug_taken' ? t('slug_taken') : slugError}
           </p>
         ) : null}

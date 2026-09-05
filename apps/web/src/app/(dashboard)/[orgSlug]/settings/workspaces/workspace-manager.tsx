@@ -75,7 +75,7 @@ export function WorkspaceManager({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           Workspaces group projects and scope who can see them.
         </p>
         {canManage ? (
@@ -88,7 +88,7 @@ export function WorkspaceManager({
 
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border bg-surface">
         {workspaces.length === 0 ? (
-          <li className="px-5 py-10 text-center text-sm text-muted-foreground">
+          <li className="px-5 py-10 text-center text-ui text-muted-foreground">
             No workspaces yet.
           </li>
         ) : (
@@ -102,7 +102,7 @@ export function WorkspaceManager({
               <div className="min-w-0 flex-1">
                 <Link
                   href={`/${orgSlug}/${workspace.slug}/projects`}
-                  className="text-[13px] font-medium transition-colors hover:text-primary"
+                  className="text-base font-medium transition-colors hover:text-primary"
                 >
                   {workspace.name}
                 </Link>
@@ -160,7 +160,7 @@ export function WorkspaceManager({
                 }}
               />
               {fieldError('name') ? (
-                <p className="text-xs text-destructive">{fieldError('name')}</p>
+                <p className="text-nav text-destructive">{fieldError('name')}</p>
               ) : null}
             </div>
 
@@ -177,11 +177,11 @@ export function WorkspaceManager({
                   setSlug(event.target.value)
                 }}
               />
-              <p className="text-xs text-faint">
+              <p className="text-nav text-faint">
                 /{orgSlug}/{slug || 'workspace'}/projects
               </p>
               {fieldError('slug') ? (
-                <p className="text-xs text-destructive">{fieldError('slug')}</p>
+                <p className="text-nav text-destructive">{fieldError('slug')}</p>
               ) : null}
             </div>
 

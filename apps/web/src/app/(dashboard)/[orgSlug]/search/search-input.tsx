@@ -49,7 +49,7 @@ export function SearchInput({ initialQuery }: { initialQuery: string }) {
         onChange={(event) => setValue(event.target.value)}
         placeholder="Search tasks and projects…"
         aria-label="Search"
-        className="h-11 ps-9 text-[13px]"
+        className="h-11 ps-9 text-base"
       />
     </div>
   )

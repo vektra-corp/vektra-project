@@ -54,7 +54,7 @@ export function WeekNav({
         </Link>
       </Button>
 
-      <span className="min-w-44 text-center text-[13px] font-medium">{label}</span>
+      <span className="min-w-44 text-center text-base font-medium">{label}</span>
 
       <Button asChild variant="ghost" size="icon-sm" aria-label="Next week">
         <Link href={`${base}?week=${nextWeek}`}>

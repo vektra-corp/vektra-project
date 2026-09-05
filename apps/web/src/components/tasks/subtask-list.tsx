@@ -60,7 +60,7 @@ export function SubtaskList({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-medium">
+        <h2 className="text-ui font-medium">
           Subtasks{' '}
           <span className="tabular-nums text-muted-foreground">
             {done}/{subtasks.length}
@@ -99,7 +99,7 @@ export function SubtaskList({
                   })
                 }}
               />
-              <span className={cn('flex-1 text-sm', isDone && 'text-muted-foreground line-through')}>
+              <span className={cn('flex-1 text-ui', isDone && 'text-muted-foreground line-through')}>
                 {subtask.title}
               </span>
               {subtask.assignee ? (
@@ -122,7 +122,7 @@ export function SubtaskList({
               placeholder="Subtask title"
               aria-label="Subtask title"
               disabled={pending}
-              className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-8 flex-1 rounded-md border border-input bg-background px-2 text-ui outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
                   event.preventDefault()
