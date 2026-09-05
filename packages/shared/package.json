@@ -12,7 +12,8 @@
     "./validators": "./src/validators/index.ts",
     "./utils": "./src/utils/index.ts",
     "./errors": "./src/errors.ts",
-    "./sanitize": "./src/utils/sanitize.ts"
+    "./sanitize": "./src/utils/sanitize.ts",
+    "./sanitize-html": "./src/utils/sanitize-html.ts"
   },
   "scripts": {
     "lint": "eslint src --max-warnings 0",

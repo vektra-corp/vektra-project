@@ -52,6 +52,23 @@ export function KanbanBoard({
   // to be created in (§19.8).
   const isStatusGrouped = view.group_by === 'status'
   const [cards, setCards] = useState(initialCards)
+  // Re-seed from the server when a refresh brings new data.
+  //
+  // `useState(initialCards)` captures only the FIRST value: after
+  // `router.refresh()` the server component re-renders and passes a new array,
+  // but the state keeps the old one. The visible symptom was that a task added
+  // through quick-add did not appear until the page was reloaded — it existed
+  // in the database the whole time, which is what made it hard to notice.
+  //
+  // Adjusting state during render rather than in an effect is React's own
+  // recommendation for this: it re-renders before the browser paints, so there
+  // is no flash of the stale list.
+  const [seed, setSeed] = useState(initialCards)
+  if (seed !== initialCards) {
+    setSeed(initialCards)
+    setCards(initialCards)
+  }
+
   const [activeId, setActiveId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [, startTransition] = useTransition()

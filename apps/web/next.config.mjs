@@ -3,6 +3,8 @@ import createNextIntlPlugin from 'next-intl/plugin'
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
+const isDev = process.env.NODE_ENV === 'development'
+
 /**
  * Security headers (claude.md §13.2).
  *
@@ -10,17 +12,31 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
  * base-uri and form-action are pinned to self. 'unsafe-inline' remains on
  * script-src only because Next's App Router inlines its hydration bootstrap;
  * tightening that to a nonce is tracked for the hardening phase.
+ *
+ * `'unsafe-eval'` is added in DEVELOPMENT ONLY. Next's dev build compiles
+ * modules with `eval` for hot reloading and source maps, so a policy without it
+ * makes the browser refuse the client bundle — React never hydrates, and every
+ * interactive element in the app silently does nothing. Nothing reports this:
+ * the page renders fine, the server logs are clean, and only the browser
+ * console shows the violation. It was found by an end-to-end test clicking a
+ * button that never responded.
+ *
+ * It is NOT added to production builds, which contain no `eval`. If this ever
+ * needs to be relaxed in production, that is a different decision requiring a
+ * different justification.
  */
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com",
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://js.stripe.com https://challenges.cloudflare.com`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co",
       "font-src 'self'",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
+      // ws: in development is the hot-reload socket; without it the dev server
+      // reconnects in a loop and the browser console fills with failures.
+      `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io${isDev ? ' ws: http://localhost:* http://127.0.0.1:*' : ''}`,
       "frame-src https://js.stripe.com https://challenges.cloudflare.com",
       "object-src 'none'",
       "base-uri 'self'",
@@ -58,8 +74,13 @@ const nextConfig = {
     // Sentry server and edge configs never run.
     instrumentationHook: true,
     // isomorphic-dompurify pulls in jsdom, which reads files off disk at
-    // runtime. Bundling it breaks those reads, so it stays external.
-    serverComponentsExternalPackages: ['isomorphic-dompurify'],
+    // runtime (jsdom/lib/jsdom/browser/default-stylesheet.css). Bundling it
+    // breaks that read with ENOENT.
+    //
+    // jsdom must be listed too, not just the wrapper: it is the package doing
+    // the reading, and externalising only the wrapper still lets webpack pull
+    // jsdom into the bundle behind it.
+    serverComponentsExternalPackages: ['isomorphic-dompurify', 'jsdom'],
   },
   images: {
     remotePatterns: [

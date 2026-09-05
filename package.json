@@ -34,9 +34,12 @@
     "db:push:dry": "supabase db push --db-url \"$(node scripts/session-db-url.mjs)\" --dry-run",
     "db:migrations": "supabase migration list --db-url \"$(node scripts/session-db-url.mjs)\"",
     "db:repair": "supabase migration repair --db-url \"$(node scripts/session-db-url.mjs)\" --status applied",
-    "db:seed:psql": "psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -f supabase/seed.sql"
+    "db:seed:psql": "psql \"$SUPABASE_DB_URL\" -v ON_ERROR_STOP=1 -f supabase/seed.sql",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^20.14.10",
     "@types/pg": "^8.11.6",
     "pg": "^8.12.0",

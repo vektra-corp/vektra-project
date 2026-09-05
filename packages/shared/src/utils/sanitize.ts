@@ -1,63 +1,23 @@
-import DOMPurify from 'isomorphic-dompurify'
-
 /**
  * Sanitization helpers (claude.md §13.1).
  *
  * RULE: rich text is sanitized SERVER-SIDE BEFORE STORAGE, not only on render.
  * A payload that reaches the database is already safe, so every consumer of that
  * row — the web app, the portal, a PDF, a webhook — inherits the guarantee.
+ *
+ * This module is deliberately DEPENDENCY-FREE. The HTML sanitizer lives in
+ * `sanitize-html.ts` because DOMPurify drags jsdom in behind it, and jsdom
+ * broke every server action that imported this file. See that module for the
+ * full story.
  */
-
-const ALLOWED_TAGS = [
-  'p',
-  'br',
-  'strong',
-  'em',
-  'u',
-  's',
-  'a',
-  'ul',
-  'ol',
-  'li',
-  'h1',
-  'h2',
-  'h3',
-  'blockquote',
-  'code',
-  'pre',
-  'img',
-  'table',
-  'thead',
-  'tbody',
-  'tr',
-  'th',
-  'td',
-  'span',
-]
-
-const ALLOWED_ATTR = ['href', 'src', 'alt', 'class', 'target', 'rel', 'data-mention-id']
 
 /** C0/C1 control characters, excluding tab, newline and carriage return. */
 // eslint-disable-next-line no-control-regex -- matching control characters is the point
 const CONTROL_CHARS = new RegExp('[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f-\\u009f]', 'g')
 
-export function sanitizeRichText(html: string): string {
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR,
-    ALLOW_DATA_ATTR: false,
-    ADD_ATTR: ['rel'],
-    FORCE_BODY: true,
-  })
-}
-
 /** Protocols permitted in user-supplied links. Blocks javascript:, data:, vbscript:. */
 const SAFE_PROTOCOLS = new Set(['http:', 'https:', 'mailto:', 'tel:'])
 
-/**
- * Validate a URL before it reaches an `href`. Returns null when unsafe, so the
- * caller renders plain text instead of a link (§13.2).
- */
 export function safeUrl(input: string | null | undefined): string | null {
   if (!input) return null
   try {
