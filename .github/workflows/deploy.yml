@@ -53,7 +53,7 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       admin: ${{ steps.filter.outputs.admin }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # A change to a shared package rebuilds both, because either app may
       # depend on it. Only an app-local change is treated as app-local.
@@ -84,7 +84,7 @@ jobs:
       name: staging
       url: ${{ steps.deploy-web.outputs.url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -125,7 +125,7 @@ jobs:
     # Same gate as the deploy: a migration is the least reversible thing here.
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1
         with:
           version: 2.116.0
@@ -154,7 +154,7 @@ jobs:
       name: production
       url: https://project.vektracorp.in
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 20
