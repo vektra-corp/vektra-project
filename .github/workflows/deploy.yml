@@ -57,7 +57,7 @@ jobs:
 
       # A change to a shared package rebuilds both, because either app may
       # depend on it. Only an app-local change is treated as app-local.
-      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
