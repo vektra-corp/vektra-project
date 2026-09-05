@@ -21,6 +21,7 @@
     "db:push": "supabase db push --db-url \"$(node scripts/session-db-url.mjs)\"",
     "db:types": "supabase gen types typescript --linked > packages/db/src/types.ts",
     "db:types:offline": "node scripts/gen-types.mjs \"${SUPABASE_DB_URL:-postgresql://postgres:postgres@127.0.0.1:54322/postgres}\" > packages/db/src/types.ts",
+    "auth:configure": "node scripts/configure-auth.mjs",
     "i18n:check": "node scripts/check-translations.mjs",
     "clean": "turbo run clean && rm -rf node_modules",
     "verify": "turbo run lint typecheck test build --concurrency=1",

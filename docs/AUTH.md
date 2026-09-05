@@ -11,12 +11,33 @@ recovery tokens are single-use, so a scanner that fetches the URL consumes the
 token and the person is told their link has expired. A code is only ever entered
 by a person.
 
-The app has no `emailRedirectTo` or `redirectTo` in any auth call. If you add
+No **email** auth call carries an `emailRedirectTo` or a `redirectTo`. If you add
 one, you reintroduce the link.
 
-## Supabase dashboard configuration
+The one `redirectTo` in the codebase is on `signInWithOAuth`, where it is not a
+link in an email but the address the browser is sent back to after Google — a
+different mechanism with none of the scanner problem.
 
-Two things must be set in the dashboard; neither lives in this repo.
+## Supabase project configuration
+
+SMTP settings and email templates are stored **per Supabase project** and are not
+carried across by a database migration. Moving from the Sydney project to Mumbai
+left both at their defaults and signup mail stopped arriving, with no error
+anywhere — the user row is created, the email simply never goes out.
+
+Apply them with:
+
+```bash
+SUPABASE_ACCESS_TOKEN=sbp_... pnpm auth:configure     # --dry-run to preview
+```
+
+The token is a personal access token from
+<https://supabase.com/dashboard/account/tokens>; the anon and service-role keys
+do not work, this is the management API rather than the database. The script
+reads the settings back after writing them, so a field the API quietly ignores
+shows up as a FAIL instead of passing for a 200.
+
+The rest of this section is what that script sets, for doing it by hand.
 
 ### 1. SMTP — Authentication → Emails → SMTP Settings
 
@@ -58,12 +79,55 @@ Both templates must send the **token**, not a URL. Replace the body of:
 `{{ .ConfirmationURL }}` must not appear in either. Leaving it in means both a
 link and a code are sent, and the scanner problem comes back.
 
+### 3. Google — Authentication → Providers → Google
+
+Sign-in with Google is offered on `/login` and `/signup`. It needs credentials
+from a Google Cloud project and two redirect settings that are easy to get
+subtly wrong:
+
+1. **Google Cloud Console** → APIs & Services → Credentials → OAuth client ID
+   (type: Web application). Under *Authorized redirect URIs* add **Supabase's**
+   callback, not this app's:
+
+   ```
+   https://<project-ref>.supabase.co/auth/v1/callback
+   ```
+
+   Google returns to Supabase, and Supabase then returns to us. Putting the app
+   URL here instead produces `redirect_uri_mismatch` at the consent screen.
+
+2. **Supabase dashboard** → Authentication → Providers → Google: enable it and
+   paste the client ID and client secret.
+
+3. **Supabase dashboard** → Authentication → URL Configuration → *Redirect URLs*:
+   add `https://<your-domain>/auth/callback`. This is the list our own
+   `redirectTo` is checked against — an address that is not on it is silently
+   replaced with the site URL, which looks like the `next` parameter being
+   ignored. For Vercel previews add the wildcard
+   `https://<project>-*.vercel.app/auth/callback`.
+
+No environment variable is involved: the client secret lives in Supabase, never
+in this repo.
+
 ## The flows
 
 ```
 Sign up      /signup  → /verify?email=…                 → verifyOtp('signup')   → /onboarding
 Reset        /forgot-password → /verify?type=recovery&email=… → verifyOtp('recovery') → /reset-password
+Google       /login or /signup → Google consent → /auth/callback → exchangeCodeForSession → next
 ```
+
+Google has no notion of signing up versus signing in, so both buttons run the
+same action. Where someone lands afterwards is decided by `/` as it is for any
+other session: an existing membership goes to that org's dashboard, a brand new
+account falls through to `/onboarding`. A first sign-in has no
+`pending_organization_name`, so the org name field there starts empty rather
+than pre-filled.
+
+Failures on that round trip come back as `/login?error=…` — `oauth_cancelled`
+when the consent screen is dismissed, `oauth_failed` for everything else. The
+provider's own `error_description` is never rendered; it is attacker-influencable
+text.
 
 `verifyOtp` establishes a session, which is why `/reset-password` can simply
 change the password of the current user — and why it redirects to
@@ -75,7 +139,7 @@ change the password of the current user — and why it redirects to
   unknown address and an expired code all produce the same message, and the
   reset and resend flows always report success.
 - **Rate limited by IP** at five attempts a minute (§13.7), on sign-in, sign-up,
-  verify and resend.
+  verify, resend and the Google redirect.
 - **Changing a password ends every other session** (§13.6).
 - **Invites** (`inviteUserByEmail`, for org members and portal users) still send
   a link, because the recipient has no password yet and nothing to type a code

@@ -96,12 +96,13 @@ Vercel issues and renews the certificates.
 - **Auth → URL Configuration:** Site URL `https://project.vektracorp.in`, and add
   `https://project.vektracorp.in/auth/callback` to the redirect allow-list.
   Invites and portal links break without it.
-- **Auth → SMTP:** Resend, `smtp.resend.com:465`, user `resend`, password is the
-  `RESEND_API_KEY`. **Still outstanding.** Supabase's built-in mailer is rate
-  limited to a handful an hour — auth email breaks at volume until this is done.
-- **Auth → Email Templates:** rewrite both to send `{{ .Token }}`, not a magic
-  link. See `docs/AUTH.md` for why: scanners follow links and consume the
-  single-use token before the recipient sees it.
+- **Auth → SMTP and Email Templates:** both are set by
+  `SUPABASE_ACCESS_TOKEN=sbp_... pnpm auth:configure`, which is the supported
+  way — they are per project and a database migration does not bring them
+  across. Supabase's built-in mailer only delivers to members of your Supabase
+  organisation and is rate limited to a handful an hour, so until this is run,
+  signup mail to real users silently never arrives. The templates must send
+  `{{ .Token }}`; see `docs/AUTH.md` for why a link is worse than a code.
 
 ### 5. Stripe
 
