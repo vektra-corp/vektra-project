@@ -33,7 +33,19 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (!user && request.nextUrl.pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', request.url))
+    /*
+     * `nextUrl.clone()`, not `new URL('/login', request.url)`.
+     *
+     * The app is served under a basePath. Middleware sees `nextUrl.pathname`
+     * with that prefix already stripped, and a URL built by hand from
+     * `request.url` does not get it back — the redirect would point at
+     * `/login` instead of `/project/login`, which is a 404, and the person
+     * bounces between the two forever. Cloning preserves the basePath.
+     */
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    loginUrl.search = ''
+    return NextResponse.redirect(loginUrl)
   }
 
   return response

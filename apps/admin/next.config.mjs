@@ -37,13 +37,38 @@ const securityHeaders = [
   },
 ]
 
+/**
+ * Served under a path, not its own subdomain.
+ *
+ * `admin.vektracorp.in` is meant to host the admin console for every Vektra
+ * product, so this one lives at `/project` and the next at `/crm`, and so on.
+ *
+ * A Vercel domain belongs to exactly one project, so today this app owns the
+ * subdomain outright. When a second product needs an admin console, a thin
+ * shell project takes the domain and rewrites `/project/*` here — and no code
+ * in this app has to change, because the basePath is already what it will be.
+ *
+ * `basePath` is applied automatically to `<Link>`, `redirect()` and asset URLs.
+ * It is NOT applied to a URL built by hand — see the note in `middleware.ts`.
+ */
+const BASE_PATH = process.env.NEXT_PUBLIC_ADMIN_BASE_PATH ?? '/project'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Empty in development so the app still answers on localhost:3001/ directly.
+  basePath: BASE_PATH === '' ? undefined : BASE_PATH,
   transpilePackages: ['@pm/ui', '@pm/shared', '@pm/auth', '@pm/db'],
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }]
+  },
+  async redirects() {
+    // The bare subdomain is not a page. Until a shell owns it, send anyone who
+    // lands there to this console rather than showing them a 404.
+    return BASE_PATH
+      ? [{ source: '/', destination: BASE_PATH, basePath: false, permanent: false }]
+      : []
   },
 }
 

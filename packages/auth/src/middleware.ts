@@ -91,7 +91,35 @@ export function isAllowedOrigin(
   allowed: readonly (string | undefined)[],
 ): boolean {
   if (!origin) return false
-  return allowed.filter(Boolean).includes(origin)
+
+  /*
+   * Compare ORIGINS, not strings.
+   *
+   * An `Origin` header is scheme://host[:port] and never carries a path, but
+   * the values configured here are app URLs that may — the admin console lives
+   * at `https://admin.vektracorp.in/project`, because that subdomain is shared
+   * between products. A plain string comparison against that never matches, so
+   * every state-changing request from the admin app would be rejected as a
+   * CSRF violation with nothing in the logs to explain why.
+   *
+   * Normalising both sides makes the check about what it is actually about:
+   * did this come from one of our own hosts.
+   */
+  const normalise = (value: string): string | null => {
+    try {
+      return new URL(value).origin
+    } catch {
+      return null
+    }
+  }
+
+  const requestOrigin = normalise(origin)
+  if (!requestOrigin) return false
+
+  return allowed
+    .filter((value): value is string => Boolean(value))
+    .map(normalise)
+    .some((candidate) => candidate !== null && candidate === requestOrigin)
 }
 
 /**

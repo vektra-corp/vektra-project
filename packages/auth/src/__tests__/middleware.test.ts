@@ -234,3 +234,43 @@ describe('safeNextPath', () => {
     expect(safeNextPath('//evil.example', '/acme/dashboard')).toBe('/acme/dashboard')
   })
 })
+
+describe('isAllowedOrigin — configured URLs that carry a path', () => {
+  // The admin console is served at admin.vektracorp.in/project, because that
+  // subdomain is shared across products. An Origin header never has a path, so
+  // a string comparison against the configured URL would never match and every
+  // admin mutation would be refused as CSRF.
+  const configured = ['https://project.vektracorp.in', 'https://admin.vektracorp.in/project']
+
+  it('matches an origin against a configured URL that has a path', () => {
+    expect(isAllowedOrigin('https://admin.vektracorp.in', configured)).toBe(true)
+  })
+
+  it('still matches a plain configured origin', () => {
+    expect(isAllowedOrigin('https://project.vektracorp.in', configured)).toBe(true)
+  })
+
+  it('refuses a different host', () => {
+    expect(isAllowedOrigin('https://evil.example', configured)).toBe(false)
+  })
+
+  it('refuses a lookalike host', () => {
+    expect(isAllowedOrigin('https://admin.vektracorp.in.evil.example', configured)).toBe(false)
+  })
+
+  it('treats scheme and port as part of the origin', () => {
+    expect(isAllowedOrigin('http://project.vektracorp.in', configured)).toBe(false)
+    expect(isAllowedOrigin('https://project.vektracorp.in:8443', configured)).toBe(false)
+  })
+
+  it('refuses a missing or unparseable origin', () => {
+    expect(isAllowedOrigin(null, configured)).toBe(false)
+    expect(isAllowedOrigin('null', configured)).toBe(false)
+    expect(isAllowedOrigin('not-a-url', configured)).toBe(false)
+  })
+
+  it('refuses everything when nothing is configured', () => {
+    expect(isAllowedOrigin('https://project.vektracorp.in', [])).toBe(false)
+    expect(isAllowedOrigin('https://project.vektracorp.in', [undefined])).toBe(false)
+  })
+})
