@@ -11,12 +11,14 @@ import { cn } from '../utils'
  * they do not reveal panels that live in the same document. Arrow keys move
  * between segments, matching native radio behaviour.
  */
-export interface SegmentedProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
-  size?: 'sm' | 'default'
-}
+/**
+ * The group has no size of its own — it is a bare flex row. Size is a property
+ * of the segments, so it lives on SegmentedItem / segmentedItemClass.
+ */
+export type SegmentedProps = Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'>
 
 const SegmentedGroup = React.forwardRef<HTMLDivElement, SegmentedProps>(
-  ({ className, size = 'default', ...props }, ref) => (
+  ({ className, ...props }, ref) => (
     <div
       ref={ref}
       role="group"
