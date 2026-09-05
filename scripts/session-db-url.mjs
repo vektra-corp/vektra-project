@@ -16,6 +16,7 @@
  * Set SUPABASE_MIGRATION_DB_URL to override (e.g. a direct db.<ref>.supabase.co
  * connection); otherwise SUPABASE_DB_URL is reused with the port swapped.
  */
+import './load-env.mjs'
 const explicit = process.env.SUPABASE_MIGRATION_DB_URL
 if (explicit) {
   process.stdout.write(explicit)
@@ -25,7 +26,7 @@ if (explicit) {
 const raw = process.env.SUPABASE_DB_URL
 if (!raw) {
   console.error('Set SUPABASE_DB_URL (or SUPABASE_MIGRATION_DB_URL).')
-  console.error('Tip: set -a; source apps/web/.env.local; set +a')
+  console.error('Expected them in apps/web/.env.local, which these scripts read automatically.')
   process.exit(1)
 }
 

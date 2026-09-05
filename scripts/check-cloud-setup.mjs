@@ -14,6 +14,7 @@
  *
  *   node scripts/check-cloud-setup.mjs
  */
+import './load-env.mjs'
 import pg from 'pg'
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -30,7 +31,7 @@ const bad = (m, hint) => {
 
 if (!URL || !ANON || !DB) {
   console.error('Set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_DB_URL.')
-  console.error('Tip: set -a; source apps/web/.env.local; set +a')
+  console.error('Expected them in apps/web/.env.local, which these scripts read automatically.')
   process.exit(1)
 }
 

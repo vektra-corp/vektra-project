@@ -12,6 +12,7 @@
  *
  * Keep the two in sync: if the official generator's output ever differs, it wins.
  */
+import './load-env.mjs'
 import pg from 'pg'
 
 const connectionString = process.argv[2] ?? process.env.SUPABASE_DB_URL

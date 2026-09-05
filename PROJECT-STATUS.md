@@ -57,6 +57,8 @@ Run all of these before calling anything done:
 pnpm lint && pnpm typecheck && pnpm test && pnpm i18n:check && pnpm build
 
 # RLS suite — needs the hosted DB and an explicit opt-in
+# The db:* scripts read apps/web/.env.local themselves. The RLS suite does not,
+# because it must be explicit about which database it is allowed to mutate.
 set -a; source apps/web/.env.local; set +a
 ALLOW_DESTRUCTIVE_TESTS=true pnpm test:rls
 ```
@@ -356,6 +358,8 @@ size.
 70 -> 99 tests, covering 00025-00030. Run it after any migration:
 
 ```bash
+# The db:* scripts read apps/web/.env.local themselves. The RLS suite does not,
+# because it must be explicit about which database it is allowed to mutate.
 set -a; source apps/web/.env.local; set +a
 ALLOW_DESTRUCTIVE_TESTS=true pnpm test:rls
 ```

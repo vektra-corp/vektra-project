@@ -13,9 +13,10 @@
  *
  *   node scripts/apply-migration.mjs supabase/migrations/00014_member_invites.sql
  *
- * Load the environment first:
- *   set -a; source apps/web/.env.local; set +a
+ * Variables are read from apps/web/.env.local automatically; anything already
+ * in the environment wins, so CI and one-off overrides still work.
  */
+import './load-env.mjs'
 import { readFileSync } from 'node:fs'
 import pg from 'pg'
 
@@ -28,7 +29,7 @@ if (!file) {
 const url = process.env.SUPABASE_DB_URL
 if (!url) {
   console.error('SUPABASE_DB_URL is not set.')
-  console.error('Tip: set -a; source apps/web/.env.local; set +a')
+  console.error('Expected them in apps/web/.env.local, which these scripts read automatically.')
   process.exit(1)
 }
 

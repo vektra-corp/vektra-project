@@ -9,16 +9,18 @@
  * The seed is idempotent (every insert is ON CONFLICT DO NOTHING), so re-running
  * it after adding fixtures only adds the new rows.
  *
- *   set -a; source apps/web/.env.local; set +a
+ * Variables are read from apps/web/.env.local automatically; anything already
+ * in the environment wins, so CI and one-off overrides still work.
  *   node scripts/seed.mjs
  */
+import './load-env.mjs'
 import { readFileSync } from 'node:fs'
 import pg from 'pg'
 
 const url = process.env.SUPABASE_DB_URL
 if (!url) {
   console.error('SUPABASE_DB_URL is not set.')
-  console.error('Tip: set -a; source apps/web/.env.local; set +a')
+  console.error('Expected them in apps/web/.env.local, which these scripts read automatically.')
   process.exit(1)
 }
 
