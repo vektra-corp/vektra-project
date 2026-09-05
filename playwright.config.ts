@@ -1,4 +1,33 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { defineConfig, devices } from '@playwright/test'
+
+/**
+ * Load `apps/web/.env.local` into this process.
+ *
+ * The Next dev server reads it for itself, but the TEST process does not — and
+ * a spec that talks to Supabase directly (the MFA one mints a token to check
+ * enforcement) otherwise sees `undefined` and requests a URL that resolves
+ * against baseURL, coming back as the app's own HTML. In CI these come from the
+ * job environment instead, so anything already set wins.
+ */
+function loadEnvLocal(): void {
+  try {
+    const file = readFileSync(path.join(process.cwd(), 'apps/web/.env.local'), 'utf8')
+    for (const line of file.split('\n')) {
+      const match = /^([A-Z0-9_]+)=(.*)$/.exec(line.trim())
+      if (!match) continue
+      const [, key, rawValue] = match
+      if (key && process.env[key] === undefined) {
+        process.env[key] = (rawValue ?? '').replace(/^["']|["']$/g, '')
+      }
+    }
+  } catch {
+    // Absent in CI, where the job supplies them directly.
+  }
+}
+
+loadEnvLocal()
 
 /**
  * End-to-end tests (§14).
@@ -61,7 +90,10 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup'],
+      teardown: 'cleanup',
     },
+    // Runs after chromium finishes, whatever the outcome.
+    { name: 'cleanup', testMatch: /.*\.teardown\.ts/ },
   ],
 
   webServer: {

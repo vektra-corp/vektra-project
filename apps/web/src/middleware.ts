@@ -1,4 +1,9 @@
-import { extractOrgSlug, isPublicRoute } from '@pm/auth/middleware'
+import {
+  extractOrgSlug,
+  isMfaExemptRoute,
+  isPublicRoute,
+  needsSecondFactor,
+} from '@pm/auth/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 import { createMiddlewareClient } from '@/lib/supabase/middleware'
 
@@ -33,6 +38,43 @@ export async function middleware(request: NextRequest) {
 
   // Signed-in users have no business on the auth screens.
   if (pathname === '/login' || pathname === '/signup') {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  /*
+   * Second factor (§13.5).
+   *
+   * A password sign-in establishes a session at aal1 straight away, so without
+   * this the code prompt would be a suggestion: type the URL of any page and
+   * you are in. Enforcing it here is what makes it binding.
+   *
+   * The aal claim is read from the access token rather than asked for
+   * separately — getUser() has already validated that token against the auth
+   * server, so the claim inside it is trustworthy and free.
+   */
+  const { data: sessionData } = await supabase.auth.getSession()
+  const accessToken = sessionData.session?.access_token
+  let aal: string | null = null
+  if (accessToken) {
+    try {
+      const claims = JSON.parse(
+        Buffer.from(accessToken.split('.')[1] ?? '', 'base64url').toString(),
+      ) as { aal?: string }
+      aal = claims.aal ?? null
+    } catch {
+      // An unreadable token means no evidence of aal2. Fail closed.
+      aal = null
+    }
+  }
+
+  if (needsSecondFactor(aal, user.factors) && !isMfaExemptRoute(pathname)) {
+    const challenge = new URL('/mfa', request.url)
+    if (pathname !== '/') challenge.searchParams.set('next', pathname)
+    return NextResponse.redirect(challenge)
+  }
+
+  // Nothing to prove, so the challenge page is not somewhere to linger.
+  if (pathname === '/mfa' && !needsSecondFactor(aal, user.factors)) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 

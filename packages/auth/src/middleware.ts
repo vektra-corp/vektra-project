@@ -20,7 +20,28 @@ export function isProtectedRoute(pathname: string): boolean {
 /** The external portal is mounted under a literal prefix, not at the root. */
 const PORTAL_PREFIX = 'portal'
 
-const NON_TENANT_SEGMENTS = ['api', 'onboarding', 'select-org']
+/*
+ * Top-level paths that are NOT an organisation slug.
+ *
+ * Every route at the root of the app has to be listed, because anything not
+ * listed is read as a tenant slug — and a signed-in user visiting one is then
+ * checked for membership of an organisation that does not exist, and sent to
+ * /403. That has bitten twice now: once for `/portal`, and once for `/mfa`,
+ * where it made the second-factor page unreachable and left the person in a
+ * redirect loop they could not escape.
+ *
+ * Derived from PUBLIC_ROUTE_PREFIXES where possible so adding a public route
+ * cannot forget this list, plus the authenticated non-tenant routes.
+ */
+const NON_TENANT_SEGMENTS = [
+  ...PUBLIC_ROUTE_PREFIXES.map((prefix) => prefix.replace(/^\//, '').split('/')[0]),
+  'api',
+  'auth',
+  'onboarding',
+  'select-org',
+  'mfa',
+  'logout',
+]
 
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 
@@ -96,4 +117,47 @@ export function clientIp(headers: {
     if (first) return first.trim()
   }
   return headers.get('x-real-ip') ?? 'unknown'
+}
+
+/**
+ * Whether this request must complete a second factor before proceeding (§13.5).
+ *
+ * MFA is only meaningful if it cannot be walked around. Signing in with a
+ * password establishes a session at `aal1` immediately — so without a guard
+ * here, someone could be shown the code prompt, navigate to any other URL, and
+ * be signed in anyway. This is what makes the prompt binding rather than
+ * decorative.
+ *
+ * The rule: a user who has a VERIFIED factor and holds an `aal1` token is sent
+ * to the challenge. An unverified factor (enrolment started, never completed)
+ * does not count — otherwise abandoning enrolment would lock someone out of
+ * their own account.
+ *
+ * @param aal      The `aal` claim from the access token.
+ * @param factors  The user's enrolled factors.
+ */
+export function needsSecondFactor(
+  aal: string | null | undefined,
+  factors: readonly { status?: string }[] | null | undefined,
+): boolean {
+  if (aal === 'aal2') return false
+  const verified = (factors ?? []).some((factor) => factor.status === 'verified')
+  return verified
+}
+
+/** Routes reachable while a second factor is outstanding. */
+const MFA_ALLOWED_PREFIXES = ['/mfa', '/logout', '/403']
+
+/**
+ * Whether a path may be visited before the second factor is satisfied.
+ *
+ * Deliberately a short allow-list rather than a block-list: anything not named
+ * here is off-limits until the challenge is answered, so a route added later is
+ * protected by default.
+ */
+export function isMfaExemptRoute(pathname: string): boolean {
+  if (isPublicRoute(pathname)) return true
+  return MFA_ALLOWED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )
 }

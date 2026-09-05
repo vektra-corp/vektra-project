@@ -6,6 +6,7 @@ import { getLocale } from 'next-intl/server'
 import { PageBody } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
+import { MfaPanel } from './mfa-panel'
 import { SessionList, type SessionRow } from './session-list'
 
 export const metadata: Metadata = { title: 'Security' }
@@ -26,7 +27,7 @@ export default async function SecurityPage({ params }: { params: { orgSlug: stri
   // list does not offer to revoke a device that already signed itself out.
   await supabase.rpc('prune_stale_sessions')
 
-  const [{ data: sessions }, { data: sessionData }] = await Promise.all([
+  const [{ data: sessions }, { data: sessionData }, { data: factors }] = await Promise.all([
     supabase
       .from('user_sessions')
       .select('id, device, ip_address, last_active_at, created_at, session_id')
@@ -35,7 +36,12 @@ export default async function SecurityPage({ params }: { params: { orgSlug: stri
       .order('last_active_at', { ascending: false })
       .limit(50),
     supabase.auth.getSession(),
+    supabase.auth.mfa.listFactors(),
   ])
+
+  // Only a verified factor is enforced at sign-in, so only a verified one
+  // counts as "on" here.
+  const verifiedFactor = (factors?.all ?? []).find((factor) => factor.status === 'verified')
 
   // Which row is this browser. Read from the JWT rather than guessed from the
   // IP, which several devices behind one NAT would share.
@@ -74,6 +80,12 @@ export default async function SecurityPage({ params }: { params: { orgSlug: stri
             Your active sessions on this account.
           </p>
         </div>
+
+        <MfaPanel
+          orgSlug={params.orgSlug}
+          isEnrolled={Boolean(verifiedFactor)}
+          factorId={verifiedFactor?.id ?? null}
+        />
 
         <SessionList orgSlug={params.orgSlug} sessions={rows} formatWhen={formatWhen} />
 

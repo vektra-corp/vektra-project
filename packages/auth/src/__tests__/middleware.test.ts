@@ -4,8 +4,10 @@ import {
   extractWorkspaceSlug,
   isAllowedOrigin,
   isPortalRoute,
+  isMfaExemptRoute,
   isProtectedRoute,
   isPublicRoute,
+  needsSecondFactor,
 } from '../middleware'
 
 describe('extractOrgSlug', () => {
@@ -91,5 +93,88 @@ describe('isAllowedOrigin', () => {
     expect(isAllowedOrigin(null, allowed)).toBe(false)
     // A null origin must never match an absent allowlist entry.
     expect(isAllowedOrigin(undefined as never, allowed)).toBe(false)
+  })
+})
+
+describe('needsSecondFactor', () => {
+  const verified = [{ status: 'verified' }]
+  const unverified = [{ status: 'unverified' }]
+
+  it('challenges a user with a verified factor holding an aal1 token', () => {
+    expect(needsSecondFactor('aal1', verified)).toBe(true)
+  })
+
+  it('lets an aal2 token through', () => {
+    expect(needsSecondFactor('aal2', verified)).toBe(false)
+  })
+
+  it('ignores an abandoned enrolment', () => {
+    // Otherwise starting enrolment and closing the tab would lock someone out
+    // of their own account with no way back in.
+    expect(needsSecondFactor('aal1', unverified)).toBe(false)
+  })
+
+  it('does not challenge a user with no factors', () => {
+    expect(needsSecondFactor('aal1', [])).toBe(false)
+    expect(needsSecondFactor('aal1', null)).toBe(false)
+    expect(needsSecondFactor(null, undefined)).toBe(false)
+  })
+
+  it('challenges when the claim is missing but a factor is verified', () => {
+    // Fail closed: an absent aal claim is not evidence of aal2.
+    expect(needsSecondFactor(undefined, verified)).toBe(true)
+    expect(needsSecondFactor('', verified)).toBe(true)
+  })
+
+  it('counts a verified factor among unverified ones', () => {
+    expect(needsSecondFactor('aal1', [{ status: 'unverified' }, { status: 'verified' }])).toBe(true)
+  })
+})
+
+describe('isMfaExemptRoute', () => {
+  it('allows the challenge page itself', () => {
+    expect(isMfaExemptRoute('/mfa')).toBe(true)
+    expect(isMfaExemptRoute('/mfa/verify')).toBe(true)
+  })
+
+  it('allows public routes', () => {
+    expect(isMfaExemptRoute('/login')).toBe(true)
+  })
+
+  it('blocks everything else, including routes that do not exist yet', () => {
+    for (const path of ['/acme/dashboard', '/acme/settings/security', '/anything-new']) {
+      expect(isMfaExemptRoute(path)).toBe(false)
+    }
+  })
+})
+
+describe('extractOrgSlug — non-tenant top-level routes', () => {
+  it('does not read an app route as an organization slug', () => {
+    // Anything not excluded here is treated as a tenant, and a signed-in user
+    // visiting it is bounced to /403. `/mfa` hit exactly that, which made the
+    // second-factor page unreachable.
+    for (const path of [
+      '/mfa',
+      '/mfa?next=/acme/dashboard',
+      '/login',
+      '/signup',
+      '/verify',
+      '/forgot-password',
+      '/reset-password',
+      '/403',
+      '/404',
+      '/api/export',
+      '/auth/callback',
+      '/onboarding',
+      '/select-org',
+      '/logout',
+    ]) {
+      expect(extractOrgSlug(path), path).toBeNull()
+    }
+  })
+
+  it('still reads a real org slug', () => {
+    expect(extractOrgSlug('/acme/dashboard')).toBe('acme')
+    expect(extractOrgSlug('/acme')).toBe('acme')
   })
 })
