@@ -16,7 +16,7 @@ started.
 | 1 — MVP | Design system, board, tasks, comments, attachments, notifications, reports, settings, members, admin console | **Complete** |
 | 2 — V1 | Documents, external portal, Gantt, employees & leave, configurable dashboard, subtask Kanban, import/export | **Complete** |
 | 3 — V2 | Commercial, timesheets, revenue, auto-assignment, custom fields, workflows, PDF, Slack | **Complete** |
-| 4 — Hardening | Security review, load test, E2E, DR, go-live | **Not started** — plan below |
+| 4 — Hardening | Security review, load test, E2E, DR, go-live | **In progress** — RLS and E2E done, plan below |
 
 ### Phase 2 detail
 
@@ -61,13 +61,14 @@ set -a; source apps/web/.env.local; set +a
 ALLOW_DESTRUCTIVE_TESTS=true pnpm test:rls
 ```
 
-Current counts: **404 unit tests, 70 RLS tests, 63 tables, 30 migrations,
-9 background jobs.**
+Current counts: **404 unit tests, 99 RLS tests, 39 end-to-end tests, 63 tables,
+31 migrations, 9 background jobs.**
 
-The RLS suite has NOT been re-run since migration 00024. Do that before trusting
-the isolation guarantees — 00025 rewrote the comments INSERT policies, 00027 and
-00029 added tables and policies, and 00028/00030 added SECURITY DEFINER
-functions callable by end users.
+```bash
+pnpm test:e2e        # Playwright, starts its own dev server on 3100
+```
+
+All three suites are green as of migration 00031.
 
 ---
 
@@ -150,7 +151,25 @@ pnpm db:migrations      # applied vs pending
     second write from the engine double-counted every run and raced besides.
     Check for a trigger before adding bookkeeping.
 
-13. **`server-only` makes a module unimportable from vitest.** Hit four times
+13. **A strict CSP breaks `next dev`.** The dev build compiles with `eval`, so
+    a policy without `'unsafe-eval'` makes the browser refuse the client bundle:
+    React never hydrates and nothing interactive works, while the page still
+    renders and the server logs stay clean. `next.config.mjs` adds it in
+    development only.
+
+14. **DOMPurify drags jsdom into every server action that imports it**, and
+    jsdom reads a stylesheet off disk at load. Webpack bundles the read but not
+    the file, so the action 500s with ENOENT. `sanitize.ts` is dependency-free
+    for that reason; `sanitize-html.ts` is the only module that may import
+    DOMPurify. Do not merge them back.
+
+15. **`useState(prop)` captures only the first value.** Both Kanban boards did
+    this, so `router.refresh()` fetched new data the component then ignored and
+    a newly added task stayed invisible until a full reload. When a client
+    component holds optimistic state seeded from the server, re-seed it when the
+    prop changes.
+
+16. **`server-only` makes a module unimportable from vitest.** Hit four times
     now. When a `server-only` module contains pure logic worth testing —
     especially a security check — extract it to an unmarked sibling and re-export
     (`ssrf.ts`, `slack-text.ts`, `signature.ts`, `logo-origin.ts`).
@@ -307,43 +326,42 @@ connected integrations and outbound webhook endpoints.
 Nothing below is started. Ordered by what blocks a go-live decision, not by
 size.
 
-### 1. Re-run and extend the RLS suite  *(blocking)*
+### 1. RLS suite — DONE
+
+70 -> 99 tests, covering 00025-00030. Run it after any migration:
 
 ```bash
 set -a; source apps/web/.env.local; set +a
 ALLOW_DESTRUCTIVE_TESTS=true pnpm test:rls
 ```
 
-It has not run since `00025`, which rewrote the comments INSERT policies, or
-`00027`, which added `integration_deliveries`. Isolation for those is currently
-asserted by reading the SQL, not by a test. Add coverage for:
+It takes about four minutes against a hosted project. Note the harness detail
+that cost time: `asUser` impersonates inside a transaction, and switching roles
+in the middle of one leaves the shared connection aborted — every later test in
+the file then fails for an unrelated reason. Seed anything a test needs from
+another principal OUTSIDE the impersonation and clean it up in a `finally`.
 
-- `comments.author_type` — a member must not be able to insert a comment
-  claiming `author_type = 'workflow'`. The CHECK makes it impossible today;
-  prove it rather than trusting the derivation.
-- `integration_deliveries` — admin-read only, no cross-tenant read.
-- `workflows.webhook_token_hash` — a member can read the row; confirm the hash
-  is useless to them (it is, but the test documents the intent).
-- `pdf_templates` — manager-gated, no cross-tenant read.
-- `import_export_jobs` — a person reads their own and an admin reads all;
-  UPDATE and DELETE must affect zero rows (checked by hand, not by a test).
-- `ensure_task_board` and `org_member_ids_for_emails` — both SECURITY DEFINER
-  and callable by end users, so both check the tenant themselves. Each was
-  verified by hand against another org; neither has a test.
+### 2. E2E tests — DONE
 
-### 2. E2E tests (Playwright)  *(blocking)*
+39 Playwright tests: sign-in, every authenticated route, anonymous access, and
+the task lifecycle. Wired into CI against a local Supabase.
 
-§14 names four flows: auth, task lifecycle, commercial, portal. Not installed
-at all. This is the largest single gap — every verification in this project so
-far has been a curl against a rendered page, which catches 500s and missing
-content but not interaction.
+**This is the argument for having them, made concrete.** The first run found
+three bugs, none of which typecheck, ESLint or 404 unit tests could see, and two
+of which broke the app for every user:
 
-Two bugs this quarter were invisible to `tsc`, ESLint AND the unit suite, and
-only appeared on a real request: the sidebar passing a function across the RSC
-boundary, and `AuditFilters.Pager` not resolving from the client manifest.
-**A green CI run currently proves less than it looks like it does.** That is the
-argument for Playwright, and it is worth making explicitly to whoever schedules
-this.
+1. The CSP applied in development blocked `eval`, which Next's dev build needs,
+   so React never hydrated and nothing interactive worked locally.
+2. Every server action touching rich text returned 500, because DOMPurify pulled
+   jsdom into the bundle and jsdom reads a stylesheet off disk. Task, subtask,
+   comment and document creation were all broken.
+3. A task added from the board stayed invisible until a reload — both boards
+   seeded `useState(initialCards)` and ignored the refreshed server data.
+
+Two things to know when adding specs: a server-rendered button is clickable
+before React attaches its handler, so use `clickUntil` rather than a sleep; and
+a Kanban card renders its title twice (visible link plus a screen-reader label),
+so assert on roles rather than text.
 
 ### 3. Outstanding §13 items  *(blocking for a security review)*
 
