@@ -1,0 +1,33 @@
+version: 2
+
+# Keeps the pinned versions from rotting.
+#
+# The workflows pin third-party actions to a full commit SHA rather than a tag,
+# because a tag can be re-pointed by whoever owns the action — and those actions
+# run in jobs holding the Vercel token and the production database URL. Pinning
+# without a way to see updates just means running old code forever, so
+# Dependabot raises each bump as a pull request to be reviewed deliberately.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    labels: [dependencies, ci]
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+    labels: [dependencies]
+    # Security fixes should arrive as they are found; feature bumps can wait for
+    # someone to look at them.
+    open-pull-requests-limit: 5
+    groups:
+      types:
+        patterns: ['@types/*']
+      linting:
+        patterns: ['eslint*', 'prettier*', '@typescript-eslint/*']

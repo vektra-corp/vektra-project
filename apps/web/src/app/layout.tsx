@@ -16,7 +16,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swa
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' })
 
 export const metadata: Metadata = {
-  title: { default: 'Project Management', template: '%s · Project Management' },
+  title: { default: 'Vektra Project', template: '%s · Vektra Project' },
   description: 'Plan, track and deliver work across your organization.',
   robots: { index: false, follow: false },
 }

@@ -123,6 +123,21 @@ Vercel issues and renews the certificates.
       it inserts and deletes rows and refuses to run without
       `ALLOW_DESTRUCTIVE_TESTS=true` for that reason.
 
+## Why the workflows look pinned to hashes
+
+Third-party actions and CLIs are pinned to a full commit SHA or an exact
+version, not a tag. A tag is mutable: whoever owns an action can re-point `@v1`,
+and it runs in a job that holds `VERCEL_TOKEN` and `PRODUCTION_DB_URL`. The same
+applies to `npm install --global vercel@latest`, which is why that has a version
+too.
+
+`actions/*` are left on major tags — they are GitHub's own, which is the usual
+trust boundary.
+
+Dependabot (`.github/dependabot.yml`) raises the bumps weekly so the pins do not
+quietly rot. Review each one; do not merge them blind, because that gives back
+exactly what pinning bought.
+
 ## Rolling back
 
 Vercel keeps every deployment; promoting a previous one is instant and is the

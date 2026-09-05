@@ -23,6 +23,17 @@ concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
 
+# Third-party actions are pinned to a full commit SHA, not a tag.
+#
+# A tag is mutable: whoever owns the action — or whoever compromises that
+# repository — can re-point `@v1` at different code, and it runs here with
+# access to whatever the job holds. The `migrate` job holds PRODUCTION_DB_URL,
+# so this is not a theoretical concern for this workflow in particular.
+#
+# `actions/*` are GitHub's own and are left on major tags, which is the usual
+# trust boundary. Dependabot is configured to raise the SHA bumps so they do not
+# quietly rot; each one is a deliberate review rather than an automatic upgrade.
+
 env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
 
@@ -46,7 +57,7 @@ jobs:
 
       # A change to a shared package rebuilds both, because either app may
       # depend on it. Only an app-local change is treated as app-local.
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3
         id: filter
         with:
           filters: |
@@ -78,7 +89,9 @@ jobs:
         with:
           node-version: 20
 
-      - run: npm install --global vercel@latest
+      # Pinned for the same reason the actions are: this runs in a job holding
+      # VERCEL_TOKEN, and `@latest` means whatever was published this morning.
+      - run: npm install --global vercel@59.11.7
 
       - name: Deploy web
         id: deploy-web
@@ -113,9 +126,9 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@v4
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1
         with:
-          version: latest
+          version: 2.116.0
 
       # Migrations run BEFORE the new code, and §15 requires every one to be
       # backward-compatible for exactly this reason: for the length of the
@@ -146,7 +159,9 @@ jobs:
         with:
           node-version: 20
 
-      - run: npm install --global vercel@latest
+      # Pinned for the same reason the actions are: this runs in a job holding
+      # VERCEL_TOKEN, and `@latest` means whatever was published this morning.
+      - run: npm install --global vercel@59.11.7
 
       - name: Deploy web
         if: needs.changed.outputs.web == 'true'
