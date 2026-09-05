@@ -18,3 +18,20 @@ Sentry.init({
   // Locally there is no Sentry project to talk to.
   enabled: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
 })
+
+/**
+ * Client-side navigation instrumentation.
+ *
+ * Without this export the SDK prints an ACTION REQUIRED warning on every dev
+ * start, and — more to the point — a route change is not recorded as a
+ * transaction. Traces then cover the first page load and nothing after it,
+ * which for an app people navigate around inside is most of the session.
+ *
+ * The eslint-disable is not a workaround for a mistake. `@sentry/nextjs` has
+ * conditional exports, and this symbol exists only in the CLIENT build.
+ * `import/namespace` resolves the package's server entry and concludes it is
+ * missing; TypeScript resolves the right condition and accepts it. This file is
+ * client-only, so the rule is looking at the wrong build, not at a real error.
+ */
+// eslint-disable-next-line import/namespace -- see below
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart

@@ -53,8 +53,26 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
   const today = todayIn(auth.orgTimezone)
   const weekEnd = format(addDays(new Date(`${today}T00:00:00Z`), 7), 'yyyy-MM-dd')
 
-  const [{ data: myTasks }, { data: projects }, { data: recent }, { count: activeProjects }] =
-    await Promise.all([
+  const isManager = (ORG_MANAGER_ROLES as readonly string[]).includes(auth.orgRole)
+
+  /*
+   * Everything that depends on nothing, in one round trip.
+   *
+   * These were four separate waves. Each wave is a full round trip to the
+   * database, and this project's is in another region — about 370ms each, so
+   * the ordering cost more than the queries did. Only two things genuinely
+   * depend on an earlier result, and they are the wave below.
+   */
+  const [
+    { data: myTasks },
+    { data: projects },
+    { data: recent },
+    { count: activeProjects },
+    { data: me },
+    { data: config },
+    { data: organization },
+    pendingApprovals,
+  ] = await Promise.all([
       supabase
         .from('tasks')
         .select(
@@ -88,6 +106,40 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
         .select('id', { count: 'exact', head: true })
         .eq('organization_id', auth.orgId)
         .eq('status', 'active'),
+
+      // The viewer's own employee record, if they have one — the leave widgets
+      // are meaningless without it and are omitted rather than shown empty.
+      supabase
+        .from('employees')
+        .select('id')
+        .eq('organization_id', auth.orgId)
+        .eq('user_id', auth.userId)
+        .maybeSingle(),
+
+      // The saved layout is per person per org; absence means "never
+      // customised", which is what keeps DEFAULT_DASHBOARD the single
+      // definition of the default.
+      supabase
+        .from('dashboard_configs')
+        .select('layout')
+        .eq('organization_id', auth.orgId)
+        .eq('user_id', auth.userId)
+        .eq('is_default', true)
+        .maybeSingle(),
+
+      supabase.from('organizations').select('settings').eq('id', auth.orgId).maybeSingle(),
+
+      isManager
+        ? supabase
+            .from('leave_requests')
+            .select(
+              'id, start_date, end_date, duration_days, employee:employees!leave_requests_employee_id_fkey(profile:profiles!employees_user_id_fkey(full_name))',
+            )
+            .eq('organization_id', auth.orgId)
+            .eq('status', 'pending')
+            .order('start_date')
+            .limit(8)
+        : Promise.resolve({ data: [] as never[] }),
     ])
 
   const normalise = (rows: typeof myTasks): TaskRow[] =>
@@ -109,9 +161,26 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
   // Counted in memory: both lists are already loaded, and this avoids a
   // correlated subquery per project.
   const projectIds = (projects ?? []).map((project) => project.id)
-  const { data: projectTasks } = projectIds.length
-    ? await supabase.from('tasks').select('project_id, status').in('project_id', projectIds)
-    : { data: [] as { project_id: string; status: string }[] }
+
+  /*
+   * The second and last wave: the two queries that need a result from the first.
+   * `projectTasks` needs the project ids; `leaveBalances` needs the viewer's
+   * employee row.
+   */
+  const [{ data: projectTasks }, leaveBalances] = await Promise.all([
+    projectIds.length
+      ? supabase.from('tasks').select('project_id, status').in('project_id', projectIds)
+      : Promise.resolve({ data: [] as { project_id: string; status: string }[] }),
+    me
+      ? supabase
+          .from('leave_balances')
+          .select(
+            'id, remaining_days, total_days, carried_over, leave_type:leave_types!leave_balances_leave_type_id_fkey(name)',
+          )
+          .eq('employee_id', me.id)
+          .eq('year', new Date().getFullYear())
+      : Promise.resolve({ data: [] as never[] }),
+  ])
 
   const stats = new Map<string, { total: number; done: number }>()
   for (const task of projectTasks ?? []) {
@@ -138,28 +207,6 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
 
   const projectSlugs = new Map(progressRows.map((row) => [row.id, row.workspaceSlug]))
 
-  // The viewer's own employee record, if they have one — the leave widgets are
-  // meaningless without it and are simply omitted rather than shown empty.
-  const { data: me } = await supabase
-    .from('employees')
-    .select('id')
-    .eq('organization_id', auth.orgId)
-    .eq('user_id', auth.userId)
-    .maybeSingle()
-
-  // The saved layout is per person per org; absence means "never customised",
-  // which is what makes DEFAULT_DASHBOARD the single definition of the default.
-  const [{ data: config }, { data: organization }] = await Promise.all([
-    supabase
-      .from('dashboard_configs')
-      .select('layout')
-      .eq('organization_id', auth.orgId)
-      .eq('user_id', auth.userId)
-      .eq('is_default', true)
-      .maybeSingle(),
-    supabase.from('organizations').select('settings').eq('id', auth.orgId).maybeSingle(),
-  ])
-
   // Three tiers, most specific first: what this person arranged, then the
   // template an admin published for the organisation (§19.10), then the
   // built-in. Each is only consulted when the one before it is absent, so
@@ -170,32 +217,9 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
   )
   const layout = saved.length > 0 ? saved : orgDefault.length > 0 ? orgDefault : DEFAULT_DASHBOARD
 
-  const isManager = (ORG_MANAGER_ROLES as readonly string[]).includes(auth.orgRole)
   const availableTypes = (Object.keys(WIDGET_SPECS) as DashboardWidgetType[]).filter(
     (type) => !WIDGET_SPECS[type].managerOnly || isManager,
   )
-
-  const leaveBalances = me
-    ? await supabase
-        .from('leave_balances')
-        .select(
-          'id, remaining_days, total_days, carried_over, leave_type:leave_types!leave_balances_leave_type_id_fkey(name)',
-        )
-        .eq('employee_id', me.id)
-        .eq('year', new Date().getFullYear())
-    : { data: [] as never[] }
-
-  const pendingApprovals = isManager
-    ? await supabase
-        .from('leave_requests')
-        .select(
-          'id, start_date, end_date, duration_days, employee:employees!leave_requests_employee_id_fkey(profile:profiles!employees_user_id_fkey(full_name))',
-        )
-        .eq('organization_id', auth.orgId)
-        .eq('status', 'pending')
-        .order('start_date')
-        .limit(8)
-    : { data: [] as never[] }
 
   const widgets: Partial<Record<DashboardWidgetType, React.ReactNode>> = {
     tasks_due_soon: (
