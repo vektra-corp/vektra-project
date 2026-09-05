@@ -44,9 +44,12 @@
     "verify_subtitle": "We sent a six-digit code to {email}.",
     "verify_resend": "Resend the email",
     "continue_with": "Or continue with",
+    "continue_with_google": "Continue with Google",
     "invalid_credentials": "That email and password combination is not correct.",
     "email_not_confirmed": "Confirm your email address before signing in.",
-    "rate_limited": "Too many attempts. Try again in {minutes} minutes."
+    "rate_limited": "Too many attempts. Try again in {minutes} minutes.",
+    "oauth_failed": "That sign-in could not be completed. Try again.",
+    "oauth_cancelled": "Google sign-in was cancelled."
   },
   "errors": {
     "UNAUTHORIZED": "You need to sign in to do that.",

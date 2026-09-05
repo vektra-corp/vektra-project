@@ -23,8 +23,17 @@ interface FieldValues {
   estimated_hours: number | null
 }
 
+/*
+ * The design's property control: a recessed well with a hairline, not a
+ * form input. It reads as a value you can change rather than as a field
+ * awaiting entry, which is right for a panel that saves on change.
+ */
 const selectClass =
-  'h-8 w-full rounded-md border border-input bg-background px-2 text-ui shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50'
+  'h-9 w-full rounded-lg border border-input bg-sunk px-2.5 text-base text-foreground ' +
+  'focus-visible:border-primary focus-visible:outline-none disabled:opacity-50'
+
+/** Tracked monospace caps above each control, per the design. */
+const fieldLabelClass = 'label-meta text-subtle'
 
 /**
  * Inline task fields. Each control saves on change rather than behind a Save
@@ -81,11 +90,11 @@ export function TaskFields({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       {error ? <p className="text-nav text-destructive">{error}</p> : null}
 
-      <div className="space-y-1.5">
-        <Label htmlFor="task-status" className="text-nav text-muted-foreground">
+      <div className="space-y-2">
+        <Label htmlFor="task-status" className={fieldLabelClass}>
           Status
         </Label>
         <select
@@ -103,8 +112,8 @@ export function TaskFields({
         </select>
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="task-priority" className="text-nav text-muted-foreground">
+      <div className="space-y-2">
+        <Label htmlFor="task-priority" className={fieldLabelClass}>
           Priority
         </Label>
         <select
@@ -122,8 +131,8 @@ export function TaskFields({
         </select>
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="task-assignee" className="text-nav text-muted-foreground">
+      <div className="space-y-2">
+        <Label htmlFor="task-assignee" className={fieldLabelClass}>
           Assignee
         </Label>
         <select
@@ -142,9 +151,9 @@ export function TaskFields({
         </select>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="task-start" className="text-nav text-muted-foreground">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="task-start" className={fieldLabelClass}>
             Start
           </Label>
           <input
@@ -156,8 +165,8 @@ export function TaskFields({
             onChange={(event) => save({ start_date: event.target.value })}
           />
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="task-due" className="text-nav text-muted-foreground">
+        <div className="space-y-2">
+          <Label htmlFor="task-due" className={fieldLabelClass}>
             Due
           </Label>
           <input

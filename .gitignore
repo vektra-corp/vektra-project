@@ -58,3 +58,5 @@ pnpm-debug.log*
 .vercel
 
 .claude
+
+ui-designs/

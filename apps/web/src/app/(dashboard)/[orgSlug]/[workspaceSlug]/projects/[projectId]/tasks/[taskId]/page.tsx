@@ -5,9 +5,9 @@ import {
   parseFieldOptions,
   type CustomFieldDefinition,
 } from '@pm/shared/constants'
-import { formatRelativeTime, initials, todayIn } from '@pm/shared/utils'
-import { Avatar, AvatarFallback, AvatarImage, Button, Card, CardContent } from '@pm/ui'
-import { Columns3 } from 'lucide-react'
+import { formatRelativeTime, initials, projectKey, todayIn } from '@pm/shared/utils'
+import { Avatar, AvatarFallback, AvatarImage, Button } from '@pm/ui'
+import { Columns3, X } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -18,7 +18,6 @@ import {
   CustomFieldInputs,
   type CustomValue,
 } from '@/components/custom-fields/custom-field-inputs'
-import { PageBody } from '@/components/layout/page-body'
 import { SubtaskList, type SubtaskRow } from '@/components/tasks/subtask-list'
 import { DueDate, TaskStatusBadge } from '@/components/tasks/task-badges'
 import { TaskDescription } from '@/components/tasks/task-description'
@@ -117,6 +116,17 @@ export default async function TaskDetailPage({
 
   const projectBase = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}`
 
+  // The identity bar reads "ATL-241", so the task needs its project's key. The
+  // project layout already loaded the name, but a layout cannot hand data to
+  // its page, so this is the one extra round trip that buys the id.
+  const { data: project } = await supabase
+    .from('projects')
+    .select('name')
+    .eq('id', params.projectId)
+    .maybeSingle()
+  const projectName = project?.name ?? 'Project'
+  const prefix = projectKey(projectName)
+
   const fieldDefinitions: CustomFieldDefinition[] = (customFields ?? []).map((field) => ({
     id: field.id,
     entity_type: 'task',
@@ -134,39 +144,64 @@ export default async function TaskDetailPage({
     fieldValues[row.custom_field_id] = (row.value ?? null) as CustomValue
   }
 
+  const closed = task.status === 'done' || task.status === 'cancelled'
+
   return (
-    <PageBody className="pt-4">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="min-w-0 space-y-6">
-          <div>
-            <Link
-              href={`${projectBase}/board`}
-              className="text-muted-foreground text-nav hover:underline"
-            >
-              &larr; Back to board
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/*
+       * The design presents a task as a modal over the board. Here it is a
+       * page, because the app gives every task its own URL and a modal cannot
+       * be linked to, refreshed or opened in a tab. The modal's *layout* is
+       * what carries over: an identity bar, then a two-pane split with the
+       * work on the left and the properties on the right.
+       */}
+      <div className="border-border bg-surface flex shrink-0 flex-wrap items-center gap-2.5 border-b px-4 py-3">
+        <span className="label-id text-faint tracking-[0.06em]">
+          {prefix}-{task.task_number}
+        </span>
+        <span className="bg-input h-3 w-px" aria-hidden />
+        <Link
+          href={`${projectBase}/board`}
+          className="text-faint hover:text-foreground text-nav transition-colors"
+        >
+          {projectName}
+        </Link>
+        <TaskStatusBadge status={task.status as never} />
+
+        <span className="ms-auto flex items-center gap-1.5">
+          <Button asChild variant="subtle" size="sm">
+            <Link href={`${projectBase}/tasks/${task.id}/board`}>
+              <Columns3 className="h-3.5 w-3.5" aria-hidden />
+              Subtask board
             </Link>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <span className="text-muted-foreground text-ui tabular-nums">
-                #{task.task_number}
-              </span>
-              <h1 className="text-head font-semibold">{task.title}</h1>
-              <TaskStatusBadge status={task.status as never} />
-            </div>
-            <p className="text-muted-foreground mt-1 text-nav">
-              Created {formatRelativeTime(task.created_at, locale)}
-              {assigner ? ` · assigned by ${assigner.full_name}` : ''}
-            </p>
-          </div>
+          </Button>
+          <Button asChild variant="subtle" size="icon-sm" aria-label="Back to board">
+            <Link href={`${projectBase}/board`}>
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+          </Button>
+        </span>
+      </div>
 
-          <Card>
-            <CardContent className="space-y-6 pt-6">
-              <TaskDescription
-                scope={params}
-                taskId={task.id}
-                description={task.description}
-                canEdit={canEdit}
-              />
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="scrollbar-slim flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
+          <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.02em]">
+            {task.title}
+          </h1>
 
+          <section className="flex flex-col gap-2">
+            <h2 className="label-meta text-subtle">Description</h2>
+            <TaskDescription
+              scope={params}
+              taskId={task.id}
+              description={task.description}
+              canEdit={canEdit}
+            />
+          </section>
+
+          {fieldDefinitions.length > 0 ? (
+            <section className="flex flex-col gap-2">
+              <h2 className="label-meta text-subtle">Custom fields</h2>
               <CustomFieldInputs
                 orgSlug={params.orgSlug}
                 entityType="task"
@@ -175,145 +210,139 @@ export default async function TaskDetailPage({
                 values={fieldValues}
                 canEdit={canEdit}
               />
+            </section>
+          ) : null}
 
-              <SubtaskList
-                scope={params}
-                taskId={task.id}
-                canEdit={canEdit}
-                subtasks={
-                  (subtasks ?? []).map((subtask) => ({
-                    id: subtask.id,
-                    title: subtask.title,
-                    status: subtask.status,
-                    assignee: one(subtask.assignee),
-                  })) as SubtaskRow[]
-                }
-              />
+          <section className="flex flex-col gap-2">
+            <SubtaskList
+              scope={params}
+              taskId={task.id}
+              canEdit={canEdit}
+              subtasks={
+                (subtasks ?? []).map((subtask) => ({
+                  id: subtask.id,
+                  title: subtask.title,
+                  status: subtask.status,
+                  assignee: one(subtask.assignee),
+                })) as SubtaskRow[]
+              }
+            />
+          </section>
 
-              {/*
-                The checklist stays the default view; the board is the same
-                subtasks arranged by status (§17 subtask_kanban gates it, and
-                that gate lives on the board page so the reason is legible).
-              */}
-              <div className="border-border-subtle border-t pt-4">
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`${projectBase}/tasks/${task.id}/board`}>
-                    <Columns3 className="h-3.5 w-3.5" aria-hidden />
-                    Open subtask board
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <section className="flex flex-col gap-2">
+            <AttachmentList
+              scope={params}
+              taskId={task.id}
+              locale={locale}
+              canEdit={canEdit}
+              currentUserId={auth.userId}
+              attachments={(attachments ?? []) as AttachmentRow[]}
+            />
+          </section>
 
-          <Card>
-            <CardContent className="pt-6">
-              <AttachmentList
-                scope={params}
-                taskId={task.id}
-                locale={locale}
-                canEdit={canEdit}
-                currentUserId={auth.userId}
-                attachments={(attachments ?? []) as AttachmentRow[]}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <CommentThread
-                scope={params}
-                taskId={task.id}
-                locale={locale}
-                canComment
-                comments={
-                  (comments ?? []).map((comment) => ({
-                    id: comment.id,
-                    body: comment.body,
-                    is_internal: comment.is_internal,
-                    is_edited: comment.is_edited,
-                    created_at: comment.created_at,
-                    author: one(comment.author),
-                  })) as CommentRow[]
-                }
-              />
-            </CardContent>
-          </Card>
+          <section className="flex flex-col gap-2">
+            <h2 className="label-meta text-subtle">Activity</h2>
+            <CommentThread
+              scope={params}
+              taskId={task.id}
+              locale={locale}
+              canComment
+              comments={
+                (comments ?? []).map((comment) => ({
+                  id: comment.id,
+                  body: comment.body,
+                  is_internal: comment.is_internal,
+                  is_edited: comment.is_edited,
+                  created_at: comment.created_at,
+                  author: one(comment.author),
+                })) as CommentRow[]
+              }
+            />
+          </section>
         </div>
 
-        <aside className="space-y-4">
-          <Card>
-            <CardContent className="space-y-4 pt-6">
-              <TaskFields
-                scope={params}
-                taskId={task.id}
-                canEdit={canEdit}
-                statuses={TASK_STATUSES}
-                priorities={PRIORITIES}
-                members={assignableMembers}
-                value={{
-                  status: task.status,
-                  priority: task.priority,
-                  assignee_id: assignee?.id ?? '',
-                  due_date: task.due_date ?? '',
-                  start_date: task.start_date ?? '',
-                  estimated_hours: task.estimated_hours,
-                }}
-              />
+        <aside className="border-border scrollbar-slim w-full shrink-0 overflow-y-auto border-s px-5 py-5 lg:w-[340px]">
+          <TaskFields
+            scope={params}
+            taskId={task.id}
+            canEdit={canEdit}
+            statuses={TASK_STATUSES}
+            priorities={PRIORITIES}
+            members={assignableMembers}
+            value={{
+              status: task.status,
+              priority: task.priority,
+              assignee_id: assignee?.id ?? '',
+              due_date: task.due_date ?? '',
+              start_date: task.start_date ?? '',
+              estimated_hours: task.estimated_hours,
+            }}
+          />
 
-              <dl className="space-y-3 border-t pt-4 text-ui">
-                <div className="flex items-center justify-between gap-2">
-                  <dt className="text-muted-foreground">Assignee</dt>
-                  <dd className="flex items-center gap-2">
-                    {assignee ? (
-                      <>
-                        <Avatar className="h-5 w-5">
-                          {assignee.avatar_url ? (
-                            <AvatarImage src={assignee.avatar_url} alt="" />
-                          ) : null}
-                          <AvatarFallback className="text-[9px]">
-                            {initials(assignee.full_name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>{assignee.full_name}</span>
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground">Unassigned</span>
-                    )}
-                  </dd>
-                </div>
+          <dl className="border-border mt-5 space-y-3 border-t pt-5 text-ui">
+            <div className="flex items-center justify-between gap-2">
+              <dt className="label-meta text-subtle">Assigned by</dt>
+              <dd className="flex items-center gap-2">
+                {assigner ? (
+                  <>
+                    <Avatar className="h-5 w-5">
+                      {assigner.avatar_url ? (
+                        <AvatarImage src={assigner.avatar_url} alt="" />
+                      ) : null}
+                      <AvatarFallback className="bg-chip text-[9px]">
+                        {initials(assigner.full_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{assigner.full_name}</span>
+                  </>
+                ) : (
+                  <span className="text-faint">—</span>
+                )}
+              </dd>
+            </div>
 
-                <div className="flex items-center justify-between gap-2">
-                  <dt className="text-muted-foreground">Due</dt>
-                  <dd>
-                    <DueDate
-                      dueDate={task.due_date}
-                      today={todayIn(auth.orgTimezone)}
-                      isClosed={task.status === 'done' || task.status === 'cancelled'}
-                    />
-                    {!task.due_date ? <span className="text-muted-foreground">—</span> : null}
-                  </dd>
-                </div>
+            <div className="flex items-center justify-between gap-2">
+              <dt className="label-meta text-subtle">Estimate</dt>
+              <dd>
+                {task.estimated_hours ? (
+                  <span className="bg-chip label-id text-muted-foreground rounded-sm px-2 py-1">
+                    {task.estimated_hours} PTS
+                  </span>
+                ) : (
+                  <span className="text-faint">—</span>
+                )}
+              </dd>
+            </div>
 
-                {/* started_at and completed_at are written by a database trigger
-                  when the status changes, never by the client (§19.7). */}
-                <div className="flex items-center justify-between gap-2">
-                  <dt className="text-muted-foreground">Started</dt>
-                  <dd className="tabular-nums">
-                    {task.started_at ? formatRelativeTime(task.started_at, locale) : '—'}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <dt className="text-muted-foreground">Completed</dt>
-                  <dd className="tabular-nums">
-                    {task.completed_at ? formatRelativeTime(task.completed_at, locale) : '—'}
-                  </dd>
-                </div>
-              </dl>
-            </CardContent>
-          </Card>
+            <div className="flex items-center justify-between gap-2">
+              <dt className="label-meta text-subtle">Due</dt>
+              <dd>
+                <DueDate
+                  dueDate={task.due_date}
+                  today={todayIn(auth.orgTimezone)}
+                  isClosed={closed}
+                />
+                {!task.due_date ? <span className="text-faint">—</span> : null}
+              </dd>
+            </div>
+
+            {/* started_at and completed_at are written by a database trigger
+              when the status changes, never by the client (§19.7). */}
+            <div className="flex items-center justify-between gap-2">
+              <dt className="label-meta text-subtle">Started</dt>
+              <dd className="tabular-nums">
+                {task.started_at ? formatRelativeTime(task.started_at, locale) : '—'}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <dt className="label-meta text-subtle">Completed</dt>
+              <dd className="tabular-nums">
+                {task.completed_at ? formatRelativeTime(task.completed_at, locale) : '—'}
+              </dd>
+            </div>
+          </dl>
         </aside>
       </div>
-    </PageBody>
+    </div>
   )
 }

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@pm/u
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
+import { SocialAuth } from '../social-auth'
 import { SignupForm } from './signup-form'
 
 export const metadata: Metadata = { title: 'Create an account' }
@@ -18,6 +19,7 @@ export default async function SignupPage() {
       </CardHeader>
       <CardContent>
         <SignupForm />
+        <SocialAuth />
         <p className="mt-6 text-center text-ui text-muted-foreground">
           {t('have_account')}{' '}
           <Link href="/login" className="font-medium text-primary hover:underline">

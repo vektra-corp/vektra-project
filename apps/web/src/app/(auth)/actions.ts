@@ -288,3 +288,58 @@ export async function signOut() {
   await supabase.auth.signOut()
   redirect('/login')
 }
+
+/**
+ * Absolute origin for the OAuth return trip.
+ *
+ * The provider needs a fully-qualified URL, so a relative path is not an
+ * option. `NEXT_PUBLIC_APP_URL` wins when set, because that is the address the
+ * redirect is registered under in Supabase; the forwarded headers are a
+ * fallback so preview deployments work without a per-branch variable.
+ */
+function appOrigin(): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL
+  if (configured) return configured.replace(/\/+$/, '')
+
+  const requestHeaders = headers()
+  const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host') ?? 'localhost:3000'
+  const proto = requestHeaders.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https')
+  return `${proto}://${host}`
+}
+
+/**
+ * Start the Google sign-in redirect (PKCE, §13.5).
+ *
+ * Run on the server rather than from the browser for two reasons: the provider
+ * call goes through the API layer like every other external call (§2), and the
+ * PKCE verifier is written as an httpOnly cookie that only `/auth/callback` can
+ * read back — a verifier readable by scripts is a verifier an XSS can steal.
+ *
+ * Nothing is returned. Both the failure to start and the failure to come back
+ * surface through the same `?error=` parameter on /login, so the sign-in screen
+ * has one place to render either.
+ */
+export async function signInWithGoogle(formData: FormData): Promise<never> {
+  const next = safeNextPath(formData.get('next'))
+
+  const ip = clientIp(headers())
+  const limit = await checkRateLimit('auth', ip)
+  if (!limit.success) redirect('/login?error=rate_limited')
+
+  const supabase = createClient()
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${appOrigin()}/auth/callback?next=${encodeURIComponent(next)}`,
+      // Show the account chooser instead of silently reusing whichever Google
+      // session the browser happens to hold — shared machines are common, and
+      // signing in as the wrong person is a slow thing to notice.
+      queryParams: { prompt: 'select_account' },
+    },
+  })
+
+  // An unconfigured provider fails here, not at the callback. Same channel.
+  if (error || !data?.url) redirect('/login?error=oauth_failed')
+
+  redirect(data.url)
+}

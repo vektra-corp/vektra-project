@@ -8,7 +8,14 @@ import { SidebarItem, SidebarProjectGroup, SidebarSection, type NavItem } from '
 import { UserMenu } from './user-menu'
 
 /** Project views with a route today; the rest render as "soon". */
-const ROUTED_PROJECT_VIEWS = ['board', 'list', 'timeline', 'documents', 'settings']
+const ROUTED_PROJECT_VIEWS = [
+  'list',
+  'board',
+  'timeline',
+  'workload',
+  'documents',
+  'settings',
+]
 
 export interface SidebarWorkspace {
   id: string
@@ -77,15 +84,16 @@ export async function Sidebar({
     },
   ]
 
-  // Views the project layout actually serves. Backlog planning and workload are
-  // later phases, so they render as unavailable rather than as links into a 404.
+  // Views the project layout actually serves; anything not listed in
+  // ROUTED_PROJECT_VIEWS renders as unavailable rather than as a link into a 404.
+  // The design's sidebar order, which differs from the toolbar's: Documents and
+  // Settings belong to the project, not to its task views, so they sit here.
   const projectViews = (): NavItem[] => [
-    { key: 'board', label: t('board'), icon: 'Columns3' },
     { key: 'list', label: t('list'), icon: 'Table2' },
+    { key: 'board', label: t('board'), icon: 'Columns3' },
     { key: 'timeline', label: t('timeline'), icon: 'CalendarRange' },
-    { key: 'planning', label: t('planning'), icon: 'Layers' },
-    { key: 'documents', label: t('documents'), icon: 'FileText' },
     { key: 'workload', label: t('workload'), icon: 'Gauge' },
+    { key: 'documents', label: t('documents'), icon: 'FileText' },
     { key: 'settings', label: t('settings'), icon: 'Settings' },
   ]
 

@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swa
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' })
 
 export const metadata: Metadata = {
-  title: { default: 'Admin', template: '%s · Admin' },
+  title: { default: 'Vektra Admin', template: '%s · Vektra Admin' },
   // An internal console must never be indexed.
   robots: { index: false, follow: false, nocache: true },
 }

@@ -16,13 +16,13 @@ function SubmitButton({ label }: { label: string }) {
   )
 }
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, error }: { next?: string; error?: string }) {
   const t = useTranslations('auth')
   const [state, formAction] = useFormState(signIn, null)
 
   // The action returns a message KEY, never localized text — the API layer is
   // locale-agnostic and the client maps codes to strings (§21.8).
-  const errorMessage =
+  const submitError =
     state && !state.ok
       ? state.code === 'RATE_LIMITED'
         ? t('rate_limited', { minutes: 15 })
@@ -32,6 +32,23 @@ export function LoginForm({ next }: { next?: string }) {
             ? null
             : t('invalid_credentials')
       : null
+
+  // A failed round trip through Google comes back as ?error= on this page,
+  // since there is nowhere else to put it — the provider owns the screen in
+  // between. Anything unrecognised is reported as a generic failure rather
+  // than echoed, because the value arrives from outside.
+  const redirectError =
+    error === 'oauth_cancelled'
+      ? t('oauth_cancelled')
+      : error === 'rate_limited'
+        ? t('rate_limited', { minutes: 15 })
+        : error
+          ? t('oauth_failed')
+          : null
+
+  // Once the form has been submitted, whatever came back from Google is stale
+  // — the person has moved on from it.
+  const errorMessage = state ? submitError : redirectError
 
   const fieldError = (field: string) =>
     state && !state.ok ? state.fieldErrors?.[field]?.[0] : undefined

@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@pm/u
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
+import { SocialAuth } from '../social-auth'
 import { LoginForm } from './login-form'
 
 export const metadata: Metadata = { title: 'Sign in' }
@@ -9,7 +10,7 @@ export const metadata: Metadata = { title: 'Sign in' }
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: { next?: string }
+  searchParams: { next?: string; error?: string }
 }) {
   const t = await getTranslations('auth')
 
@@ -20,7 +21,8 @@ export default async function LoginPage({
         <CardDescription>{t('login_subtitle')}</CardDescription>
       </CardHeader>
       <CardContent>
-        <LoginForm next={searchParams.next} />
+        <LoginForm next={searchParams.next} error={searchParams.error} />
+        <SocialAuth next={searchParams.next} />
         <p className="mt-6 text-center text-ui text-muted-foreground">
           {t('no_account')}{' '}
           <Link href="/signup" className="font-medium text-primary hover:underline">

@@ -2718,6 +2718,70 @@ export interface Database {
           },
         ]
       }
+      sprints: {
+        Row: {
+          id: string
+          organization_id: string
+          project_id: string
+          name: string
+          goal: string | null
+          starts_on: string
+          ends_on: string
+          status: string
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          project_id: string
+          name: string
+          goal?: string | null
+          starts_on: string
+          ends_on: string
+          status?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          project_id?: string
+          name?: string
+          goal?: string | null
+          starts_on?: string
+          ends_on?: string
+          status?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'sprints_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'sprints_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'sprints_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       subtasks: {
         Row: {
           id: string
@@ -2970,6 +3034,7 @@ export interface Database {
           created_by: string | null
           created_at: string
           updated_at: string
+          sprint_id: string | null
         }
         Insert: {
           id?: string
@@ -2994,6 +3059,7 @@ export interface Database {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          sprint_id?: string | null
         }
         Update: {
           id?: string
@@ -3018,6 +3084,7 @@ export interface Database {
           created_by?: string | null
           created_at?: string
           updated_at?: string
+          sprint_id?: string | null
         }
         Relationships: [
           {
@@ -3060,6 +3127,13 @@ export interface Database {
             columns: ['project_id']
             isOneToOne: false
             referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'tasks_sprint_id_fkey'
+            columns: ['sprint_id']
+            isOneToOne: false
+            referencedRelation: 'sprints'
             referencedColumns: ['id']
           },
         ]

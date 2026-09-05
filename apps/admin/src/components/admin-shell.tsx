@@ -1,14 +1,15 @@
 import { Kbd, Separator } from '@pm/ui'
 import type { AdminContext } from '@/lib/auth'
 import { AdminNav, type AdminNavItem } from './admin-nav'
+import { AdminBrandMark } from './brand-mark'
 import { AdminSignOut } from './sign-out'
 
 /**
  * Console shell.
  *
- * Visually a sibling of the customer app — same tokens, same rhythm — but the
- * brand mark is deliberately red-shifted so an operator can never mistake a
- * service-role console for the tenant app they were just looking at.
+ * Visually a sibling of the customer app — same tokens, same rhythm — but it
+ * flies the corporate V where the product flies its P, so an operator can never
+ * mistake a service-role console for the tenant app they were just looking at.
  */
 export function AdminShell({
   admin,
@@ -31,19 +32,7 @@ export function AdminShell({
     <div className="flex h-screen overflow-hidden bg-background">
       <aside className="hidden w-60 shrink-0 flex-col border-e border-border-subtle bg-surface md:flex">
         <div className="flex items-center gap-2.5 px-3 py-3">
-          <span
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-destructive to-priority-high shadow-card"
-            aria-hidden
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
-              <path
-                d="M12 3.5 5 6.5v5c0 4.2 2.9 7.9 7 9 4.1-1.1 7-4.8 7-9v-5l-7-3Z"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
+          <AdminBrandMark />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px] font-semibold leading-tight">Platform console</p>
             <p className="label-meta-sm truncate pt-1 text-faint">Service role · all tenants</p>
