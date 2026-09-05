@@ -3,6 +3,13 @@
 Supabase Auth issues the JWTs; **Resend delivers the emails**; verification uses
 a **six-digit code**, never a magic link.
 
+Six is set in two places that nothing links: `mailer_otp_length` on the Supabase
+project, and the `\d{6}` check in `packages/shared/src/validators/auth.ts`. They
+have already drifted once — the project issued 8-digit codes while the form
+accepted 6, which looks to the user like the code is simply wrong. `pnpm
+auth:configure` now refuses to run when the two disagree, so change them
+together.
+
 ## Why codes rather than links
 
 A link in an email is followed by spam scanners, link previewers and corporate

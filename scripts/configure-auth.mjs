@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import './load-env.mjs'
 
 /**
@@ -42,6 +44,24 @@ if (!resendKey || !from || !supabaseUrl) {
 /** `https://<ref>.supabase.co` — the ref is the only part the API wants. */
 const ref = new URL(supabaseUrl).hostname.split('.')[0]
 
+/**
+ * Digits in the emailed code.
+ *
+ * Supabase decides this, the app validates against it, and nothing connects the
+ * two — so they drift silently. They did: the project was issuing 8-digit codes
+ * while the sign-up form accepted 6, which reads to the user as a code that is
+ * simply wrong. The assertion below is the connection.
+ */
+const OTP_LENGTH = 6
+
+const VALIDATOR = 'packages/shared/src/validators/auth.ts'
+const validatorSource = readFileSync(new URL(`../${VALIDATOR}`, import.meta.url), 'utf8')
+if (!validatorSource.includes(`\\d{${OTP_LENGTH}}`)) {
+  console.error(`OTP_LENGTH is ${OTP_LENGTH}, but ${VALIDATOR} does not check for that many digits.`)
+  console.error('Change both together, or the emailed code will not match what the form accepts.')
+  process.exit(1)
+}
+
 const CODE = 'font-size:28px;letter-spacing:6px;font-family:monospace'
 
 /** Kept identical to docs/AUTH.md; that file explains the reasoning. */
@@ -72,6 +92,7 @@ const config = {
 
   // Matches what both templates promise the reader.
   mailer_otp_exp: 3600,
+  mailer_otp_length: OTP_LENGTH,
 }
 
 const api = `https://api.supabase.com/v1/projects/${ref}/config/auth`
@@ -93,6 +114,7 @@ const current = await before.json()
 console.log('\nBefore')
 console.log(`  smtp_host              ${current.smtp_host || '(built-in mailer)'}`)
 console.log(`  smtp_admin_email       ${current.smtp_admin_email || '—'}`)
+console.log(`  code length            ${current.mailer_otp_length ?? '(default)'}`)
 console.log(
   `  confirmation template  ${
     (current.mailer_templates_confirmation_content || '').includes('{{ .Token }}')
@@ -125,6 +147,11 @@ const checks = [
   ['SMTP port', String(after.smtp_port) === '465', after.smtp_port ?? '—'],
   ['SMTP user', after.smtp_user === 'resend', after.smtp_user || '—'],
   ['Sender', after.smtp_admin_email === from, after.smtp_admin_email || '—'],
+  [
+    `Code is ${OTP_LENGTH} digits`,
+    Number(after.mailer_otp_length) === OTP_LENGTH,
+    after.mailer_otp_length ?? '—',
+  ],
   [
     'Confirmation sends a code',
     (after.mailer_templates_confirmation_content || '').includes('{{ .Token }}'),
