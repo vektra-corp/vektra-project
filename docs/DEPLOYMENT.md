@@ -122,11 +122,12 @@ Vercel issues and renews the certificates.
 
 - [ ] Take a manual Supabase backup and **restore it somewhere** to prove the
       path works. PITR being enabled is not the same as knowing a restore does.
-- [ ] Check the Vercel region matches the database. `vercel.json` says `bom1`
-      (Mumbai); the database is `ap-southeast-2` (Sydney). Every page makes
-      several sequential queries, so the round trip dominates — locally that is
-      ~370 ms per query and 3-5 s per page. Moving the database to the region
-      nearest your users is the single largest performance change available.
+- [x] Vercel region matches the database. Both `vercel.json` files say `bom1`
+      (Mumbai) and the database is now `ap-south-1` (Mumbai). It was Sydney,
+      which cost ~370 ms per query and 3-5 s per page, because every page makes
+      several sequential queries and the round trip dominated. After the move
+      that is ~23 ms, and the RLS suite went from 235 s to 15 s. If you ever
+      move one, move the other.
 - [ ] `ADMIN_ALLOWED_EMAILS` is set on the admin project, or nobody can sign in.
 - [ ] Run the RLS suite against a copy of production, never production itself:
       it inserts and deletes rows and refuses to run without
@@ -152,8 +153,10 @@ exactly what pinning bought.
 Done once already, from `ap-southeast-2` (Sydney) to `ap-south-1`, because the
 round trip dominated every page. The steps, for the next time:
 
-1. Create the new project. Note its connection string (**port 5432**, not the
-   pooler), project URL, anon key and service-role key.
+1. Create the new project. Note its **session pooler** connection string
+   (`aws-N-<region>.pooler.supabase.com:5432`), project URL, anon key and
+   service-role key. Session mode, not transaction mode — see the table in
+   section 1 for why the other two options do not work.
 
 2. Apply the schema with the CLI, not with `scripts/apply-migration.mjs`:
 
