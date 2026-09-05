@@ -24,6 +24,7 @@ export default async function SettingsLayout({
 
   const tabs: SettingsTab[] = [
     { segment: 'profile', label: 'Profile' },
+    { segment: 'security', label: 'Security' },
     ...(isAdmin
       ? [
           { segment: 'general', label: 'General' },

@@ -3283,6 +3283,7 @@ export interface Database {
           last_active_at: string
           revoked_at: string | null
           created_at: string
+          session_id: string | null
         }
         Insert: {
           id?: string
@@ -3295,6 +3296,7 @@ export interface Database {
           last_active_at?: string
           revoked_at?: string | null
           created_at?: string
+          session_id?: string | null
         }
         Update: {
           id?: string
@@ -3307,6 +3309,7 @@ export interface Database {
           last_active_at?: string
           revoked_at?: string | null
           created_at?: string
+          session_id?: string | null
         }
         Relationships: [
           {
@@ -3948,6 +3951,10 @@ export interface Database {
         }
         Returns: boolean
       }
+      prune_stale_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       refresh_revenue_summary: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -3957,6 +3964,18 @@ export interface Database {
           p_months?: number
         }
         Returns: unknown
+      }
+      revoke_other_sessions: {
+        Args: {
+          p_keep?: string
+        }
+        Returns: number
+      }
+      revoke_user_session: {
+        Args: {
+          p_id: string
+        }
+        Returns: boolean
       }
       save_integration: {
         Args: {

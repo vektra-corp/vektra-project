@@ -12,6 +12,7 @@ import {
  fieldErrors } from '@pm/shared/validators'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { recordSession } from '@/lib/auth/sessions'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
@@ -74,6 +75,13 @@ export async function signIn(
           : 'auth.invalid_credentials',
     }
   }
+
+  // Recorded after the session exists, so the JWT's session_id is available —
+  // that claim is what later makes revoking this device actually revoke it.
+  await recordSession(supabase, {
+    ip: ip === 'unknown' ? null : ip,
+    userAgent: headers().get('user-agent'),
+  })
 
   const next = formData.get('next')
   redirect(typeof next === 'string' && next.startsWith('/') ? next : '/')
