@@ -10,6 +10,7 @@ import {
 import { appError } from '@pm/shared/errors'
 import { sanitizeFileName } from '@pm/shared/sanitize'
 import type { ActionResult } from '@pm/shared/types'
+import { SNIFF_BYTES, checkSniffedType, extensionOf } from '@pm/shared/utils'
 import { revalidatePath } from 'next/cache'
 import { requireAuth } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
@@ -129,12 +130,44 @@ export async function recordAttachment(
   const safeName = sanitizeFileName(input.fileName)
   const path = attachmentPath(auth.orgId, input.fileId, safeName)
 
+  /*
+   * Sniff the stored bytes before the file becomes an attachment (§13.9).
+   *
+   * Uploads go straight to storage through a signed URL, so the server never
+   * sees them on the way in — the declared MIME type and the extension are both
+   * just strings the client chose. This is the first point at which the actual
+   * content can be examined, and it is still before anything references the
+   * object: no attachment row exists yet, so a file that fails here is deleted
+   * and was never reachable.
+   *
+   * Only the first bytes are fetched, not the whole file.
+   */
+  const { data: head, error: readError } = await supabase.storage
+    .from('attachments')
+    .download(path)
+
+  if (readError || !head) {
+    return { ok: false, code: 'NOT_FOUND', message: 'The uploaded file could not be read.' }
+  }
+
+  const prefix = new Uint8Array(await head.slice(0, SNIFF_BYTES).arrayBuffer())
+  const verdict = checkSniffedType(prefix, input.mimeType, extensionOf(safeName))
+
+  if (!verdict.ok) {
+    // Remove it rather than leaving an unreferenced object behind: it would
+    // count against the org's storage quota and nothing would ever clean it up.
+    await supabase.storage.from('attachments').remove([path])
+    return { ok: false, code: 'UNSUPPORTED_FILE_TYPE', message: verdict.reason }
+  }
+
   const { error } = await supabase.from('attachments').insert({
     organization_id: auth.orgId,
     task_id: taskId,
     file_name: safeName,
     file_size: input.size,
-    mime_type: input.mimeType,
+    // The sniffed type, not the declared one — what is stored should be what
+    // the file actually is, because every later consumer trusts this column.
+    mime_type: verdict.mime,
     storage_path: path,
     uploaded_by: auth.userId,
   })

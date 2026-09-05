@@ -12,6 +12,8 @@ export const BLOCKED_EXTENSIONS = [
   'exe', 'sh', 'bat', 'cmd', 'ps1', 'js', 'mjs', 'cjs', 'py', 'rb', 'php',
   'jsp', 'asp', 'aspx', 'jar', 'com', 'scr', 'msi', 'dll', 'app', 'deb', 'rpm',
   'vbs', 'wsf', 'hta',
+  // Scriptable markup. See BLOCKED_MIME_TYPES for why.
+  'svg', 'svgz', 'html', 'htm', 'xhtml', 'shtml', 'xml', 'swf',
 ] as const
 
 export const ALLOWED_MIME_PREFIXES = [
@@ -19,6 +21,27 @@ export const ALLOWED_MIME_PREFIXES = [
   'video/',
   'audio/',
   'text/',
+] as const
+
+/**
+ * Types the prefix rule would otherwise admit, and must not.
+ *
+ * SVG is `image/*`, so it passes every check an image passes — but an SVG is
+ * XML that may contain <script>, and attachments are served from Supabase
+ * Storage on its own origin. Opening one in a tab executes that script there,
+ * with access to whatever that origin holds. HTML and XML are the same problem
+ * wearing `text/*`.
+ *
+ * Blocked rather than sanitized: sanitizing SVG correctly is a hard, recurring
+ * problem, and nothing in this product needs to accept one.
+ */
+export const BLOCKED_MIME_TYPES = [
+  'image/svg+xml',
+  'image/svg',
+  'text/html',
+  'text/xml',
+  'application/xhtml+xml',
+  'application/xml',
 ] as const
 
 export const ALLOWED_MIME_TYPES = [
@@ -49,7 +72,11 @@ export type FileRejection =
  *
  * Extension is checked as well as MIME type: the browser-supplied Content-Type
  * is attacker-controlled, so `evil.exe` renamed with `image/png` must still be
- * refused. The server additionally sniffs magic bytes (§13.9).
+ * refused here.
+ *
+ * Neither check sees the CONTENT, though — both are strings the client chose.
+ * The bytes are sniffed server-side in `recordAttachment`, after the upload
+ * lands and before any row references it (`utils/magic-bytes`).
  */
 export function validateUpload(
   file: { name: string; size: number; type: string },
@@ -62,6 +89,16 @@ export function validateUpload(
       ok: false,
       code: 'UNSUPPORTED_FILE_TYPE',
       message: `.${extension} files are not allowed`,
+    }
+  }
+
+  // Checked before the allow-list, because the prefix rule would let these
+  // through: image/svg+xml is an image by every mechanical test.
+  if ((BLOCKED_MIME_TYPES as readonly string[]).includes(file.type.toLowerCase())) {
+    return {
+      ok: false,
+      code: 'UNSUPPORTED_FILE_TYPE',
+      message: 'That file type can carry scripts and is not allowed',
     }
   }
 
