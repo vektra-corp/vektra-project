@@ -1,5 +1,6 @@
 'use server'
 
+import { safeNextPath } from '@pm/auth/middleware'
 import type { ActionResult } from '@pm/shared/types'
 import { redirect } from 'next/navigation'
 import { checkRateLimit } from '@/lib/rate-limit'
@@ -70,5 +71,5 @@ export async function verifySecondFactor(
     return { ok: false, code: 'INVALID_CREDENTIALS', message: 'That code was not correct.' }
   }
 
-  redirect(next.startsWith('/') ? next : '/')
+  redirect(safeNextPath(next))
 }

@@ -1,6 +1,6 @@
 'use server'
 
-import { clientIp } from '@pm/auth/middleware'
+import { clientIp, safeNextPath } from '@pm/auth/middleware'
 import type { ActionResult } from '@pm/shared/types'
 import {
   emailSchema,
@@ -84,7 +84,9 @@ export async function signIn(
   })
 
   const next = formData.get('next')
-  redirect(typeof next === 'string' && next.startsWith('/') ? next : '/')
+  // Not a bare startsWith('/'): `//evil.example` passes that and is an
+  // absolute URL to somewhere else (§13.4).
+  redirect(safeNextPath(next))
 }
 
 export async function signUp(

@@ -161,3 +161,45 @@ export function isMfaExemptRoute(pathname: string): boolean {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   )
 }
+
+
+/**
+ * A `next=` parameter that is safe to redirect to (§13.4).
+ *
+ * `next.startsWith('/')` is the obvious check and it is not enough: `//evil.com`
+ * starts with a slash and is a PROTOCOL-RELATIVE URL, which browsers resolve to
+ * `https://evil.com`. So does `/\evil.com` where the backslash is normalised.
+ * That turns any page taking a `next` into an open redirect —
+ * `/login?next=//evil.com` is a link an attacker can send, and the victim
+ * arrives at the attacker's site having just typed their password on ours,
+ * which is the shape of every credential-phishing flow.
+ *
+ * Rather than enumerate the tricks, this resolves the value against an origin
+ * that cannot exist and requires the result to still be on it. Anything that
+ * escapes — a scheme, an authority, a protocol-relative prefix — changes the
+ * origin and is refused.
+ *
+ * Returns the fallback for anything it will not vouch for.
+ */
+export function safeNextPath(next: unknown, fallback = '/'): string {
+  if (typeof next !== 'string' || next.length === 0) return fallback
+
+  // Raw control characters and whitespace are stripped by browsers before
+  // parsing, so "/<tab>https://evil.com" can become an absolute URL. Nothing
+  // legitimate contains them — an encoded space is %20.
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u0020\u007F]/.test(next)) return fallback
+
+  if (!next.startsWith('/')) return fallback
+  // Cheap, explicit rejections before the parse, so the intent is readable.
+  if (next.startsWith('//') || next.startsWith('/\\')) return fallback
+
+  const base = 'https://redirect-guard.invalid'
+  try {
+    const resolved = new URL(next, base)
+    if (resolved.origin !== base) return fallback
+    return `${resolved.pathname}${resolved.search}${resolved.hash}`
+  } catch {
+    return fallback
+  }
+}

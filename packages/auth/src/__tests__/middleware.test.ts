@@ -8,6 +8,7 @@ import {
   isProtectedRoute,
   isPublicRoute,
   needsSecondFactor,
+  safeNextPath,
 } from '../middleware'
 
 describe('extractOrgSlug', () => {
@@ -176,5 +177,60 @@ describe('extractOrgSlug — non-tenant top-level routes', () => {
   it('still reads a real org slug', () => {
     expect(extractOrgSlug('/acme/dashboard')).toBe('acme')
     expect(extractOrgSlug('/acme')).toBe('acme')
+  })
+})
+
+
+describe('safeNextPath', () => {
+  it('allows an ordinary in-app path', () => {
+    expect(safeNextPath('/acme/dashboard')).toBe('/acme/dashboard')
+    expect(safeNextPath('/acme/reports?status=todo')).toBe('/acme/reports?status=todo')
+    expect(safeNextPath('/acme/tasks#comments')).toBe('/acme/tasks#comments')
+  })
+
+  it('refuses a protocol-relative URL', () => {
+    // The whole point: this starts with "/" and is an absolute URL to another
+    // site, so the naive startsWith('/') check waves it through.
+    expect(safeNextPath('//evil.example')).toBe('/')
+    expect(safeNextPath('//evil.example/path')).toBe('/')
+  })
+
+  it('refuses a backslash authority, which browsers normalise', () => {
+    expect(safeNextPath('/\\evil.example')).toBe('/')
+    expect(safeNextPath('/\\/evil.example')).toBe('/')
+  })
+
+  it('refuses an absolute URL', () => {
+    for (const value of ['https://evil.example', 'http://evil.example']) {
+      expect(safeNextPath(value)).toBe('/')
+    }
+  })
+
+  it('refuses other schemes', () => {
+    expect(safeNextPath('javascript:alert(1)')).toBe('/')
+    expect(safeNextPath('data:text/html,<script>')).toBe('/')
+  })
+
+  it('refuses values carrying characters a browser strips before parsing', () => {
+    // "/<tab>https://evil.example" becomes an absolute URL once the tab is gone.
+    expect(safeNextPath('/\thttps://evil.example')).toBe('/')
+    expect(safeNextPath('/\nhttps://evil.example')).toBe('/')
+    expect(safeNextPath('/ https://evil.example')).toBe('/')
+  })
+
+  it('refuses anything that is not a path', () => {
+    expect(safeNextPath('acme/dashboard')).toBe('/')
+    expect(safeNextPath('')).toBe('/')
+    expect(safeNextPath(null)).toBe('/')
+    expect(safeNextPath(undefined)).toBe('/')
+    expect(safeNextPath(42)).toBe('/')
+  })
+
+  it('normalises traversal rather than passing it through', () => {
+    expect(safeNextPath('/acme/../other')).toBe('/other')
+  })
+
+  it('honours a caller-supplied fallback', () => {
+    expect(safeNextPath('//evil.example', '/acme/dashboard')).toBe('/acme/dashboard')
   })
 })
