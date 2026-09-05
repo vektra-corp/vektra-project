@@ -61,7 +61,7 @@ set -a; source apps/web/.env.local; set +a
 ALLOW_DESTRUCTIVE_TESTS=true pnpm test:rls
 ```
 
-Current counts: **433 unit tests, 99 RLS tests, 42 end-to-end tests, 63 tables,
+Current counts: **444 unit tests, 99 RLS tests, 43 end-to-end tests, 63 tables,
 32 migrations, 9 background jobs.**
 
 ```bash
@@ -169,7 +169,24 @@ pnpm db:migrations      # applied vs pending
     component holds optimistic state seeded from the server, re-seed it when the
     prop changes.
 
-16. **`server-only` makes a module unimportable from vitest.** Hit four times
+16. **Every top-level route must be in `NON_TENANT_SEGMENTS`.** Anything not
+    listed is read as an organisation slug, and a signed-in user visiting it is
+    checked for membership of an org that does not exist and sent to /403. This
+    has bitten three times — `/portal`, then `/mfa` (which made the
+    second-factor page unreachable), and latently `/verify` and
+    `/reset-password`. The list is now derived from PUBLIC_ROUTE_PREFIXES;
+    add authenticated non-tenant routes to it by hand.
+
+17. **The Playwright process does not read `.env.local`.** The dev server does,
+    the test runner does not. `playwright.config.ts` loads it; CI supplies the
+    values from the job instead.
+
+18. **E2E specs must clean up after themselves.** They create tasks on the
+    seeded board, and without the teardown project the board grows every run
+    until specs that pass alone start timing out together — which reads as
+    flake and is not.
+
+19. **`server-only` makes a module unimportable from vitest.** Hit four times
     now. When a `server-only` module contains pure logic worth testing —
     especially a security check — extract it to an unmarked sibling and re-export
     (`ssrf.ts`, `slack-text.ts`, `signature.ts`, `logo-origin.ts`).
@@ -372,9 +389,13 @@ so assert on roles rather than text.
 | Session management UI | **Done.** `/{org}/settings/security`. Revocation deletes the GoTrue session, so it is real rather than cosmetic. |
 | EXIF stripping / image re-encode | Not done. Needs `sharp` and a re-encode step after upload — download, strip, re-upload — because uploads go straight to storage. |
 | Virus scanning | Not done. Needs ClamAV or a scanning API; cannot be completed without that infrastructure. The `recordAttachment` hook is the place it goes. |
-| MFA (TOTP) | Not done. Supabase Auth supports factors natively, so this is UI plus an enrolment flow rather than crypto. |
+| MFA (TOTP) | **Done.** Enrolment at `/{org}/settings/security`, challenge at `/mfa`, enforced in middleware. Org-wide enforcement (§13.5, Enterprise tier) is NOT built — it is currently opt-in per person. |
 | DNS-rebinding-proof outbound calls | Not done — needs a pinned-IP agent. |
 | Integration key rotation path | Not done — rotating `INTEGRATION_ENCRYPTION_KEY` orphans every stored token. |
+
+**MFA is per person, not per organisation.** §13.5 describes org-wide
+enforcement on the Enterprise tier; that is not built. Anyone may turn it on for
+themselves, nobody can require it of others.
 
 **Known limit of session revocation, stated because the UI states it too:**
 deleting the refresh token stops renewal, but an access token already issued
