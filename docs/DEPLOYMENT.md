@@ -49,11 +49,19 @@ Repository secrets:
 | `VERCEL_ORG_ID` | `.vercel/project.json` after `vercel link`, or the dashboard |
 | `VERCEL_PROJECT_ID_WEB` | same, for the web project |
 | `VERCEL_PROJECT_ID_ADMIN` | same, for the admin project |
-| `PRODUCTION_DB_URL` | Supabase → Settings → Database → connection string, **port 5432** |
+| `PRODUCTION_DB_URL` | Supabase → Settings → Database → **Session pooler** URI |
 
-> `PRODUCTION_DB_URL` must be the direct connection (5432), not the pooler
-> (6543). Migrations need prepared statements and fail on the transaction
-> pooler with SQLSTATE 42P05. This is trap 1 in `PROJECT-STATUS.md`.
+> Three connection strings are offered and only one works here.
+>
+> | Option | Host | Verdict |
+> |---|---|---|
+> | Direct connection | `db.<ref>.supabase.co:5432` | **No.** IPv6-only unless you buy the IPv4 add-on, and GitHub Actions runners are IPv4-only — the migrate job could never reach it. |
+> | Session pooler | `aws-N-<region>.pooler.supabase.com:5432` | **Yes.** IPv4, and session mode keeps prepared statements, which migrations need. |
+> | Transaction pooler | `aws-N-<region>.pooler.supabase.com:6543` | **No.** No prepared statements; `supabase db push` fails with SQLSTATE 42P05. Correct for the app at runtime, wrong for migrations. |
+>
+> The distinction that matters is **session vs transaction mode**, not direct vs
+> pooled — an earlier version of this file said "direct, not the pooler", which
+> is wrong for any project without the IPv4 add-on.
 
 ### 2. Vercel — two projects
 

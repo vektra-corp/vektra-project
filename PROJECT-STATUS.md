@@ -88,11 +88,19 @@ pnpm db:migrations      # applied vs pending
 
 ### Traps already hit — do not rediscover these
 
-1. **Transaction pooler breaks migrations.** `SUPABASE_DB_URL` points at
-   Supavisor port 6543 (transaction mode), which is correct for the app but has
-   no prepared statements. `supabase db push` fails there with SQLSTATE 42P05.
+1. **Transaction pooler breaks migrations, and the direct host may be
+   unreachable.** `SUPABASE_DB_URL` points at Supavisor port 6543 (transaction
+   mode), which is correct for the app but has no prepared statements —
+   `supabase db push` fails there with SQLSTATE 42P05.
    `scripts/session-db-url.mjs` swaps to port 5432 and every `db:*` script uses
    it. Do not "fix" this by changing `SUPABASE_DB_URL`.
+
+   The answer is the **session pooler** (port 5432 on
+   `aws-N-<region>.pooler.supabase.com`), NOT the direct `db.<ref>.supabase.co`
+   host. That one is IPv6-only unless the project buys the IPv4 add-on: macOS
+   `getaddrinfo` may refuse to return its AAAA record even where IPv6 works, and
+   GitHub Actions runners have no IPv6 at all, so a deploy could never reach
+   it.
 
 2. **`array_length()` returns NULL for an empty array**, and a CHECK evaluating
    to NULL is treated as *satisfied*. Two constraints in `00020` silently passed
