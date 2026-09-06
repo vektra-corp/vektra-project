@@ -37,7 +37,7 @@ export default async function OrgsPage() {
 
   const { data: organizations } = await supabase
     .from('organizations')
-    .select('id, name, slug, status, created_at, trial_ends_at, plan:plans(display_name)')
+    .select('id, name, slug, status, created_at, trial_ends_at, plan:plans!organizations_plan_id_fkey(display_name)')
     .order('created_at', { ascending: false })
     .limit(100)
 

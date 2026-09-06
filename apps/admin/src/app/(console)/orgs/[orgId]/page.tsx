@@ -32,7 +32,7 @@ export default async function OrgDetailPage({ params }: { params: { orgId: strin
   const { data: organization } = await supabase
     .from('organizations')
     .select(
-      'id, name, slug, status, created_at, trial_ends_at, billing_email, currency, timezone, stripe_customer_id, plan:plans(display_name, name)',
+      'id, name, slug, status, created_at, trial_ends_at, billing_email, currency, timezone, stripe_customer_id, plan:plans!organizations_plan_id_fkey(display_name, name)',
     )
     .eq('id', params.orgId)
     .maybeSingle()

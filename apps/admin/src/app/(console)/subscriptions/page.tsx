@@ -49,7 +49,7 @@ export default async function SubscriptionsPage() {
     supabase
       .from('organizations')
       .select(
-        'id, name, status, trial_ends_at, stripe_customer_id, stripe_subscription_id, plan:plans(display_name)',
+        'id, name, status, trial_ends_at, stripe_customer_id, stripe_subscription_id, plan:plans!organizations_plan_id_fkey(display_name)',
       )
       .order('created_at', { ascending: false })
       .limit(200),

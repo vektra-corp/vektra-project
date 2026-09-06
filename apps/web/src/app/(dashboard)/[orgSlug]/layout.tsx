@@ -34,7 +34,7 @@ export default async function OrgLayout({
   ] = await Promise.all([
     supabase
       .from('organizations')
-      .select('id, name, slug, logo_url, status, trial_ends_at, plan:plans(name, display_name)')
+      .select('id, name, slug, logo_url, status, trial_ends_at, plan:plans!organizations_plan_id_fkey(name, display_name)')
       .eq('slug', params.orgSlug)
       .maybeSingle(),
     supabase

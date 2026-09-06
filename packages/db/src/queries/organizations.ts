@@ -114,7 +114,7 @@ export async function getWorkspaceBySlug(db: Db, orgId: string, slug: string) {
 /** Plan name for an org, used for feature gating. */
 export async function getPlanName(db: Db, orgId: string): Promise<string | null> {
   const row = unwrapMaybe(
-    await db.from('organizations').select('plan:plans(name)').eq('id', orgId).maybeSingle(),
+    await db.from('organizations').select('plan:plans!organizations_plan_id_fkey(name)').eq('id', orgId).maybeSingle(),
   )
   const plan = row?.plan as unknown as { name: string } | null
   return plan?.name ?? null
