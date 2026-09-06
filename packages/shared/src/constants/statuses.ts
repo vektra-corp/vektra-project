@@ -113,6 +113,16 @@ export const WORKFLOW_LIMITS = {
   MAX_RETRIES: 3,
   /** Editor-side cap. A graph this large is unreadable long before it is slow. */
   MAX_NODES: 40,
+  /**
+   * Simultaneous workflow runs.
+   *
+   * Bounded by the Inngest plan, not by anything about workflows: syncing an
+   * app is REJECTED outright when a function declares more concurrency than the
+   * plan allows, so a number above the plan does not degrade — it stops every
+   * function from registering. 5 is the free tier. Raise this only alongside
+   * the plan.
+   */
+  MAX_CONCURRENCY: 5,
 } as const
 
 // --- HR -----------------------------------------------------------------------

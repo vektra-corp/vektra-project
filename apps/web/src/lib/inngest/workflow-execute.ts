@@ -36,10 +36,10 @@ export const executeWorkflow = inngest.createFunction(
   {
     id: 'workflow-execute',
     retries: WORKFLOW_LIMITS.MAX_RETRIES,
-    // A run holds actions that write; two at once for the same workflow and
-    // event would double them even with the idempotency claim, because a retry
-    // resumes rather than restarts.
-    concurrency: { limit: 20 },
+    // Capacity, not correctness: double-execution is prevented by the
+    // idempotency claim in `startRun`, not by this. The ceiling is the Inngest
+    // plan's — exceed it and the whole app fails to sync.
+    concurrency: { limit: WORKFLOW_LIMITS.MAX_CONCURRENCY },
   },
   { event: 'workflow/run' },
   async ({ event, step }) => {
