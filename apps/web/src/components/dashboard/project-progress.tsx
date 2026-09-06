@@ -2,7 +2,10 @@ import { Progress, cn } from '@pm/ui'
 import Link from 'next/link'
 
 export interface ProjectProgressRow {
+  /** Internal uuid — the React key and the stats lookup, never a URL. */
   id: string
+  /** 16-digit public id, which is what the link is built from. */
+  publicId: string
   name: string
   workspaceSlug: string
   done: number
@@ -33,7 +36,7 @@ export function ProjectProgressList({
           <li key={project.id} className="px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <Link
-                href={`/${orgSlug}/${project.workspaceSlug}/projects/${project.id}/board`}
+                href={`/${orgSlug}/${project.workspaceSlug}/projects/${project.publicId}/board`}
                 className="min-w-0 truncate text-base transition-colors hover:text-primary"
               >
                 {project.name}

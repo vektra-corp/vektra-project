@@ -14,6 +14,7 @@ import {
   type PdfLineItem,
 } from '@/lib/pdf/commercial-document'
 import { fetchLogoDataUri } from '@/lib/pdf/logo'
+import { resolveCommercialDoc } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -31,10 +32,6 @@ import { createClient } from '@/lib/supabase/server'
 
 const DOC_TYPE_LABELS: Record<CommercialDocType, string> = {
   quotation: 'Quotation',
-  invoice: 'Invoice',
-  sales_order: 'Sales order',
-  purchase_order: 'Purchase order',
-  bill: 'Bill',
 }
 
 function joinAddress(raw: unknown): string | null {
@@ -63,6 +60,13 @@ export async function GET(
     return NextResponse.json({ error: 'Forbidden', code: 'FORBIDDEN' }, { status: 403 })
   }
 
+  // The route parameter is the quotation's 16-digit public id, the same one the
+  // page it was opened from is addressed by.
+  const resolved = await resolveCommercialDoc(params.documentId)
+  if (!resolved) {
+    return NextResponse.json({ error: 'Not found', code: 'NOT_FOUND' }, { status: 404 })
+  }
+
   const supabase = createClient()
 
   const [{ data: doc }, { data: lineItems }, { data: organization }] = await Promise.all([
@@ -70,17 +74,17 @@ export async function GET(
       .from('commercial_documents')
       .select(
         `id, doc_type, doc_number, status, issue_date, due_date, valid_until, currency,
-         subtotal, tax_total, discount_total, grand_total, amount_paid, notes, terms,
+         subtotal, tax_total, discount_total, grand_total, notes, terms,
          pdf_template_id,
          contact:contacts!commercial_documents_contact_id_fkey(contact_name, company_name, email, address)`,
       )
-      .eq('id', params.documentId)
+      .eq('id', resolved.id)
       .eq('organization_id', auth.orgId)
       .maybeSingle(),
     supabase
       .from('commercial_line_items')
       .select('description, quantity, unit_price, tax_rate, line_total')
-      .eq('document_id', params.documentId)
+      .eq('document_id', resolved.id)
       .order('position'),
     supabase
       .from('organizations')
@@ -124,8 +128,6 @@ export async function GET(
   const date = (value: string) => formatDate(value, { locale, dateFormat: 'YYYY-MM-DD' })
 
   const contact = Array.isArray(doc.contact) ? doc.contact[0] : doc.contact
-  const paid = Number(doc.amount_paid)
-  const takesPayment = docType === 'invoice' || docType === 'bill'
 
   const items: PdfLineItem[] = (lineItems ?? []).map((item) => ({
     description: item.description,
@@ -140,8 +142,8 @@ export async function GET(
     docNumber: doc.doc_number,
     status: doc.status,
     issueDate: date(doc.issue_date),
-    dueLabel: docType === 'quotation' ? 'Valid until' : 'Due',
-    dueDate: docType === 'quotation' ? (doc.valid_until ? date(doc.valid_until) : null) : doc.due_date ? date(doc.due_date) : null,
+    dueLabel: 'Valid until',
+    dueDate: doc.valid_until ? date(doc.valid_until) : null,
     organization: {
       name: organization.name,
       address: joinAddress(organization.address),
@@ -163,8 +165,10 @@ export async function GET(
     discountTotal: Number(doc.discount_total) > 0 ? money(doc.discount_total) : null,
     taxTotal: money(doc.tax_total),
     grandTotal: money(doc.grand_total),
-    amountPaid: takesPayment && paid > 0 ? money(paid) : null,
-    outstanding: takesPayment && paid > 0 ? money(Number(doc.grand_total) - paid) : null,
+    // A quotation is an offer, not a demand for money: nothing is ever paid
+    // against one, so the payment rows never render.
+    amountPaid: null,
+    outstanding: null,
     notes: doc.notes,
     terms: doc.terms,
     currency: doc.currency,

@@ -92,7 +92,7 @@ export function DocumentForm({
       <input type="hidden" name="workspace_id" value={workspaceId} />
 
       <div className="grid gap-4 rounded-lg border border-border bg-surface p-5 shadow-card sm:grid-cols-2 lg:grid-cols-3">
-        <Field id="contact_id" label={docType === 'bill' || docType === 'purchase_order' ? 'Vendor' : 'Client'}>
+        <Field id="contact_id" label="Client">
           <SelectField
             id="contact_id"
             name="contact_id"
@@ -137,20 +137,14 @@ export function DocumentForm({
           />
         </Field>
 
-        {docType === 'quotation' ? (
-          <Field id="valid_until" label="Valid until" hint="After this date the offer expires.">
-            <Input
-              id="valid_until"
-              name="valid_until"
-              type="date"
-              defaultValue={values.validUntil ?? ''}
-            />
-          </Field>
-        ) : (
-          <Field id="due_date" label="Due date" error={fieldError('due_date')}>
-            <Input id="due_date" name="due_date" type="date" defaultValue={values.dueDate ?? ''} />
-          </Field>
-        )}
+        <Field id="valid_until" label="Valid until" hint="After this date the offer expires.">
+          <Input
+            id="valid_until"
+            name="valid_until"
+            type="date"
+            defaultValue={values.validUntil ?? ''}
+          />
+        </Field>
       </div>
 
       <LineItemEditor

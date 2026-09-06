@@ -15,17 +15,16 @@ export function truncate(text: string, maxLength: number): string {
   return `${text.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`
 }
 
-/** Human-readable task reference, e.g. "WEBAPP-42" (claude.md §18 rule 1). */
-export function taskReference(projectName: string, taskNumber: number): string {
-  const prefix = projectName
-    .replace(/[^A-Za-z0-9\s]/g, '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => word.charAt(0))
-    .join('')
-    .toUpperCase()
-    .slice(0, 5)
-  return `${prefix || 'TASK'}-${taskNumber}`
+/**
+ * Human-readable task reference, e.g. "VEK-42" (claude.md §18 rule 1).
+ *
+ * Takes the project's stored `key` rather than deriving a prefix from its name:
+ * the key is a real, editable column (migration 00034), so a reference stays
+ * stable when the project is renamed and changes only when someone deliberately
+ * changes the key.
+ */
+export function taskReference(projectKey: string, taskNumber: number): string {
+  return `${projectKey || 'TSK'}-${taskNumber}`
 }
 
 /** snake_case or kebab-case to Title Case, for labels derived from enum values. */

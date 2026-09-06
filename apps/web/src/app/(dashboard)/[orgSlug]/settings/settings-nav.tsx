@@ -1,8 +1,8 @@
 'use client'
 
-import { SegmentedGroup, segmentedItemClass } from '@pm/ui'
-import Link from 'next/link'
+import { SegmentedGroup } from '@pm/ui'
 import { usePathname } from 'next/navigation'
+import { SegmentedNavLink } from '@/components/layout/nav-link'
 
 export interface SettingsTab {
   segment: string
@@ -19,14 +19,9 @@ export function SettingsNav({ orgSlug, tabs }: { orgSlug: string; tabs: Settings
         {tabs.map((tab) => {
           const href = `/${orgSlug}/settings/${tab.segment}`
           return (
-            <Link
-              key={tab.segment}
-              href={href}
-              aria-current={pathname === href ? 'page' : undefined}
-              className={segmentedItemClass({ active: pathname === href })}
-            >
+            <SegmentedNavLink key={tab.segment} href={href} active={pathname === href}>
               {tab.label}
-            </Link>
+            </SegmentedNavLink>
           )
         })}
       </SegmentedGroup>

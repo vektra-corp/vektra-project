@@ -5,6 +5,7 @@ import { CustomFieldInputs } from '@/components/custom-fields/custom-field-input
 import { PageBody } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { loadCustomFields } from '@/lib/custom-fields'
+import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 import { ProjectSettingsForm } from './project-settings-form'
 
@@ -23,12 +24,16 @@ export default async function ProjectSettingsPage({
   params: { orgSlug: string; workspaceSlug: string; projectId: string }
 }) {
   const auth = await requireAuthPage(params.orgSlug)
+
+  const resolved = await resolveProject(params.projectId)
+  if (!resolved) notFound()
+
   const supabase = createClient()
 
   const { data: project } = await supabase
     .from('projects')
-    .select('id, name, description, status, priority, start_date, end_date')
-    .eq('id', params.projectId)
+    .select('id, key, name, description, status, priority, start_date, end_date')
+    .eq('id', resolved.id)
     .eq('organization_id', auth.orgId)
     .maybeSingle()
 
@@ -40,7 +45,12 @@ export default async function ProjectSettingsPage({
   return (
     <PageBody className="pt-4">
       <div className="mx-auto w-full max-w-2xl space-y-6 pb-10">
-        <ProjectSettingsForm scope={params} project={project} canEdit={canEdit} />
+        <ProjectSettingsForm
+          scope={params}
+          project={project}
+          publicId={resolved.publicId}
+          canEdit={canEdit}
+        />
 
         {custom.fields.length > 0 ? (
           <section className="rounded-lg border border-border bg-surface shadow-card">

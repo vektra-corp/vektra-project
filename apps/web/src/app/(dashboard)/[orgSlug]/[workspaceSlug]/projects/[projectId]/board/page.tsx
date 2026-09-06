@@ -1,13 +1,15 @@
 import { can } from '@pm/auth/rbac'
 import { deriveColumns, listViews, loadView, sortForView } from '@pm/db'
 import type { KanbanViewConfig } from '@pm/shared/constants'
-import { projectKey, todayIn } from '@pm/shared/utils'
+import { publicIdToString, todayIn } from '@pm/shared/utils'
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { BoardToolbar } from '@/components/board/board-toolbar'
 import { CaptureBar } from '@/components/board/capture-bar'
 import { KanbanBoard } from '@/components/kanban/kanban-board'
 import type { KanbanCardData, KanbanColumnData } from '@/components/kanban/types'
 import { requireAuthPage } from '@/lib/auth/context'
+import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'Board' }
@@ -30,12 +32,18 @@ export default async function BoardPage({
   searchParams: Record<string, string | string[] | undefined>
 }) {
   const auth = await requireAuthPage(params.orgSlug)
+
+  // The URL carries the project's 16-digit public id; everything below here
+  // needs the uuid the foreign keys are written against.
+  const project = await resolveProject(params.projectId)
+  if (!project) notFound()
+
   const supabase = createClient()
 
   const { data: board } = await supabase
     .from('kanban_boards')
     .select('id')
-    .eq('project_id', params.projectId)
+    .eq('project_id', project.id)
     .eq('is_default', true)
     .maybeSingle()
 
@@ -49,7 +57,7 @@ export default async function BoardPage({
 
   // Separate queries rather than one deep join: the counts are grouped in
   // memory, which avoids a correlated subquery per card.
-  const [{ data: columns }, { data: tasks }, { data: project }, { data: labels }] =
+  const [{ data: columns }, { data: tasks }, { data: labels }] =
     await Promise.all([
       supabase
         .from('kanban_columns')
@@ -59,13 +67,12 @@ export default async function BoardPage({
       supabase
         .from('tasks')
         .select(
-          `id, title, status, priority, due_date, position, task_number, kanban_column_id, estimated_hours,
+          `id, public_id, title, status, priority, due_date, position, task_number, kanban_column_id, estimated_hours,
            assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url),
            task_labels(label:labels(id, name, color))`,
         )
-        .eq('project_id', params.projectId)
+        .eq('project_id', project.id)
         .order('position'),
-      supabase.from('projects').select('name').eq('id', params.projectId).maybeSingle(),
       supabase
         .from('labels')
         .select('id, name, color')
@@ -117,7 +124,7 @@ export default async function BoardPage({
     }
   }
 
-  const prefix = projectKey(project?.name ?? 'Task')
+  const prefix = project.key
 
   const allCards: KanbanCardData[] = (tasks ?? []).map((task) => {
     const stats = subtaskStats.get(task.id) ?? { total: 0, done: 0 }
@@ -127,6 +134,7 @@ export default async function BoardPage({
 
     return {
       id: task.id,
+      publicId: publicIdToString(task.public_id),
       title: task.title,
       status: task.status as KanbanCardData['status'],
       priority: task.priority as KanbanCardData['priority'],

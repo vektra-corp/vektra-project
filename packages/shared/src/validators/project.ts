@@ -7,10 +7,36 @@ import {
 } from '../constants/statuses'
 import { dateStringSchema, hexColorSchema, uuidSchema } from './common'
 
+/**
+ * The project key — the front identifier people type and read.
+ *
+ * Two to ten characters, starting with a letter, uppercase alphanumerics only.
+ * The narrowness is the point: the key is concatenated into a task reference
+ * ("VEK-241"), so a key containing a hyphen or consisting only of digits would
+ * make that reference ambiguous both to read and to parse. Input is upper-cased
+ * rather than rejected for case, because nobody wants a form error for typing
+ * "vek". The same rule exists as a CHECK constraint in migration 00034;
+ * uniqueness within the organization is a unique index, and surfaces here as a
+ * field error rather than a crash.
+ */
+export const projectKeySchema = z
+  .string()
+  .trim()
+  .transform((value) => value.toUpperCase())
+  .pipe(
+    z
+      .string()
+      .min(2, 'Use at least 2 characters')
+      .max(10, 'Use at most 10 characters')
+      .regex(/^[A-Z][A-Z0-9]*$/, 'Start with a letter; letters and digits only'),
+  )
+
 export const projectCreateSchema = z
   .object({
     workspace_id: uuidSchema,
     name: z.string().trim().min(1, 'Project name is required').max(150),
+    // Optional on create: left out, the server derives one from the name.
+    key: projectKeySchema.optional(),
     description: z.string().max(5000).nullable().optional(),
     status: z.enum(PROJECT_STATUSES).default('active'),
     priority: z.enum(PRIORITIES).nullable().default('medium'),
@@ -27,6 +53,7 @@ export const projectCreateSchema = z
 export const projectUpdateSchema = z
   .object({
     name: z.string().trim().min(1).max(150).optional(),
+    key: projectKeySchema.optional(),
     description: z.string().max(5000).nullable().optional(),
     status: z.enum(PROJECT_STATUSES).optional(),
     priority: z.enum(PRIORITIES).nullable().optional(),

@@ -478,7 +478,7 @@ describe('pdf templates', () => {
     const acme = await asUser(db, acmeOwner, async (c) => {
       await c.query(
         `INSERT INTO pdf_templates (organization_id, doc_type, name, template_data)
-         VALUES ($1, 'invoice', 'RLS probe', '{}'::jsonb)`,
+         VALUES ($1, 'quotation', 'RLS probe', '{}'::jsonb)`,
         [FIXTURES.acme.orgId],
       )
       const result = await c.query('SELECT id FROM pdf_templates')
@@ -500,7 +500,7 @@ describe('pdf templates', () => {
       db,
       globexOwner,
       `INSERT INTO pdf_templates (organization_id, doc_type, name, template_data)
-       VALUES ($1, 'invoice', 'cross tenant', '{}'::jsonb)`,
+       VALUES ($1, 'quotation', 'cross tenant', '{}'::jsonb)`,
       [FIXTURES.acme.orgId],
     )
     expect(message).toMatch(/row-level security/i)

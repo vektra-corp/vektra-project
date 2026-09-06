@@ -1,9 +1,10 @@
 import { can } from '@pm/auth/rbac'
 import type { Priority } from '@pm/shared/constants'
-import { projectKey } from '@pm/shared/utils'
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { ProjectViewTabs } from '@/components/projects/project-tabs'
 import { requireAuthPage } from '@/lib/auth/context'
+import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 import { PlanningBoard, type PlanningItem } from './planning-board'
 
@@ -18,9 +19,13 @@ export default async function PlanningPage({
   params: { orgSlug: string; workspaceSlug: string; projectId: string }
 }) {
   const auth = await requireAuthPage(params.orgSlug)
+
+  const project = await resolveProject(params.projectId)
+  if (!project) notFound()
+
   const supabase = createClient()
 
-  const [{ data: tasks }, { data: project }, { data: sprints }] = await Promise.all([
+  const [{ data: tasks }, { data: sprints }] = await Promise.all([
     supabase
       .from('tasks')
       .select(
@@ -28,20 +33,19 @@ export default async function PlanningPage({
          assignee:profiles!tasks_assignee_id_fkey(id, full_name),
          task_labels(label:labels(id, name, color))`,
       )
-      .eq('project_id', params.projectId)
+      .eq('project_id', project.id)
       .not('status', 'in', '("done","cancelled")')
       .order('position'),
-    supabase.from('projects').select('name').eq('id', params.projectId).maybeSingle(),
     supabase
       .from('sprints')
       .select('id, name, starts_on, ends_on, status')
-      .eq('project_id', params.projectId)
+      .eq('project_id', project.id)
       .in('status', ['active', 'planned'])
       .order('starts_on'),
   ])
 
   const base = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}`
-  const prefix = projectKey(project?.name ?? '')
+  const prefix = project.key
 
   // The design's epic is this schema's label: a project-scoped, coloured
   // grouping of tasks. A task with several labels plans under its first —

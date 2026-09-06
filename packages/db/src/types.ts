@@ -190,118 +190,6 @@ export interface Database {
         Relationships: [
         ]
       }
-      approval_chains: {
-        Row: {
-          id: string
-          organization_id: string
-          doc_type: string
-          name: string
-          conditions: Json
-          steps: Json
-          is_active: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          doc_type: string
-          name: string
-          conditions?: Json
-          steps: Json
-          is_active?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          doc_type?: string
-          name?: string
-          conditions?: Json
-          steps?: Json
-          is_active?: boolean
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'approval_chains_organization_id_fkey'
-            columns: ['organization_id']
-            isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      approval_steps: {
-        Row: {
-          id: string
-          organization_id: string
-          document_id: string
-          chain_id: string | null
-          step_index: number
-          required_role: string
-          status: string
-          decided_by: string | null
-          decided_at: string | null
-          note: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          organization_id: string
-          document_id: string
-          chain_id?: string | null
-          step_index: number
-          required_role: string
-          status?: string
-          decided_by?: string | null
-          decided_at?: string | null
-          note?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          organization_id?: string
-          document_id?: string
-          chain_id?: string | null
-          step_index?: number
-          required_role?: string
-          status?: string
-          decided_by?: string | null
-          decided_at?: string | null
-          note?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'approval_steps_chain_id_fkey'
-            columns: ['chain_id']
-            isOneToOne: false
-            referencedRelation: 'approval_chains'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'approval_steps_decided_by_fkey'
-            columns: ['decided_by']
-            isOneToOne: false
-            referencedRelation: 'profiles'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'approval_steps_document_id_fkey'
-            columns: ['document_id']
-            isOneToOne: false
-            referencedRelation: 'commercial_documents'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'approval_steps_organization_id_fkey'
-            columns: ['organization_id']
-            isOneToOne: false
-            referencedRelation: 'organizations'
-            referencedColumns: ['id']
-          },
-        ]
-      }
       attachments: {
         Row: {
           id: string
@@ -704,6 +592,7 @@ export interface Database {
       commercial_documents: {
         Row: {
           id: string
+          public_id: number
           organization_id: string
           workspace_id: string
           project_id: string | null
@@ -736,6 +625,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          public_id?: number
           organization_id: string
           workspace_id: string
           project_id?: string | null
@@ -768,6 +658,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          public_id?: number
           organization_id?: string
           workspace_id?: string
           project_id?: string | null
@@ -924,6 +815,7 @@ export interface Database {
       contacts: {
         Row: {
           id: string
+          public_id: number
           organization_id: string
           type: string
           company_name: string | null
@@ -944,6 +836,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          public_id?: number
           organization_id: string
           type: string
           company_name?: string | null
@@ -964,6 +857,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          public_id?: number
           organization_id?: string
           type?: string
           company_name?: string | null
@@ -1185,6 +1079,7 @@ export interface Database {
       documents: {
         Row: {
           id: string
+          public_id: number
           organization_id: string
           project_id: string
           title: string
@@ -1197,6 +1092,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          public_id?: number
           organization_id: string
           project_id: string
           title: string
@@ -1209,6 +1105,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          public_id?: number
           organization_id?: string
           project_id?: string
           title?: string
@@ -2538,6 +2435,8 @@ export interface Database {
       projects: {
         Row: {
           id: string
+          public_id: number
+          key: string
           organization_id: string
           workspace_id: string
           name: string
@@ -2556,6 +2455,8 @@ export interface Database {
         }
         Insert: {
           id?: string
+          public_id?: number
+          key: string
           organization_id: string
           workspace_id: string
           name: string
@@ -2574,6 +2475,8 @@ export interface Database {
         }
         Update: {
           id?: string
+          public_id?: number
+          key?: string
           organization_id?: string
           workspace_id?: string
           name?: string
@@ -2721,6 +2624,7 @@ export interface Database {
       sprints: {
         Row: {
           id: string
+          public_id: number
           organization_id: string
           project_id: string
           name: string
@@ -2734,6 +2638,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          public_id?: number
           organization_id: string
           project_id: string
           name: string
@@ -2747,6 +2652,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          public_id?: number
           organization_id?: string
           project_id?: string
           name?: string
@@ -2785,6 +2691,7 @@ export interface Database {
       subtasks: {
         Row: {
           id: string
+          public_id: number
           organization_id: string
           task_id: string
           kanban_column_id: string | null
@@ -2804,6 +2711,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          public_id?: number
           organization_id: string
           task_id: string
           kanban_column_id?: string | null
@@ -2823,6 +2731,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          public_id?: number
           organization_id?: string
           task_id?: string
           kanban_column_id?: string | null
@@ -3013,6 +2922,7 @@ export interface Database {
       tasks: {
         Row: {
           id: string
+          public_id: number
           organization_id: string
           project_id: string
           kanban_column_id: string | null
@@ -3038,6 +2948,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          public_id?: number
           organization_id: string
           project_id: string
           kanban_column_id?: string | null
@@ -3063,6 +2974,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          public_id?: number
           organization_id?: string
           project_id?: string
           kanban_column_id?: string | null
@@ -3639,6 +3551,7 @@ export interface Database {
       workflows: {
         Row: {
           id: string
+          public_id: number
           organization_id: string
           workspace_id: string
           name: string
@@ -3658,6 +3571,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          public_id?: number
           organization_id: string
           workspace_id: string
           name: string
@@ -3677,6 +3591,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          public_id?: number
           organization_id?: string
           workspace_id?: string
           name?: string
@@ -3828,11 +3743,9 @@ export interface Database {
           organization_id: string | null
           month: string | null
           currency: string | null
-          invoiced_revenue: number | null
-          outstanding_invoices: number | null
-          overdue_invoices: number | null
           pipeline_quotations: number | null
           accepted_quotations: number | null
+          rejected_quotations: number | null
         }
         Relationships: [
         ]
@@ -4032,6 +3945,23 @@ export interface Database {
       refresh_revenue_summary: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      mentionable_members: {
+        Args: {
+          p_task_id: string
+          p_query?: string
+        }
+        Returns: {
+          id: string
+          full_name: string
+          avatar_url: string | null
+        }[]
+      }
+      mentioned_user_ids: {
+        Args: {
+          p_body: Json
+        }
+        Returns: string[]
       }
       revenue_for_org: {
         Args: {

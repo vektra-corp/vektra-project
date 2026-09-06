@@ -1,4 +1,4 @@
-import { initials } from '@pm/shared/utils'
+import { initials, publicIdToString } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage, Button, Card, CardContent, cn } from '@pm/ui'
 import { FolderPlus } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -92,7 +92,7 @@ export default async function ProjectsPage({
   // visibility filtering is needed here.
   const { data: projects } = await supabase
     .from('projects')
-    .select('id, name, description, status, priority, start_date, end_date, updated_at')
+    .select('id, public_id, key, name, description, status, priority, start_date, end_date, updated_at')
     .eq('workspace_id', workspace.id)
     .neq('status', 'archived')
     .order('updated_at', { ascending: false })
@@ -177,7 +177,10 @@ export default async function ProjectsPage({
                     className="border-border hover:bg-surface-hover/40 border-b transition-colors"
                   >
                     <td className="px-5 py-3">
-                      <Link href={`${base}/${project.id}/board`} className="flex items-start gap-3">
+                      <Link
+                        href={`${base}/${publicIdToString(project.public_id)}/board`}
+                        className="flex items-start gap-3"
+                      >
                         <span
                           aria-hidden
                           className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-sm"

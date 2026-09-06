@@ -2,7 +2,6 @@ import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
 import { parsePdfTemplate } from '@pm/shared/constants'
 import type { Metadata } from 'next'
 import { PageBody } from '@/components/layout/page-body'
-import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
 import { createClient } from '@/lib/supabase/server'
@@ -47,19 +46,13 @@ export default async function TemplatesPage({
     template: parsePdfTemplate(row.template_data),
   }))
 
+  /*
+   * No <Topbar> here: the commercial layout already renders one above this
+   * page. A second stacked itself under the first and re-ran the same
+   * org_members query. The page's own <h1> below is what names the section.
+   */
   return (
     <>
-      <Topbar
-        orgSlug={params.orgSlug}
-        breadcrumb={[
-          {
-            label: 'Commercial',
-            href: `/${params.orgSlug}/${params.workspaceSlug}/commercial`,
-          },
-          { label: 'PDF templates' },
-        ]}
-      />
-
       <PageBody className="pt-4">
         <div className="space-y-6 pb-10">
           <div className="flex flex-wrap items-start gap-3">

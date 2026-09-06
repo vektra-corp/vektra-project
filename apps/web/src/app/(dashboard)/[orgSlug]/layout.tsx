@@ -1,3 +1,4 @@
+import { publicIdToString } from '@pm/shared/utils'
 import { notFound } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -64,7 +65,7 @@ export default async function OrgLayout({
   // limits this to projects the viewer can open.
   const { data: projects } = await supabase
     .from('projects')
-    .select('id, name, workspace:workspaces!projects_workspace_id_fkey(slug)')
+    .select('id, public_id, name, workspace:workspaces!projects_workspace_id_fkey(slug)')
     .eq('organization_id', auth.orgId)
     .eq('status', 'active')
     .order('name')
@@ -73,8 +74,14 @@ export default async function OrgLayout({
   const sidebarProjects = (projects ?? [])
     .map((project) => {
       const workspace = Array.isArray(project.workspace) ? project.workspace[0] : project.workspace
+      // The sidebar builds hrefs, so it gets the public id — never the uuid.
       return workspace
-        ? { id: project.id, name: project.name, workspace_slug: workspace.slug, color: null }
+        ? {
+            id: publicIdToString(project.public_id),
+            name: project.name,
+            workspace_slug: workspace.slug,
+            color: null,
+          }
         : null
     })
     .filter((project): project is NonNullable<typeof project> => project !== null)

@@ -16,6 +16,7 @@ import {
 import { revalidatePath } from 'next/cache'
 import { toActionError } from '@/lib/action-error'
 import { requireAuth } from '@/lib/auth/context'
+import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -30,10 +31,30 @@ function projectPath(orgSlug: string, workspaceSlug: string, projectId: string) 
   return `/${orgSlug}/${workspaceSlug}/projects/${projectId}`
 }
 
+/**
+ * A scope always holds the ids the URL held, so `projectId` is the project's
+ * 16-digit public id — right for building a path, wrong for a foreign key.
+ * Anything that writes resolves it through `resolveProject` first, which also
+ * makes the project's existence and visibility a precondition of the write.
+ */
 interface Scope {
   orgSlug: string
   workspaceSlug: string
   projectId: string
+}
+
+/** The uuid behind a scope, or a failure the caller can return as-is. */
+async function projectUuid(
+  scope: Scope,
+): Promise<{ ok: true; id: string } | { ok: false; error: ActionResult<never> }> {
+  const project = await resolveProject(scope.projectId)
+  if (!project) {
+    return {
+      ok: false,
+      error: { ok: false, code: 'NOT_FOUND', message: 'That project was not found.' },
+    }
+  }
+  return { ok: true, id: project.id }
 }
 
 export async function createTask(
@@ -44,8 +65,11 @@ export async function createTask(
   const auth = await requireAuth(scope.orgSlug)
   assertCan(auth, 'tasks', 'create')
 
+  const project = await projectUuid(scope)
+  if (!project.ok) return project.error
+
   const parsed = taskCreateSchema.safeParse({
-    project_id: scope.projectId,
+    project_id: project.id,
     kanban_column_id: formData.get('kanban_column_id') || null,
     title: formData.get('title'),
     priority: formData.get('priority') || 'medium',
@@ -331,12 +355,15 @@ export async function setTaskDone(
   const auth = await requireAuth(scope.orgSlug)
   assertCan(auth, 'tasks', 'update')
 
+  const project = await projectUuid(scope)
+  if (!project.ok) return project.error
+
   const supabase = createClient()
 
   const { data: board } = await supabase
     .from('kanban_boards')
     .select('id')
-    .eq('project_id', scope.projectId)
+    .eq('project_id', project.id)
     .eq('is_default', true)
     .maybeSingle()
 

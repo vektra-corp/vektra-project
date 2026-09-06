@@ -1,4 +1,4 @@
-import { projectKey } from '@pm/shared/utils'
+import { publicIdToString } from '@pm/shared/utils'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Widget, WidgetEmpty } from '@/components/dashboard/widget'
@@ -38,9 +38,9 @@ export default async function SearchPage({
         supabase
           .from('tasks')
           .select(
-            `id, title, status, priority, task_number, project_id,
+            `id, public_id, title, status, priority, task_number, project_id,
              project:projects!tasks_project_id_fkey(
-               name, workspace:workspaces!projects_workspace_id_fkey(slug)
+               public_id, key, workspace:workspaces!projects_workspace_id_fkey(slug)
              )`,
           )
           .eq('organization_id', auth.orgId)
@@ -48,7 +48,7 @@ export default async function SearchPage({
           .limit(20),
         supabase
           .from('projects')
-          .select('id, name, status, workspace:workspaces!projects_workspace_id_fkey(slug)')
+          .select('id, public_id, name, status, workspace:workspaces!projects_workspace_id_fkey(slug)')
           .eq('organization_id', auth.orgId)
           .ilike('name', pattern)
           .limit(10),
@@ -81,14 +81,15 @@ export default async function SearchPage({
                           ? project.workspace[0]
                           : project.workspace
                         : null
-                      const href = workspace
-                        ? `/${params.orgSlug}/${workspace.slug}/projects/${task.project_id}/tasks/${task.id}`
-                        : null
+                      const href =
+                        workspace && project
+                          ? `/${params.orgSlug}/${workspace.slug}/projects/${publicIdToString(project.public_id)}/tasks/${publicIdToString(task.public_id)}`
+                          : null
 
                       return (
                         <li key={task.id} className="flex items-center gap-3 px-4 py-2.5">
                           <span className="label-meta shrink-0 text-faint">
-                            {projectKey(project?.name ?? 'Task')}-{task.task_number}
+                            {project?.key ?? 'TSK'}-{task.task_number}
                           </span>
                           {href ? (
                             <Link
@@ -119,7 +120,7 @@ export default async function SearchPage({
                         ? project.workspace[0]
                         : project.workspace
                       const href = workspace
-                        ? `/${params.orgSlug}/${workspace.slug}/projects/${project.id}/board`
+                        ? `/${params.orgSlug}/${workspace.slug}/projects/${publicIdToString(project.public_id)}/board`
                         : null
 
                       return (

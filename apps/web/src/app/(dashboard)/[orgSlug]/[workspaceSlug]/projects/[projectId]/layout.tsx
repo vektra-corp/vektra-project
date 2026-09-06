@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
+import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -21,18 +22,21 @@ export default async function ProjectLayout({
   params: { orgSlug: string; workspaceSlug: string; projectId: string }
 }) {
   await requireAuthPage(params.orgSlug)
-  const supabase = createClient()
 
+  // params.projectId is the 16-digit public id; resolveProject turns it into the
+  // row, or into a 404 for an id that is malformed, deleted or another tenant's.
+  const resolved = await resolveProject(params.projectId)
+  if (!resolved) notFound()
+
+  const supabase = createClient()
   const { data: project } = await supabase
     .from('projects')
     .select(
-      'id, name, status, priority, end_date, workspace:workspaces!projects_workspace_id_fkey(name)',
+      'name, key, status, priority, end_date, workspace:workspaces!projects_workspace_id_fkey(name)',
     )
-    .eq('id', params.projectId)
+    .eq('id', resolved.id)
     .maybeSingle()
 
-  // RLS returns nothing for a project in another tenant, which is the same
-  // observable outcome as one that does not exist. That is deliberate.
   if (!project) notFound()
 
   const workspace = Array.isArray(project.workspace) ? project.workspace[0] : project.workspace
@@ -54,7 +58,7 @@ export default async function ProjectLayout({
           },
           {
             label: project.name,
-            href: `/${params.orgSlug}/${params.workspaceSlug}/projects/${project.id}/board`,
+            href: `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}/board`,
           },
         ]}
         meta={
@@ -63,6 +67,7 @@ export default async function ProjectLayout({
             shape="meta"
             className="ms-1"
           >
+            <span className="pe-1 opacity-70">{project.key}</span>
             {project.status.replace('_', ' ')}
             {daysLeft !== null ? (
               <>

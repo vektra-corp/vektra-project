@@ -7,6 +7,8 @@ import { fieldErrors, inviteMemberSchema, memberRoleUpdateSchema } from '@pm/sha
 import { revalidatePath } from 'next/cache'
 import { toActionError } from '@/lib/action-error'
 import { requireAuth } from '@/lib/auth/context'
+import { sendEmail } from '@/lib/email/client'
+import { addedToOrgEmail, inviteEmail } from '@/lib/email/templates'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
@@ -22,19 +24,32 @@ function membersPath(orgSlug: string) {
   return `/${orgSlug}/members`
 }
 
+export interface InviteResult {
+  email: string
+  /** False when mail is not configured, or the address could not be delivered to. */
+  emailed: boolean
+}
+
 /**
  * Invite someone to the organization.
  *
  * Uses the service-role client for exactly two things — looking up whether the
- * email already has an account, and issuing the invite — because both are
+ * email already has an account, and minting the invite link — because both are
  * `auth.users` operations that RLS cannot express. Every tenant write below it
  * is still scoped to the caller's own `orgId`, explicitly (§13.10).
+ *
+ * The mail is sent by this app, not by Supabase Auth. `generateLink` produces
+ * the link without sending anything, so the message can name the inviter, the
+ * organization and the role — the three facts the reader needs and the stock
+ * "you have been invited" template cannot know. It also means an existing
+ * account gets a different, correct message: there is nothing for them to
+ * accept and no password for them to set.
  */
 export async function inviteMember(
   orgSlug: string,
-  _prevState: ActionResult<{ email: string }> | null,
+  _prevState: ActionResult<InviteResult> | null,
   formData: FormData,
-): Promise<ActionResult<{ email: string }>> {
+): Promise<ActionResult<InviteResult>> {
   const auth = await requireAuth(orgSlug)
 
   const role = String(formData.get('role') ?? 'member') as OrgRole
@@ -59,6 +74,7 @@ export async function inviteMember(
   }
 
   const admin = createAdminClient()
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
 
   try {
     // Reuse an existing account when the person already has one, so inviting a
@@ -68,16 +84,32 @@ export async function inviteMember(
     })
 
     let userId = existing as string | null
+    let acceptUrl: string | null = null
 
     if (!userId) {
-      const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/auth/callback?next=/${orgSlug}/dashboard`
-      const { data: invited, error: inviteError } =
-        await admin.auth.admin.inviteUserByEmail(parsed.data.email, { redirectTo })
+      // A brand new account. The link lands on /accept-invite, which is where
+      // they set a password — without that step the account has none and they
+      // could never sign in again after this one link expires.
+      const redirectTo = `${appUrl}/auth/callback?next=${encodeURIComponent(
+        `/accept-invite?org=${orgSlug}`,
+      )}`
 
-      if (inviteError) {
-        return { ok: false, code: 'INTERNAL_ERROR', message: inviteError.message }
+      const { data: link, error: linkError } = await admin.auth.admin.generateLink({
+        type: 'invite',
+        email: parsed.data.email,
+        options: { redirectTo },
+      })
+
+      if (linkError || !link?.user) {
+        return {
+          ok: false,
+          code: 'INTERNAL_ERROR',
+          message: linkError?.message ?? 'Could not create the invitation.',
+        }
       }
-      userId = invited.user.id
+
+      userId = link.user.id
+      acceptUrl = link.properties?.action_link ?? null
     }
 
     const { error: memberError } = await admin.from('org_members').insert({
@@ -119,8 +151,33 @@ export async function inviteMember(
       }
     }
 
+    // Everything that grants access has succeeded by here. The mail is sent
+    // last and its failure is not propagated: a member who exists but was not
+    // emailed can be told in person, while an error now would leave the caller
+    // believing the invitation did not happen at all.
+    const [{ data: organization }, { data: inviter }] = await Promise.all([
+      admin.from('organizations').select('name').eq('id', auth.orgId).maybeSingle(),
+      admin.from('profiles').select('full_name').eq('id', auth.userId).maybeSingle(),
+    ])
+
+    const message = acceptUrl
+      ? inviteEmail({
+          orgName: organization?.name ?? 'your team',
+          inviterName: inviter?.full_name ?? null,
+          role: parsed.data.role,
+          acceptUrl,
+        })
+      : addedToOrgEmail({
+          orgName: organization?.name ?? 'your team',
+          inviterName: inviter?.full_name ?? null,
+          role: parsed.data.role,
+          orgUrl: `${appUrl}/${orgSlug}/dashboard`,
+        })
+
+    const delivery = await sendEmail({ to: parsed.data.email, ...message })
+
     revalidatePath(membersPath(orgSlug))
-    return { ok: true, data: { email: parsed.data.email } }
+    return { ok: true, data: { email: parsed.data.email, emailed: delivery.ok } }
   } catch (error) {
     return toActionError(error)
   }

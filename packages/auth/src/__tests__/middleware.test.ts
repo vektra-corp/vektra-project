@@ -169,6 +169,10 @@ describe('extractOrgSlug — non-tenant top-level routes', () => {
       '/onboarding',
       '/select-org',
       '/logout',
+      // Where an invitation lands. Read as a slug, an invited person would be
+      // 403'd on the one link that was supposed to let them in.
+      '/accept-invite',
+      '/accept-invite?org=acme',
     ]) {
       expect(extractOrgSlug(path), path).toBeNull()
     }

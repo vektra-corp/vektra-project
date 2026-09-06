@@ -100,13 +100,25 @@ export function notificationUrl(
   if (!data || typeof data !== 'object') return null
   const payload = data as Record<string, unknown>
 
+  // The public ids, not the uuids: a URL addresses a row by its public id
+  // (migration 00034). They arrive as JSON numbers, and are safe integers by
+  // construction, so String() reproduces the digits exactly.
+  const id = (key: string): string | null => {
+    const value = payload[key]
+    if (typeof value === 'number' && Number.isSafeInteger(value)) return String(value)
+    return typeof value === 'string' && /^\d{16}$/.test(value) ? value : null
+  }
+
   const workspaceSlug = typeof payload.workspace_slug === 'string' ? payload.workspace_slug : null
-  const projectId = typeof payload.project_id === 'string' ? payload.project_id : null
-  const taskId = typeof payload.task_id === 'string' ? payload.task_id : null
+  const projectId = id('project_public_id')
+  const taskId = id('task_public_id')
 
   if (workspaceSlug && projectId && taskId) {
     return `${appUrl}/${orgSlug}/${workspaceSlug}/projects/${projectId}/tasks/${taskId}`
   }
+
+  // Notifications written before 00036 carry uuids and no slug, so there is no
+  // link that can be built from them. The inbox is the honest fallback.
   return `${appUrl}/${orgSlug}/notifications`
 }
 

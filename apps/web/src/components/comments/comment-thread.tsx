@@ -113,9 +113,10 @@ export function CommentThread({
           <RichTextEditor
             key={composerKey}
             name="body"
-            placeholder="Write a comment…"
+            placeholder="Write a comment, or type @ to mention a teammate…"
             minHeight="min-h-[84px]"
             onSubmit={submit}
+            mentions={{ orgSlug: scope.orgSlug, taskId }}
           />
           {error ? <p className="text-nav text-destructive">{error}</p> : null}
           <div className="flex items-center justify-between gap-3">

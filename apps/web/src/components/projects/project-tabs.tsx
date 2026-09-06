@@ -2,8 +2,8 @@
 
 import { SegmentedGroup, cn, segmentedItemClass } from '@pm/ui'
 import { CalendarRange, Columns3, Gauge, Layers, Table2 } from 'lucide-react'
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { SegmentedNavLink } from '@/components/layout/nav-link'
 
 /**
  * Project view switcher.
@@ -51,14 +51,9 @@ export function ProjectViewTabs({ base }: { base: string }) {
         }
 
         return (
-          <Link
-            key={view.segment}
-            href={href}
-            aria-current={active ? 'page' : undefined}
-            className={segmentedItemClass({ active })}
-          >
+          <SegmentedNavLink key={view.segment} href={href} active={active}>
             {view.label}
-          </Link>
+          </SegmentedNavLink>
         )
       })}
     </SegmentedGroup>

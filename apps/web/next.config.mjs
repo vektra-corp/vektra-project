@@ -81,6 +81,29 @@ const nextConfig = {
     // the reading, and externalising only the wrapper still lets webpack pull
     // jsdom into the bundle behind it.
     serverComponentsExternalPackages: ['isomorphic-dompurify', 'jsdom'],
+    /*
+     * Client Router Cache lifetime.
+     *
+     * Every route here is dynamic (createClient() reads cookies()), and Next's
+     * default for a dynamic route is 30 seconds. Past that, going back to a page
+     * you were just on re-runs middleware, the org layout and the page. Within
+     * the window it renders from the client cache with no server request at all,
+     * which is what makes tab-switching and the back button feel instant.
+     *
+     * 60s rather than the maximum: mutations still bust the cache through the
+     * app's revalidatePath() calls, but a page left open in another tab is
+     * otherwise stale for the whole window, and a minute is as long as this
+     * product should show a task list that has moved on.
+     */
+    staleTimes: { dynamic: 60, static: 180 },
+    /*
+     * Barrel splitting. '@pm/ui' alone is imported 125 times and re-exports 26
+     * modules, so without this every one of those imports pulls the whole
+     * package into the route's module graph — which the dev server recompiles
+     * per route. lucide-react and date-fns are already in Next 14.2's built-in
+     * list and do not need repeating here.
+     */
+    optimizePackageImports: ['@pm/ui', '@pm/shared'],
   },
   images: {
     remotePatterns: [

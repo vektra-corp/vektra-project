@@ -73,14 +73,40 @@ describe('notificationUrl', () => {
     expect(
       notificationUrl(APP, 'acme', {
         workspace_slug: 'delivery',
-        project_id: 'p1',
-        task_id: 't1',
+        project_public_id: 1739284650193847,
+        task_public_id: 2846193847502938,
       }),
-    ).toBe('https://app.example.com/acme/delivery/projects/p1/tasks/t1')
+    ).toBe(
+      'https://app.example.com/acme/delivery/projects/1739284650193847/tasks/2846193847502938',
+    )
+  })
+
+  it('renders a public id from JSON without scientific notation or rounding', () => {
+    // The value arrives as a JSON number. Anything that stringifies it wrongly
+    // produces a URL that 404s, and it would 404 only for large ids.
+    const url = notificationUrl(APP, 'acme', {
+      workspace_slug: 'delivery',
+      project_public_id: 8999999999999999,
+      task_public_id: 1000000000000000,
+    })
+    expect(url).toContain('/projects/8999999999999999/')
+    expect(url).toContain('/tasks/1000000000000000')
+  })
+
+  it('ignores a uuid where a public id belongs', () => {
+    // Payloads written before migration 00036 carry uuids. There is no link to
+    // build from those, so the inbox is the honest answer.
+    expect(
+      notificationUrl(APP, 'acme', {
+        workspace_slug: 'delivery',
+        project_public_id: '4e0e0a1e-0000-0000-0000-000000000001',
+        task_public_id: '4e0e0a1e-0000-0000-0000-000000000002',
+      }),
+    ).toBe('https://app.example.com/acme/notifications')
   })
 
   it('falls back to the inbox rather than guessing a wrong task link', () => {
-    expect(notificationUrl(APP, 'acme', { task_id: 't1' })).toBe(
+    expect(notificationUrl(APP, 'acme', { task_public_id: 2846193847502938 })).toBe(
       'https://app.example.com/acme/notifications',
     )
     expect(notificationUrl(APP, 'acme', null)).toBeNull()

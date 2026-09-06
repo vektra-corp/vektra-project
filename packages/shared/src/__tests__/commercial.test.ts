@@ -4,23 +4,24 @@ import { commercialDocCreateSchema, lineItemSchema, statusSchemaFor } from '../v
 
 describe('statusSchemaFor', () => {
   it('accepts only statuses legal for that document type', () => {
-    expect(statusSchemaFor('invoice').safeParse({ status: 'paid' }).success).toBe(true)
-    // 'received' is a bill status, not an invoice one — the CHECK constraint
-    // enforces this too; the schema turns it into a readable message.
-    expect(statusSchemaFor('invoice').safeParse({ status: 'received' }).success).toBe(false)
-    expect(statusSchemaFor('bill').safeParse({ status: 'received' }).success).toBe(true)
+    expect(statusSchemaFor('quotation').safeParse({ status: 'accepted' }).success).toBe(true)
+    // 'paid' belonged to the invoice, which no longer exists. The CHECK
+    // constraint enforces this too; the schema turns it into a readable message.
+    expect(statusSchemaFor('quotation').safeParse({ status: 'paid' }).success).toBe(false)
+    // Likewise 'converted': there is nothing left to convert a quotation into.
+    expect(statusSchemaFor('quotation').safeParse({ status: 'converted' }).success).toBe(false)
   })
 
   it('names the document type in the failure message', () => {
-    const result = statusSchemaFor('purchase_order').safeParse({ status: 'paid' })
+    const result = statusSchemaFor('quotation').safeParse({ status: 'paid' })
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error.issues[0]?.message).toContain('purchase order')
+      expect(result.error.issues[0]?.message).toContain('quotation')
     }
   })
 
-  it('covers the quotation lifecycle including converted', () => {
-    for (const status of ['draft', 'sent', 'accepted', 'rejected', 'expired', 'converted']) {
+  it('covers the quotation lifecycle', () => {
+    for (const status of ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired']) {
       expect(statusSchemaFor('quotation').safeParse({ status }).success).toBe(true)
     }
   })
@@ -52,7 +53,7 @@ describe('lineItemSchema', () => {
 
 describe('commercialDocCreateSchema', () => {
   const valid = {
-    doc_type: 'invoice',
+    doc_type: 'quotation',
     workspace_id: '11111111-1111-1111-1111-111111111111',
     issue_date: '2026-03-01',
   }

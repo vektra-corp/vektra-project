@@ -25,6 +25,7 @@ export interface SidebarWorkspace {
 }
 
 export interface SidebarProjectSummary {
+  /** The project's 16-digit public id: this list exists to build links. */
   id: string
   name: string
   workspace_slug: string
@@ -107,10 +108,6 @@ export async function Sidebar({
 
   const commercial: NavItem[] = [
     { key: 'quotations', label: t('quotations'), icon: 'FileSignature', href: commercialHref('quotations') },
-    { key: 'invoices', label: t('invoices'), icon: 'Receipt', href: commercialHref('invoices') },
-    { key: 'sales-orders', label: t('salesOrders'), icon: 'ScrollText', href: commercialHref('sales-orders') },
-    { key: 'purchase-orders', label: t('purchaseOrders'), icon: 'ShoppingCart', href: commercialHref('purchase-orders') },
-    { key: 'bills', label: t('bills'), icon: 'Wallet', href: commercialHref('bills') },
     { key: 'contacts', label: t('contacts'), icon: 'Contact', href: commercialHref('contacts') },
     { key: 'templates', label: t('pdfTemplates'), icon: 'FileText', href: commercialHref('templates') },
   ]
@@ -122,6 +119,10 @@ export async function Sidebar({
 
   return (
     <aside className="border-border bg-surface hidden w-[242px] shrink-0 flex-col border-e px-3 py-3.5 md:flex">
+      {/* The product names itself here, not the tenant. Someone in three
+          organizations was seeing three different sidebars and no way to tell
+          at a glance which app they were in; the org name is what the caption
+          is for, and it is still the link into org settings. */}
       <Link
         href={`/${orgSlug}/settings/general`}
         className="hover:bg-surface-hover/60 flex items-center gap-[9px] rounded-lg px-1.5 py-1 transition-colors"
@@ -129,11 +130,9 @@ export async function Sidebar({
         <BrandMark />
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-semibold tracking-[0.02em] leading-tight">
-            {orgName}
+            Vektra Project
           </p>
-          <p className="label-meta text-faint truncate pt-1 tracking-[0.08em]">
-            {t('workspaceCaption')}
-          </p>
+          <p className="label-meta text-faint truncate pt-1 tracking-[0.08em]">{orgName}</p>
         </div>
         <span
           className="border-input text-faint grid h-[18px] w-[18px] shrink-0 place-items-center rounded-[5px] border text-[9px]"

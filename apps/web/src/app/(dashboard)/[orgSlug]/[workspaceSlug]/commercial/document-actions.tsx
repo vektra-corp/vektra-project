@@ -1,7 +1,6 @@
 'use client'
 
 import { COMMERCIAL_STATUSES, type CommercialDocType } from '@pm/shared/constants'
-import { formatCurrency } from '@pm/shared/utils'
 import {
   Button,
   Dialog,
@@ -18,36 +17,25 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Input,
   toast,
 } from '@pm/ui'
-import { ArrowRightLeft, ChevronDown, MoreHorizontal, Trash2, Wallet } from 'lucide-react'
+import { ChevronDown, MoreHorizontal, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import {
-  convertQuotationToInvoice,
-  deleteCommercialDoc,
-  recordPayment,
-  setCommercialStatus,
-} from './actions'
+import { deleteCommercialDoc, setCommercialStatus } from './actions'
 
 interface Scope {
   orgSlug: string
   workspaceSlug: string
 }
 
-/** Status, payment, conversion and delete — everything that acts on a document. */
+/** Status and delete — everything that acts on a quotation. */
 export function DocumentActions({
   scope,
   documentId,
   docType,
   docSegment,
   status,
-  grandTotal,
-  amountPaid,
-  currency,
-  locale,
-  isConverted,
   canDelete,
 }: {
   scope: Scope
@@ -55,24 +43,13 @@ export function DocumentActions({
   docType: CommercialDocType
   docSegment: string
   status: string
-  grandTotal: number
-  amountPaid: number
-  currency: string
-  locale: string
-  isConverted: boolean
   canDelete: boolean
 }) {
-  const [payOpen, setPayOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const [amount, setAmount] = useState('')
   const [pending, startTransition] = useTransition()
   const router = useRouter()
 
-  const outstanding = grandTotal - amountPaid
-  const takesPayment =
-    (docType === 'invoice' || docType === 'bill') && outstanding > 0 && status !== 'void'
-  const canConvert = docType === 'quotation' && status === 'accepted' && !isConverted
-  const isDraft = status === 'draft' || status === 'received'
+  const isDraft = status === 'draft'
 
   function changeStatus(next: string) {
     startTransition(async () => {
@@ -82,37 +59,6 @@ export function DocumentActions({
         router.refresh()
       } else {
         toast({ variant: 'destructive', title: 'Could not update', description: result.message })
-      }
-    })
-  }
-
-  function pay() {
-    const value = Number(amount)
-    if (!Number.isFinite(value) || value <= 0) return
-
-    startTransition(async () => {
-      const result = await recordPayment(scope, documentId, value)
-      if (result.ok) {
-        setPayOpen(false)
-        setAmount('')
-        toast({ title: 'Payment recorded' })
-        router.refresh()
-      } else {
-        toast({ variant: 'destructive', title: 'Could not record', description: result.message })
-      }
-    })
-  }
-
-  function convert() {
-    startTransition(async () => {
-      const result = await convertQuotationToInvoice(scope, documentId)
-      if (result.ok) {
-        toast({ title: 'Invoice created', description: 'Opened as a draft.' })
-        router.push(
-          `/${scope.orgSlug}/${scope.workspaceSlug}/commercial/invoices/${result.data.id}`,
-        )
-      } else {
-        toast({ variant: 'destructive', title: 'Could not convert', description: result.message })
       }
     })
   }
@@ -131,20 +77,6 @@ export function DocumentActions({
 
   return (
     <>
-      {canConvert ? (
-        <Button size="sm" loading={pending} onClick={convert}>
-          <ArrowRightLeft className="h-3.5 w-3.5" aria-hidden />
-          Convert to invoice
-        </Button>
-      ) : null}
-
-      {takesPayment ? (
-        <Button variant="subtle" size="sm" onClick={() => setPayOpen(true)}>
-          <Wallet className="h-3.5 w-3.5" aria-hidden />
-          Record payment
-        </Button>
-      ) : null}
-
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="subtle" size="sm" className="gap-1.5" disabled={pending}>
@@ -181,63 +113,14 @@ export function DocumentActions({
         </DropdownMenu>
       ) : null}
 
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Record a payment</DialogTitle>
-            <DialogDescription>
-              {formatCurrency(outstanding, currency, locale)} outstanding of{' '}
-              {formatCurrency(grandTotal, currency, locale)}.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-1.5">
-            <label htmlFor="payment-amount" className="text-ui font-medium">
-              Amount
-            </label>
-            <Input
-              id="payment-amount"
-              type="number"
-              min="0.01"
-              step="0.01"
-              max={outstanding}
-              value={amount}
-              autoFocus
-              onChange={(event) => setAmount(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  pay()
-                }
-              }}
-            />
-            <button
-              type="button"
-              className="label-meta text-faint transition-colors hover:text-muted-foreground"
-              onClick={() => setAmount(String(outstanding))}
-            >
-              Pay in full
-            </button>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPayOpen(false)}>
-              Cancel
-            </Button>
-            <Button loading={pending} onClick={pay} disabled={!amount}>
-              Record
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Delete this draft?</DialogTitle>
             <DialogDescription>
-              Its number is not reused, so the sequence will show a gap. Only a draft can be
-              deleted — anything issued is voided instead.
+              Its number is not reused, so the sequence will show a gap. Only a draft can
+              be deleted — a quotation that has been sent is marked rejected or expired
+              instead.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

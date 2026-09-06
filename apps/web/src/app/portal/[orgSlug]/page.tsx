@@ -1,3 +1,4 @@
+import { publicIdToString } from '@pm/shared/utils'
 import { Badge } from '@pm/ui'
 import { FolderKanban } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -21,7 +22,7 @@ export default async function PortalHomePage({ params }: { params: { orgSlug: st
   const { data: access } = await supabase
     .from('portal_project_access')
     .select(
-      'can_comment, can_upload, project:projects!portal_project_access_project_id_fkey(id, name, description, status)',
+      'can_comment, can_upload, project:projects!portal_project_access_project_id_fkey(id, public_id, name, description, status)',
     )
     .eq('portal_user_id', portal.portalUserId)
 
@@ -58,7 +59,7 @@ export default async function PortalHomePage({ params }: { params: { orgSlug: st
           {projects.map((project) => (
             <li key={project.id}>
               <Link
-                href={`/portal/${params.orgSlug}/projects/${project.id}`}
+                href={`/portal/${params.orgSlug}/projects/${publicIdToString(project.public_id)}`}
                 className="block rounded-lg border border-border bg-surface p-4 shadow-card transition-colors hover:border-input"
               >
                 <div className="flex items-center gap-2">

@@ -129,7 +129,7 @@ export function KanbanColumn({
                 scope={scope}
                 today={today}
                 view={view}
-                href={`/${scope.orgSlug}/${scope.workspaceSlug}/projects/${scope.projectId}/tasks/${card.id}`}
+                href={`/${scope.orgSlug}/${scope.workspaceSlug}/projects/${scope.projectId}/tasks/${card.publicId}`}
               />
             ))}
           </ul>

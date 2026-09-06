@@ -38,7 +38,7 @@ const ROUTES: { path: string; expect: RegExp }[] = [
   { path: `/${ORG_SLUG}/${WORKSPACE_SLUG}/projects`, expect: /project/i },
   { path: `/${ORG_SLUG}/${WORKSPACE_SLUG}/workflows`, expect: /workflow/i },
   { path: `/${ORG_SLUG}/${WORKSPACE_SLUG}/commercial/contacts`, expect: /contact/i },
-  { path: `/${ORG_SLUG}/${WORKSPACE_SLUG}/commercial/invoices`, expect: /invoice/i },
+  { path: `/${ORG_SLUG}/${WORKSPACE_SLUG}/commercial/quotations`, expect: /quotation/i },
   { path: `/${ORG_SLUG}/${WORKSPACE_SLUG}/commercial/templates`, expect: /template/i },
   { path: projectPath('board'), expect: /board|to do/i },
   { path: projectPath('list'), expect: /list|title/i },

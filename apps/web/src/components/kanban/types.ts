@@ -1,7 +1,10 @@
 import type { Priority, TaskStatus } from '@pm/shared/constants'
 
 export interface KanbanCardData {
+  /** Task uuid: what a move or an update is written against. */
   id: string
+  /** 16-digit public id: what the task's URL is built from. */
+  publicId: string
   title: string
   status: TaskStatus
   priority: Priority
@@ -40,6 +43,7 @@ export interface KanbanColumnData {
 export interface KanbanScope {
   orgSlug: string
   workspaceSlug: string
+  /** The project's 16-digit public id, as the URL carries it. */
   projectId: string
 }
 

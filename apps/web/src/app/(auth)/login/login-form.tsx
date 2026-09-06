@@ -42,9 +42,11 @@ export function LoginForm({ next, error }: { next?: string; error?: string }) {
       ? t('oauth_cancelled')
       : error === 'rate_limited'
         ? t('rate_limited', { minutes: 15 })
-        : error
-          ? t('oauth_failed')
-          : null
+        : error === 'invite_expired'
+          ? t('invite_expired')
+          : error
+            ? t('oauth_failed')
+            : null
 
   // Once the form has been submitted, whatever came back from Google is stale
   // — the person has moved on from it.

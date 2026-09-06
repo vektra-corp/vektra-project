@@ -53,7 +53,7 @@ INSERT INTO feature_flags (key, description, is_enabled, rules) VALUES
    '[{"type": "plan", "plans": ["growth", "enterprise"]}]'::jsonb),
   ('workflow_builder', 'Visual workflow editor', true,
    '[{"type": "plan", "plans": ["growth", "enterprise"]}]'::jsonb),
-  ('commercial_docs', 'Quotations, orders, invoices and bills', true,
+  ('commercial_docs', 'Quotations', true,
    '[{"type": "plan", "plans": ["growth", "enterprise"]}]'::jsonb),
   ('ai_chat', 'AI assistant', false, '[]'::jsonb)
 ON CONFLICT (key) DO NOTHING;
@@ -389,16 +389,17 @@ INSERT INTO dashboard_configs (id, organization_id, user_id, name, is_default, l
  '33333333-3333-3333-3333-333333333333', 'My Dashboard', true, '[]'::jsonb)
 ON CONFLICT (id) DO NOTHING;
 
--- Commercial documents so revenue_for_org has something to roll up.
+-- Quotations so revenue_for_org has something to roll up. Two tenants, so the
+-- RLS suite has a cross-tenant row to fail to read.
 INSERT INTO commercial_documents (id, organization_id, workspace_id, doc_type, doc_number,
                                   status, issue_date, currency, subtotal, tax_total,
-                                  discount_total, grand_total, amount_paid) VALUES
+                                  discount_total, grand_total) VALUES
 ('aaaa7777-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
- 'a1a1a1a1-0000-0000-0000-000000000001', 'invoice', 'SEED-INV-0001',
- 'paid', '2030-06-01', 'USD', 1000, 0, 0, 1000, 1000),
+ 'a1a1a1a1-0000-0000-0000-000000000001', 'quotation', 'SEED-QUO-0001',
+ 'accepted', '2030-06-01', 'USD', 1000, 0, 0, 1000),
 ('bbbb7777-0000-0000-0000-000000000001', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
- 'b1b1b1b1-0000-0000-0000-000000000001', 'invoice', 'SEED-INV-0001',
- 'paid', '2030-06-01', 'USD', 7777, 0, 0, 7777, 7777)
+ 'b1b1b1b1-0000-0000-0000-000000000001', 'quotation', 'SEED-QUO-0001',
+ 'accepted', '2030-06-01', 'USD', 7777, 0, 0, 7777)
 ON CONFLICT (id) DO NOTHING;
 
 -- -----------------------------------------------------------------------------

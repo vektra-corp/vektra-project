@@ -7,6 +7,7 @@ import { getLocale } from 'next-intl/server'
 import { RichTextView } from '@/components/editor/rich-text'
 import { DueDate, TaskStatusBadge } from '@/components/tasks/task-badges'
 import { requirePortal } from '@/lib/auth/portal'
+import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 import { PortalComments, type PortalCommentRow } from './portal-comments'
 
@@ -26,6 +27,13 @@ export default async function PortalProjectPage({
   params: { orgSlug: string; projectId: string }
 }) {
   const portal = await requirePortal(params.orgSlug)
+
+  // The URL carries the 16-digit public id. A portal user can only resolve a
+  // project the portal RLS policies already let them see, so this is not a way
+  // to confirm that some other tenant's id exists.
+  const resolved = await resolveProject(params.projectId)
+  if (!resolved) notFound()
+
   const locale = await getLocale()
   const supabase = createClient()
 
@@ -35,7 +43,7 @@ export default async function PortalProjectPage({
       'can_comment, project:projects!portal_project_access_project_id_fkey(id, name, description, status, end_date)',
     )
     .eq('portal_user_id', portal.portalUserId)
-    .eq('project_id', params.projectId)
+    .eq('project_id', resolved.id)
     .maybeSingle()
 
   // No allowlist row means no access. Same observable outcome as a project that
@@ -49,13 +57,13 @@ export default async function PortalProjectPage({
     supabase
       .from('tasks')
       .select('id, title, status, due_date, task_number, description')
-      .eq('project_id', params.projectId)
+      .eq('project_id', resolved.id)
       .order('position')
       .limit(100),
     supabase
       .from('documents')
       .select('id, title, updated_at')
-      .eq('project_id', params.projectId)
+      .eq('project_id', resolved.id)
       .eq('status', 'published')
       .order('updated_at', { ascending: false }),
   ])

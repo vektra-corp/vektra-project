@@ -13,6 +13,7 @@ import {
   type SubtaskColumnData,
 } from '@/components/subtasks/subtask-board'
 import { requireAuthPage } from '@/lib/auth/context'
+import { resolveProject, resolveTask } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'Subtasks' }
@@ -32,6 +33,15 @@ export default async function SubtaskBoardPage({
   params: { orgSlug: string; workspaceSlug: string; projectId: string; taskId: string }
 }) {
   const auth = await requireAuthPage(params.orgSlug)
+
+  // Both ids in the URL are 16-digit public ids. A task addressed under the
+  // wrong project is a 404: the URL asserts a relationship that does not hold.
+  const [project, taskRef] = await Promise.all([
+    resolveProject(params.projectId),
+    resolveTask(params.taskId),
+  ])
+  if (!project || !taskRef || taskRef.projectId !== project.id) notFound()
+
   const supabase = createClient()
 
   const taskHref = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}/tasks/${params.taskId}`
@@ -39,7 +49,7 @@ export default async function SubtaskBoardPage({
   const { data: task } = await supabase
     .from('tasks')
     .select('id, title, task_number')
-    .eq('id', params.taskId)
+    .eq('id', taskRef.id)
     .eq('organization_id', auth.orgId)
     .maybeSingle()
 
@@ -75,7 +85,7 @@ export default async function SubtaskBoardPage({
   // Idempotent: returns the existing board, or creates one and adopts the
   // task's existing subtasks into the columns their status implies.
   const { data: boardId, error: boardError } = await supabase.rpc('ensure_task_board', {
-    p_task_id: params.taskId,
+    p_task_id: taskRef.id,
   })
 
   if (boardError || !boardId) notFound()
@@ -92,7 +102,7 @@ export default async function SubtaskBoardPage({
         `id, title, status, priority, due_date, position, kanban_column_id, estimated_hours,
          assignee:profiles!subtasks_assignee_id_fkey(id, full_name, avatar_url)`,
       )
-      .eq('task_id', params.taskId)
+      .eq('task_id', taskRef.id)
       .order('position'),
   ])
 
@@ -133,7 +143,7 @@ export default async function SubtaskBoardPage({
 
         <SubtaskBoard
           scope={params}
-          taskId={params.taskId}
+          taskId={taskRef.id}
           columns={(columns ?? []) as SubtaskColumnData[]}
           subtasks={cards}
           today={todayIn(auth.orgTimezone)}

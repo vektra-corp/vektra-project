@@ -1,10 +1,12 @@
-import { initials, projectKey } from '@pm/shared/utils'
+import { initials, publicIdToString } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage, cn } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { PageBody } from '@/components/layout/page-body'
 import { ProjectViewTabs } from '@/components/projects/project-tabs'
 import { requireAuthPage } from '@/lib/auth/context'
+import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'Workload' }
@@ -32,23 +34,26 @@ export default async function WorkloadPage({
   params: { orgSlug: string; workspaceSlug: string; projectId: string }
 }) {
   await requireAuthPage(params.orgSlug)
+
+  const project = await resolveProject(params.projectId)
+  if (!project) notFound()
+
   const supabase = createClient()
 
-  const [{ data: tasks }, { data: project }] = await Promise.all([
+  const [{ data: tasks }] = await Promise.all([
     supabase
       .from('tasks')
       .select(
-        `id, title, status, task_number, estimated_hours,
+        `id, public_id, title, status, task_number, estimated_hours,
          assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url)`,
       )
-      .eq('project_id', params.projectId)
+      .eq('project_id', project.id)
       .not('status', 'in', '("done","cancelled")')
       .order('position'),
-    supabase.from('projects').select('name').eq('id', params.projectId).maybeSingle(),
   ])
 
   const base = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}`
-  const prefix = projectKey(project?.name ?? '')
+  const prefix = project.key
 
   interface Person {
     id: string
@@ -72,7 +77,11 @@ export default async function WorkloadPage({
       tasks: [],
     }
     entry.points += task.estimated_hours ?? 0
-    entry.tasks.push({ id: task.id, title: task.title, number: task.task_number })
+    entry.tasks.push({
+      id: publicIdToString(task.public_id),
+      title: task.title,
+      number: task.task_number,
+    })
     people.set(key, entry)
   }
 

@@ -83,7 +83,7 @@ export function NewTemplateDialog({
                 required
                 autoFocus
                 maxLength={80}
-                placeholder="Standard invoice"
+                placeholder="Standard quotation"
               />
             </Field>
 
@@ -91,7 +91,7 @@ export function NewTemplateDialog({
               <SelectField
                 id="new-tpl-type"
                 name="doc_type"
-                defaultValue="invoice"
+                defaultValue="quotation"
                 options={COMMERCIAL_DOC_TYPES.map((value) => ({ value, label: label(value) }))}
               />
             </Field>

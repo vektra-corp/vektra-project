@@ -41,6 +41,10 @@ const NON_TENANT_SEGMENTS = [
   'select-org',
   'mfa',
   'logout',
+  // Where an invitation link lands. Authenticated but not tenant-scoped: the
+  // organization is a query parameter, because the person is being sent there
+  // rather than already being in it.
+  'accept-invite',
 ]
 
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/

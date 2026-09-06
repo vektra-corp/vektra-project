@@ -1,6 +1,6 @@
 import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
 import { parseGraph, validateGraph } from '@pm/shared/constants'
-import { formatRelativeTime } from '@pm/shared/utils'
+import { formatRelativeTime, publicIdToString } from '@pm/shared/utils'
 import { Badge } from '@pm/ui'
 import { Split } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -37,7 +37,7 @@ export default async function WorkflowsPage({
 
   const { data: workflows } = await supabase
     .from('workflows')
-    .select('id, name, description, is_active, trigger_type, graph, run_count, last_run_at')
+    .select('id, public_id, name, description, is_active, trigger_type, graph, run_count, last_run_at')
     .eq('organization_id', auth.orgId)
     .order('name')
 
@@ -75,7 +75,7 @@ export default async function WorkflowsPage({
               return (
                 <li key={workflow.id}>
                   <Link
-                    href={`${base}/${workflow.id}`}
+                    href={`${base}/${publicIdToString(workflow.public_id)}`}
                     className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-hover/50"
                   >
                     <span

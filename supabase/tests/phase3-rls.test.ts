@@ -209,20 +209,20 @@ describe('revenue reporting (00020)', () => {
     // revenue_summary is a materialized view and cannot carry RLS. This
     // function is the entire boundary, so it is tested directly.
     const acme = await asUser(db, acmeManager, async (c) => {
-      const result = await c.query<{ invoiced_revenue: string }>(
-        'SELECT invoiced_revenue FROM public.revenue_for_org(240)',
+      const result = await c.query<{ accepted_quotations: string }>(
+        'SELECT accepted_quotations FROM public.revenue_for_org(240)',
       )
-      return result.rows.map((row) => Number(row.invoiced_revenue))
+      return result.rows.map((row) => Number(row.accepted_quotations))
     })
 
     const globex = await asUser(db, globexOwner, async (c) => {
-      const result = await c.query<{ invoiced_revenue: string }>(
-        'SELECT invoiced_revenue FROM public.revenue_for_org(240)',
+      const result = await c.query<{ accepted_quotations: string }>(
+        'SELECT accepted_quotations FROM public.revenue_for_org(240)',
       )
-      return result.rows.map((row) => Number(row.invoiced_revenue))
+      return result.rows.map((row) => Number(row.accepted_quotations))
     })
 
-    // The two tenants' seeded invoices are 1000 and 7777; neither may see the
+    // The two tenants' seeded quotations are 1000 and 7777; neither may see the
     // other's figure.
     expect(acme).toContain(1000)
     expect(acme).not.toContain(7777)

@@ -9,6 +9,7 @@ import { PageBody } from '@/components/layout/page-body'
 import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
+import { resolveWorkflow } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 import { DeleteWorkflowButton, WebhookTrigger, WorkflowEditor } from '../workflow-controls'
 
@@ -22,6 +23,10 @@ export default async function WorkflowPage({
   const auth = await requireAuthPage(params.orgSlug)
   if (!(ORG_MANAGER_ROLES as readonly string[]).includes(auth.orgRole)) forbidden()
 
+  // The URL carries the workflow's 16-digit public id.
+  const resolved = await resolveWorkflow(params.workflowId)
+  if (!resolved) notFound()
+
   const supabase = createClient()
 
   const [{ data: workflow }, { data: runs }] = await Promise.all([
@@ -30,13 +35,13 @@ export default async function WorkflowPage({
       .select(
         'id, name, description, is_active, trigger_type, graph, webhook_token_hash, cron_expression, trigger_config, run_count',
       )
-      .eq('id', params.workflowId)
+      .eq('id', resolved.id)
       .eq('organization_id', auth.orgId)
       .maybeSingle(),
     supabase
       .from('workflow_runs')
       .select('id, status, started_at, duration_ms, error')
-      .eq('workflow_id', params.workflowId)
+      .eq('workflow_id', resolved.id)
       .order('started_at', { ascending: false })
       .limit(10),
   ])

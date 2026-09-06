@@ -1,5 +1,5 @@
 import { COMMERCIAL_STATUSES, type CommercialDocType } from '@pm/shared/constants'
-import { formatCurrency, formatDate } from '@pm/shared/utils'
+import { formatCurrency, formatDate, publicIdToString } from '@pm/shared/utils'
 import { Badge, Button, DataTable, type DataTableColumn } from '@pm/ui'
 import { FileText, Plus } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -14,14 +14,13 @@ import { DOC_TYPE_LABELS, SEGMENT_TO_DOC_TYPE, statusVariant } from '../doc-type
 export const metadata: Metadata = { title: 'Commercial' }
 
 interface Row {
+  /** 16-digit public id — this row exists to be linked to. */
   id: string
   docNumber: string
   status: string
   issueDate: string
-  dueDate: string | null
   validUntil: string | null
   grandTotal: number
-  amountPaid: number
   currency: string
   contactName: string | null
 }
@@ -44,7 +43,7 @@ export default async function CommercialListPage({
   let query = supabase
     .from('commercial_documents')
     .select(
-      `id, doc_number, status, issue_date, due_date, valid_until, grand_total, amount_paid, currency,
+      `public_id, doc_number, status, issue_date, valid_until, grand_total, currency,
        contact:contacts!commercial_documents_contact_id_fkey(contact_name, company_name)`,
     )
     .eq('organization_id', auth.orgId)
@@ -61,14 +60,12 @@ export default async function CommercialListPage({
     // an array, so normalise rather than casting blindly.
     const contact = Array.isArray(doc.contact) ? doc.contact[0] : doc.contact
     return {
-      id: doc.id,
+      id: publicIdToString(doc.public_id),
       docNumber: doc.doc_number,
       status: doc.status,
       issueDate: doc.issue_date,
-      dueDate: doc.due_date,
       validUntil: doc.valid_until,
       grandTotal: Number(doc.grand_total),
-      amountPaid: Number(doc.amount_paid),
       currency: doc.currency,
       contactName: contact?.company_name ?? contact?.contact_name ?? null,
     }
@@ -76,11 +73,11 @@ export default async function CommercialListPage({
 
   const base = `/${params.orgSlug}/${params.workspaceSlug}/commercial/${params.docSegment}`
   const labels = DOC_TYPE_LABELS[docType]
-  const takesPayment = docType === 'invoice' || docType === 'bill'
-
-  const outstanding = rows
-    .filter((row) => !['paid', 'void', 'closed'].includes(row.status))
-    .reduce((sum, row) => sum + (row.grandTotal - row.amountPaid), 0)
+  // Everything still open, which for a quotation means sent or seen but not yet
+  // answered — the closest thing to a pipeline figure the list can show.
+  const pipeline = rows
+    .filter((row) => row.status === 'sent' || row.status === 'viewed')
+    .reduce((sum, row) => sum + row.grandTotal, 0)
 
   const columns: DataTableColumn<Row>[] = [
     {
@@ -113,17 +110,16 @@ export default async function CommercialListPage({
       ),
     },
     {
-      key: 'due',
-      header: docType === 'quotation' ? 'Valid until' : 'Due',
+      key: 'validUntil',
+      header: 'Valid until',
       headClassName: 'w-28',
-      cell: (row) => {
-        const value = docType === 'quotation' ? row.validUntil : row.dueDate
-        return (
-          <span className="label-meta text-faint">
-            {value ? formatDate(value, { locale, dateFormat: 'YYYY-MM-DD' }) : '—'}
-          </span>
-        )
-      },
+      cell: (row) => (
+        <span className="label-meta text-faint">
+          {row.validUntil
+            ? formatDate(row.validUntil, { locale, dateFormat: 'YYYY-MM-DD' })
+            : '—'}
+        </span>
+      ),
     },
     {
       key: 'total',
@@ -136,26 +132,6 @@ export default async function CommercialListPage({
         </span>
       ),
     },
-    ...(takesPayment
-      ? [
-          {
-            key: 'outstanding',
-            header: 'Outstanding',
-            headClassName: 'w-32 text-end',
-            className: 'text-end',
-            cell: (row: Row) => {
-              const owed = row.grandTotal - row.amountPaid
-              return (
-                <span
-                  className={`text-base tabular-nums ${owed > 0 ? 'text-warning' : 'text-faint'}`}
-                >
-                  {formatCurrency(owed, row.currency, locale)}
-                </span>
-              )
-            },
-          },
-        ]
-      : []),
     {
       key: 'status',
       header: 'Status',
@@ -175,9 +151,9 @@ export default async function CommercialListPage({
           {rows.length} {rows.length === 1 ? labels.singular.toLowerCase() : labels.plural.toLowerCase()}
         </p>
 
-        {takesPayment && outstanding > 0 ? (
-          <p className="label-meta text-warning">
-            {formatCurrency(outstanding, auth.orgCurrency, locale)} outstanding
+        {pipeline > 0 ? (
+          <p className="label-meta text-muted-foreground">
+            {formatCurrency(pipeline, auth.orgCurrency, locale)} awaiting a decision
           </p>
         ) : null}
 

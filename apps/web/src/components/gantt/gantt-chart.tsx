@@ -337,7 +337,7 @@ function GanttBar({
 }) {
   const { task, row, from, span } = entry
   const done = task.status === 'done'
-  const href = `/${scope.orgSlug}/${scope.workspaceSlug}/projects/${scope.projectId}/tasks/${task.id}`
+  const href = `/${scope.orgSlug}/${scope.workspaceSlug}/projects/${scope.projectId}/tasks/${task.publicId}`
 
   if (task.isMilestone) {
     return (

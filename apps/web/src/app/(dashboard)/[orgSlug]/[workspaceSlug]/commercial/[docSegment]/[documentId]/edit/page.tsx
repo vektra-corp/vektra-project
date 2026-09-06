@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
 import { PageBody } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
+import { resolveCommercialDoc } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 import { SEGMENT_TO_DOC_TYPE } from '../../../doc-types'
 import { DocumentForm } from '../../../document-form'
@@ -25,6 +26,11 @@ export default async function EditCommercialDocPage({
   if (!docType) notFound()
 
   const auth = await requireAuthPage(params.orgSlug)
+
+  // The URL carries the quotation's 16-digit public id.
+  const resolved = await resolveCommercialDoc(params.documentId)
+  if (!resolved) notFound()
+
   const locale = await getLocale()
   const supabase = createClient()
 
@@ -35,13 +41,13 @@ export default async function EditCommercialDocPage({
         .select(
           'id, doc_type, doc_number, status, workspace_id, project_id, contact_id, issue_date, due_date, valid_until, currency, notes, terms',
         )
-        .eq('id', params.documentId)
+        .eq('id', resolved.id)
         .eq('organization_id', auth.orgId)
         .maybeSingle(),
       supabase
         .from('commercial_line_items')
         .select('id, description, quantity, unit_price, tax_rate, discount')
-        .eq('document_id', params.documentId)
+        .eq('document_id', resolved.id)
         .order('position'),
       supabase
         .from('contacts')
@@ -71,7 +77,7 @@ export default async function EditCommercialDocPage({
             It is {doc.status.replace('_', ' ')}, and the other party already has this version.
           </p>
           <Link
-            href={`${base}/${doc.id}`}
+            href={`${base}/${params.documentId}`}
             className="mt-4 inline-block text-base text-primary hover:underline"
           >
             Back to the document
@@ -81,9 +87,8 @@ export default async function EditCommercialDocPage({
     )
   }
 
-  const wanted = docType === 'purchase_order' || docType === 'bill' ? 'vendor' : 'client'
   const contactOptions = (contacts ?? [])
-    .filter((contact) => contact.type === wanted || contact.type === 'both')
+    .filter((contact) => contact.type === 'client' || contact.type === 'both')
     .map((contact) => ({
       id: contact.id,
       label: contact.company_name
@@ -104,7 +109,7 @@ export default async function EditCommercialDocPage({
     <PageBody className="pt-2">
       <div className="pb-4">
         <Link
-          href={`${base}/${doc.id}`}
+          href={`${base}/${params.documentId}`}
           className="label-meta text-faint transition-colors hover:text-muted-foreground"
         >
           &larr; {doc.doc_number}
@@ -121,7 +126,7 @@ export default async function EditCommercialDocPage({
         projects={projects ?? []}
         locale={locale}
         values={{
-          id: doc.id,
+          id: params.documentId,
           contactId: doc.contact_id,
           projectId: doc.project_id,
           issueDate: doc.issue_date,

@@ -36,13 +36,11 @@ export const EVENT_TYPES = [
   'document.created',
   'document.updated',
   'document.published',
-  // Commercial
+  // Commercial — quotations only; approval and payment left with the invoice
+  // and the purchase order (migration 00035).
   'commercial_document.created',
   'commercial_document.updated',
   'commercial_document.status_changed',
-  'commercial_document.approved',
-  'commercial_document.paid',
-  // CRM
   // HR
   'leave_request.submitted',
   'leave_request.decided',

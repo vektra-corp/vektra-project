@@ -1,13 +1,15 @@
 import { can } from '@pm/auth/rbac'
-import { formatRelativeTime, initials } from '@pm/shared/utils'
+import { formatRelativeTime, initials, publicIdToString } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage, Badge } from '@pm/ui'
 import { FileText } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
 import { PageBody } from '@/components/layout/page-body'
 import { ProjectViewTabs } from '@/components/projects/project-tabs'
 import { requireAuthPage } from '@/lib/auth/context'
+import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 import { NewDocumentDialog } from './new-document-dialog'
 
@@ -25,16 +27,20 @@ export default async function DocumentsPage({
   params: { orgSlug: string; workspaceSlug: string; projectId: string }
 }) {
   const auth = await requireAuthPage(params.orgSlug)
+
+  const project = await resolveProject(params.projectId)
+  if (!project) notFound()
+
   const locale = await getLocale()
   const supabase = createClient()
 
   const { data: documents } = await supabase
     .from('documents')
     .select(
-      `id, title, status, version, updated_at,
+      `id, public_id, title, status, version, updated_at,
        author:profiles!documents_created_by_fkey(id, full_name, avatar_url)`,
     )
-    .eq('project_id', params.projectId)
+    .eq('project_id', project.id)
     .order('updated_at', { ascending: false })
 
   const base = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}`
@@ -67,7 +73,7 @@ export default async function DocumentsPage({
               return (
                 <li key={document.id}>
                   <Link
-                    href={`${base}/documents/${document.id}`}
+                    href={`${base}/documents/${publicIdToString(document.public_id)}`}
                     className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface-hover/50"
                   >
                     <FileText className="h-4 w-4 shrink-0 text-faint" aria-hidden />

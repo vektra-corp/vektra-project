@@ -126,3 +126,91 @@ export function digestEmail(input: {
 
   return { subject, html, text }
 }
+
+/**
+ * Invitation to join an organization.
+ *
+ * Sent by the app rather than by Supabase Auth. `generateLink` mints the link
+ * without sending anything, which is what makes this possible — and it is worth
+ * the extra step, because Supabase's stock invite mail can say only "you have
+ * been invited", with no idea who invited you, to what, or as what. Those three
+ * facts are the whole content of the decision the reader has to make.
+ */
+export function inviteEmail(input: {
+  orgName: string
+  inviterName: string | null
+  role: string
+  acceptUrl: string
+}): EmailContent {
+  const href = safeUrl(input.acceptUrl)
+  const subject = `${input.inviterName ?? 'Someone'} invited you to ${input.orgName}`
+  const intro = input.inviterName
+    ? `${input.inviterName} has invited you to join ${input.orgName} on Vektra Project as a ${input.role}.`
+    : `You have been invited to join ${input.orgName} on Vektra Project as a ${input.role}.`
+
+  const html = `<!doctype html>
+<html><body style="${STYLES.body}">
+  <div style="${STYLES.card}">
+    <p style="${STYLES.title}">Join ${esc(input.orgName)}</p>
+    <p style="${STYLES.body_text}">${esc(intro)}</p>
+    ${href ? `<p><a href="${esc(href)}" style="${STYLES.button}">Accept the invitation</a></p>` : ''}
+    <p style="${STYLES.footer}">
+      You will choose a password on the next screen. The link expires in 24 hours.
+      If you were not expecting this, you can ignore this email.
+    </p>
+  </div>
+</body></html>`
+
+  const text = [
+    `Join ${input.orgName}`,
+    intro,
+    href ? `Accept the invitation: ${href}` : '',
+    '',
+    'You will choose a password on the next screen. The link expires in 24 hours.',
+    'If you were not expecting this, you can ignore this email.',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  return { subject, html, text }
+}
+
+/**
+ * Someone with an existing account has been added to another organization.
+ *
+ * A different message from an invitation on purpose: there is nothing to accept
+ * and no password to set — they already have both — so offering an "accept"
+ * button would be inviting them to do something that has already happened.
+ */
+export function addedToOrgEmail(input: {
+  orgName: string
+  inviterName: string | null
+  role: string
+  orgUrl: string
+}): EmailContent {
+  const href = safeUrl(input.orgUrl)
+  const subject = `You now have access to ${input.orgName}`
+  const intro = input.inviterName
+    ? `${input.inviterName} added you to ${input.orgName} on Vektra Project as a ${input.role}.`
+    : `You have been added to ${input.orgName} on Vektra Project as a ${input.role}.`
+
+  const html = `<!doctype html>
+<html><body style="${STYLES.body}">
+  <div style="${STYLES.card}">
+    <p style="${STYLES.title}">${esc(input.orgName)}</p>
+    <p style="${STYLES.body_text}">${esc(intro)} Sign in with your existing account to open it.</p>
+    ${href ? `<p><a href="${esc(href)}" style="${STYLES.button}">Open ${esc(input.orgName)}</a></p>` : ''}
+    <p style="${STYLES.footer}">You can switch between organizations from the sidebar.</p>
+  </div>
+</body></html>`
+
+  const text = [
+    subject,
+    `${intro} Sign in with your existing account to open it.`,
+    href ? `Open ${input.orgName}: ${href}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
+
+  return { subject, html, text }
+}

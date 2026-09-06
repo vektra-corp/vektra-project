@@ -3,6 +3,7 @@
 import { Separator, cn } from '@pm/ui'
 /* eslint-disable import/no-named-as-default -- Tiptap extensions are default exports that share their module's name. */
 import Link from '@tiptap/extension-link'
+import Mention from '@tiptap/extension-mention'
 import Placeholder from '@tiptap/extension-placeholder'
 import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -17,7 +18,8 @@ import {
   Quote,
   Strikethrough,
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { mentionSuggestion } from './mention-suggestion'
 
 /**
  * Rich text editor (§3: Tiptap 2.x).
@@ -132,6 +134,7 @@ export function RichTextEditor({
   minHeight = 'min-h-[120px]',
   onSubmit,
   className,
+  mentions,
 }: {
   /** Hidden input name the document JSON is posted under. */
   name: string
@@ -141,9 +144,32 @@ export function RichTextEditor({
   /** Called on Cmd/Ctrl+Enter, for composers that submit inline. */
   onSubmit?: () => void
   className?: string
+  /**
+   * Enables the @mention typeahead, scoped to one task. Omitted, the extension
+   * is not loaded at all — a composer with no task has no defensible list of
+   * people to offer, and offering the whole organization would turn every
+   * description field into a directory.
+   */
+  mentions?: { orgSlug: string; taskId: string }
 }) {
   const [json, setJson] = useState<string>(() =>
     defaultValue ? JSON.stringify(defaultValue) : '',
+  )
+
+  // Keyed on the two fields rather than on `mentions` itself: callers pass an
+  // object literal, so depending on its identity would rebuild the extension —
+  // and with it the editor — on every render.
+  const mentionOrgSlug = mentions?.orgSlug
+  const mentionTaskId = mentions?.taskId
+  const mentionExtension = useMemo(
+    () =>
+      mentionOrgSlug && mentionTaskId
+        ? Mention.configure({
+            HTMLAttributes: { class: 'mention' },
+            suggestion: mentionSuggestion(mentionOrgSlug, mentionTaskId),
+          })
+        : null,
+    [mentionOrgSlug, mentionTaskId],
   )
 
   const editor = useEditor({
@@ -165,6 +191,7 @@ export function RichTextEditor({
         protocols: ['http', 'https', 'mailto'],
         HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
       }),
+      ...(mentionExtension ? [mentionExtension] : []),
     ],
     content: (defaultValue as never) ?? '',
     editorProps: {
@@ -175,6 +202,8 @@ export function RichTextEditor({
           '[&_blockquote]:border-s-2 [&_blockquote]:border-border [&_blockquote]:ps-3',
           '[&_code]:rounded [&_code]:bg-surface-hover [&_code]:px-1 [&_code]:font-mono [&_code]:text-[0.9em]',
           '[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2',
+          '[&_.mention]:rounded [&_.mention]:bg-primary/10 [&_.mention]:px-1 [&_.mention]:py-0.5',
+          '[&_.mention]:font-medium [&_.mention]:text-primary',
           '[&_.is-editor-empty:first-child::before]:pointer-events-none',
           '[&_.is-editor-empty:first-child::before]:float-start',
           '[&_.is-editor-empty:first-child::before]:h-0',

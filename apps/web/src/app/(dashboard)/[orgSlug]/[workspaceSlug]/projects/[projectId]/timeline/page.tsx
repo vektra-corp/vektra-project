@@ -1,15 +1,17 @@
 import { can } from '@pm/auth/rbac'
 import { PLAN_LIMITS, type PlanName } from '@pm/shared/constants'
-import { todayIn } from '@pm/shared/utils'
+import { publicIdToString, todayIn } from '@pm/shared/utils'
 import { Button } from '@pm/ui'
 import { Lock } from 'lucide-react'
 import type { Metadata } from 'next'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import type { GanttDependency, GanttTask } from '@/components/gantt/types'
 import { PageBody } from '@/components/layout/page-body'
 import { ProjectViewTabs } from '@/components/projects/project-tabs'
 import { requireAuthPage } from '@/lib/auth/context'
+import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'Timeline' }
@@ -32,6 +34,10 @@ export default async function TimelinePage({
   params: { orgSlug: string; workspaceSlug: string; projectId: string }
 }) {
   const auth = await requireAuthPage(params.orgSlug)
+
+  const project = await resolveProject(params.projectId)
+  if (!project) notFound()
+
   const supabase = createClient()
 
   const base = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}`
@@ -65,10 +71,10 @@ export default async function TimelinePage({
     supabase
       .from('tasks')
       .select(
-        `id, title, task_number, status, priority, start_date, due_date, is_milestone,
+        `id, public_id, title, task_number, status, priority, start_date, due_date, is_milestone,
          assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url)`,
       )
-      .eq('project_id', params.projectId)
+      .eq('project_id', project.id)
       .not('status', 'eq', 'cancelled')
       .order('start_date', { nullsFirst: false })
       .order('due_date', { nullsFirst: false })
@@ -81,6 +87,7 @@ export default async function TimelinePage({
 
   const rows: GanttTask[] = (tasks ?? []).map((task) => ({
     id: task.id,
+    publicId: publicIdToString(task.public_id),
     title: task.title,
     taskNumber: task.task_number,
     status: task.status as GanttTask['status'],

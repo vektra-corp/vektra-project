@@ -1,4 +1,4 @@
-import { projectKey, todayIn } from '@pm/shared/utils'
+import { publicIdToString, todayIn } from '@pm/shared/utils'
 import { DataTable, type DataTableColumn, Badge } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -11,13 +11,17 @@ import { createClient } from '@/lib/supabase/server'
 export const metadata: Metadata = { title: 'My tasks' }
 
 interface Row {
+  /** Task uuid — the React key, never a URL. */
   id: string
+  /** 16-digit public ids; the two halves of the task's URL. */
+  publicId: string
+  projectPublicId: string
   title: string
   status: string
   priority: string
   due_date: string | null
   task_number: number
-  projectId: string
+  projectKey: string
   projectName: string
   workspaceSlug: string | null
 }
@@ -31,9 +35,9 @@ export default async function MyTasksPage({ params }: { params: { orgSlug: strin
   const { data: tasks } = await supabase
     .from('tasks')
     .select(
-      `id, title, status, priority, due_date, task_number, project_id,
+      `id, public_id, title, status, priority, due_date, task_number, project_id,
        project:projects!tasks_project_id_fkey(
-         id, name, workspace:workspaces!projects_workspace_id_fkey(slug)
+         public_id, key, name, workspace:workspaces!projects_workspace_id_fkey(slug)
        )`,
     )
     .eq('assignee_id', auth.userId)
@@ -53,12 +57,14 @@ export default async function MyTasksPage({ params }: { params: { orgSlug: strin
 
     return {
       id: task.id,
+      publicId: publicIdToString(task.public_id),
+      projectPublicId: project ? publicIdToString(project.public_id) : '',
       title: task.title,
       status: task.status,
       priority: task.priority,
       due_date: task.due_date,
       task_number: task.task_number,
-      projectId: task.project_id,
+      projectKey: project?.key ?? 'TSK',
       projectName: project?.name ?? 'Unknown project',
       workspaceSlug: workspace?.slug ?? null,
     }
@@ -67,8 +73,8 @@ export default async function MyTasksPage({ params }: { params: { orgSlug: strin
   const overdue = rows.filter((row) => row.due_date && row.due_date < today).length
 
   const hrefFor = (row: Row) =>
-    row.workspaceSlug
-      ? `/${params.orgSlug}/${row.workspaceSlug}/projects/${row.projectId}/tasks/${row.id}`
+    row.workspaceSlug && row.projectPublicId
+      ? `/${params.orgSlug}/${row.workspaceSlug}/projects/${row.projectPublicId}/tasks/${row.publicId}`
       : null
 
   const columns: DataTableColumn<Row>[] = [
@@ -78,7 +84,7 @@ export default async function MyTasksPage({ params }: { params: { orgSlug: strin
       headClassName: 'w-24',
       cell: (row) => (
         <span className="label-id text-faint">
-          {projectKey(row.projectName)}-{row.task_number}
+          {row.projectKey}-{row.task_number}
         </span>
       ),
     },

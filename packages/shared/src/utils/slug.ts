@@ -75,11 +75,18 @@ export function uniqueSlug(input: string, taken: Iterable<string>): string {
 }
 
 /**
- * Short project key used in task ids — the ATL in ATL-241.
+ * Derive a starting project key from a name — the ATL in ATL-241.
+ *
+ * Only a suggestion: the key is a stored, editable column (migration 00034),
+ * and this is what a new project gets before anyone changes it. The output has
+ * to satisfy the same CHECK the column carries — two to ten characters,
+ * starting with a letter — so leading digits are dropped ("3M Rollout" would
+ * otherwise yield the illegal "3MR") and anything left too short falls back to
+ * PRJ rather than being padded into a word nobody chose.
  *
  * Takes the first word rather than initials so "Atlas Migration" reads as ATL,
- * which is what people say out loud. Falls back to the first letters of later
- * words when the first word is too short to stand alone.
+ * which is what people say out loud, and falls back to the first letters of
+ * later words when the first word is too short to stand alone.
  */
 export function projectKey(name: string): string {
   const words = name
@@ -87,10 +94,14 @@ export function projectKey(name: string): string {
     .split(/[^A-Z0-9]+/)
     .filter(Boolean)
 
-  if (words.length === 0) return 'TSK'
+  if (words.length === 0) return 'PRJ'
 
   const first = words[0]!
-  if (first.length >= 3) return first.slice(0, 3)
+  const candidate = first.length >= 3 ? first.slice(0, 3) : words.join('').slice(0, 3)
 
-  return words.join('').slice(0, 3).padEnd(3, 'X')
+  // A key must begin with a letter, so a numeric prefix is dropped rather than
+  // carried into a value the database would reject.
+  const legal = candidate.replace(/^[0-9]+/, '')
+
+  return legal.length >= 2 ? legal : 'PRJ'
 }

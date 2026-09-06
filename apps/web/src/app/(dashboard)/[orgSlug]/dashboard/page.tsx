@@ -5,7 +5,7 @@ import {
   parseLayout,
   type DashboardWidgetType,
 } from '@pm/shared/constants'
-import { formatRelativeTime, initials, todayIn } from '@pm/shared/utils'
+import { formatRelativeTime, initials, publicIdToString, todayIn } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@pm/ui'
 import { addDays, format } from 'date-fns'
 import { AlertTriangle, CalendarClock, FolderKanban } from 'lucide-react'
@@ -27,6 +27,8 @@ export const metadata: Metadata = { title: 'Dashboard' }
 
 interface TaskRow {
   id: string
+  /** 16-digit public id — the half of the task's URL that names the task. */
+  public_id: number
   title: string
   status: string
   priority: string
@@ -76,7 +78,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
       supabase
         .from('tasks')
         .select(
-          `id, title, status, priority, due_date, project_id, updated_at,
+          `id, public_id, title, status, priority, due_date, project_id, updated_at,
            assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url)`,
         )
         .eq('assignee_id', auth.userId)
@@ -85,7 +87,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
         .limit(50),
       supabase
         .from('projects')
-        .select('id, name, workspace:workspaces!projects_workspace_id_fkey(slug)')
+        .select('id, public_id, name, workspace:workspaces!projects_workspace_id_fkey(slug)')
         .eq('organization_id', auth.orgId)
         .eq('status', 'active')
         .order('name')
@@ -95,7 +97,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
       supabase
         .from('tasks')
         .select(
-          `id, title, status, priority, due_date, project_id, updated_at,
+          `id, public_id, title, status, priority, due_date, project_id, updated_at,
            assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url)`,
         )
         .eq('organization_id', auth.orgId)
@@ -197,6 +199,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
       const stat = stats.get(project.id) ?? { total: 0, done: 0 }
       return {
         id: project.id,
+        publicId: publicIdToString(project.public_id),
         name: project.name,
         workspaceSlug: workspace.slug,
         done: stat.done,
@@ -205,7 +208,11 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
     })
     .filter((row): row is ProjectProgressRow => row !== null)
 
-  const projectSlugs = new Map(progressRows.map((row) => [row.id, row.workspaceSlug]))
+  // Keyed by uuid because that is what a task's project_id is; the value is
+  // everything the link needs, since the URL wants the public id instead.
+  const projectLinks = new Map(
+    progressRows.map((row) => [row.id, { slug: row.workspaceSlug, publicId: row.publicId }]),
+  )
 
   // Three tiers, most specific first: what this person arranged, then the
   // template an admin published for the organisation (§19.10), then the
@@ -253,9 +260,9 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
         ) : (
           <ul className="divide-y divide-border overflow-y-auto">
             {mine.slice(0, 12).map((task) => {
-              const slug = projectSlugs.get(task.project_id)
-              const href = slug
-                ? `/${params.orgSlug}/${slug}/projects/${task.project_id}/tasks/${task.id}`
+              const link = projectLinks.get(task.project_id)
+              const href = link
+                ? `/${params.orgSlug}/${link.slug}/projects/${link.publicId}/tasks/${publicIdToString(task.public_id)}`
                 : null
 
               return (
@@ -297,9 +304,9 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
         ) : (
           <ul className="divide-y divide-border overflow-y-auto">
             {activity.map((task) => {
-              const slug = projectSlugs.get(task.project_id)
-              const href = slug
-                ? `/${params.orgSlug}/${slug}/projects/${task.project_id}/tasks/${task.id}`
+              const link = projectLinks.get(task.project_id)
+              const href = link
+                ? `/${params.orgSlug}/${link.slug}/projects/${link.publicId}/tasks/${publicIdToString(task.public_id)}`
                 : null
 
               return (

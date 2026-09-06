@@ -34,10 +34,10 @@ because neither is a foundation and Phase 3 sat on top of them without noticing:
 
 | Item | State |
 |---|---|
-| Commercial documents (5 types, line items, payments, quotation→invoice) | Done |
+| Commercial documents | **Reduced to quotations.** PO, SO, invoices and bills removed in `00035` at the product owner's direction, along with approval chains, payment recording and the quotation→invoice conversion. See CLAUDE.md §6.4 and §19.2. |
 | Contacts | Done |
 | Timesheets (timer, manual entry, weekly submit, approvals) | Done |
-| Revenue widgets + hourly rollup refresh | Done |
+| Pipeline widgets + hourly rollup refresh | Done — invoice-derived figures left with the invoice; `revenue_summary` is now open / accepted / rejected quotation value. |
 | Auto-assignment (engine, Inngest job, rules UI) | Done |
 | Custom fields | Done — definable for four entity types and rendered on all four |
 | Workflow builder — designer | Done |
@@ -46,6 +46,20 @@ because neither is a foundation and Phase 3 sat on top of them without noticing:
 | Audit log | Done — admin console and a customer-facing viewer |
 | Slack integration + §12 dispatcher | Done |
 | Lead management | **Removed** — built in `00019`, dropped in `00023` at the product owner's direction. See CLAUDE.md §19.3. |
+
+### Post-Phase-3 change set (migrations 00034–00036)
+
+Five product changes landed together. Code is complete and `lint / typecheck /
+test / build` all pass; the three migrations still need applying.
+
+| Change | State |
+|---|---|
+| 16-digit public ids | Done. `public_id` on projects, tasks, subtasks, documents, workflows, sprints, contacts and commercial documents. URLs, exports and the UI use it; uuid primary keys are unchanged and never leave the database. `lib/route-ids.ts` is the only translation point. |
+| Editable project key | Done. `projects.key`, unique per organization, edited in project settings; task references (VEK-241) read it instead of deriving a prefix from the name. |
+| Invite emails | Done. `generateLink` mints the link and the app sends a branded Resend message naming the inviter, the organization and the role. New accounts land on `/accept-invite` to set a name and password; existing accounts get a different "you have been added" message with no accept step. |
+| @mentions in comments | Done. Tiptap mention node, typeahead scoped to the task's project and workspace members, fan-out in `notify_task_comment` so a watcher who is also mentioned gets one notification rather than two. |
+| Sidebar branding | Done. Reads "Vektra Project" with the product mark; the organization name moved to the caption. |
+| Commercial reduced to quotations | Done. See the Phase 3 table above. |
 
 ---
 
@@ -76,8 +90,20 @@ All three suites are green as of migration 00031.
 
 ## Database
 
-All migrations are applied to the hosted project and recorded in
-`supabase_migrations.schema_migrations`. Local and remote are in sync.
+> **`00034`–`00036` are written but NOT applied.** Local and remote are out of
+> sync until someone runs `pnpm db:push`. `00035` deletes every purchase order,
+> sales order, invoice and bill, and drops `approval_chains` / `approval_steps`
+> — take a backup first. The app code already expects all three, so the hosted
+> database is behind the branch, not ahead of it.
+>
+> | Migration | What it does |
+> |---|---|
+> | `00034_public_ids` | 16-digit `public_id` on eight tables, plus `projects.key` |
+> | `00035_drop_transactional_commercial` | **Destructive.** Removes the four transactional document types |
+> | `00036_comment_mentions` | @mention fan-out, and public ids in notification payloads |
+
+Every other migration is applied to the hosted project and recorded in
+`supabase_migrations.schema_migrations`.
 
 ```bash
 pnpm db:push:dry        # preview
@@ -89,6 +115,15 @@ pnpm db:migrations      # applied vs pending
 ```
 
 ### Traps already hit — do not rediscover these
+
+0. **A `public_id` must stay below 2^53.** The column is `bigint`, PostgREST
+   serialises it as a JSON number, and `JSON.parse` in the browser rounds
+   anything past 9007199254740991. A 16-digit id can exceed that, so
+   `new_public_id()` generates into `[10^15, 8999999999999999]` — still always
+   16 digits, and always an exact JavaScript integer. Do not widen that range
+   to "use the whole 16-digit space": roughly one id in nine would arrive in
+   the client silently altered, and only for large ids, so it would look like
+   an intermittent 404.
 
 1. **Transaction pooler breaks migrations, and the direct host may be
    unreachable.** `SUPABASE_DB_URL` points at Supavisor port 6543 (transaction

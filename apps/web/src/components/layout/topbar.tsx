@@ -1,7 +1,7 @@
-import { AvatarStack, Kbd, type StackedPerson } from '@pm/ui'
+import { AvatarStack, Kbd, Skeleton, type StackedPerson } from '@pm/ui'
 import { Search } from 'lucide-react'
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
 
@@ -15,10 +15,17 @@ export interface Crumb {
  *
  * Rendered by the innermost layout that knows its own breadcrumb rather than by
  * the org shell, because only that layout has the names — the org shell would
- * have to re-derive them from the URL. It resolves its own member list so a page
- * only has to supply the breadcrumb.
+ * have to re-derive them from the URL.
+ *
+ * The header itself is now synchronous. It used to await the member list before
+ * rendering anything, which put a query on the critical path of 18 pages —
+ * and because the header is returned in the page's JSX, that query ran AFTER
+ * the page's own awaits had resolved, adding a serial tail to every navigation.
+ * The breadcrumb, which is the part that tells you where you are, was waiting on
+ * a row of avatars. Now the members resolve inside their own Suspense boundary
+ * and stream in; nothing else waits for them.
  */
-export async function Topbar({
+export function Topbar({
   orgSlug,
   breadcrumb,
   meta,
@@ -28,22 +35,6 @@ export async function Topbar({
   /** Context chip beside the breadcrumb, e.g. the sprint badge. */
   meta?: ReactNode
 }) {
-  const auth = await requireAuthPage(orgSlug)
-  const supabase = createClient()
-
-  const { data: members } = await supabase
-    .from('org_members')
-    .select('user_id, profile:profiles!org_members_user_id_fkey(id, full_name, avatar_url)')
-    .eq('organization_id', auth.orgId)
-    .limit(12)
-
-  const people: StackedPerson[] = (members ?? [])
-    .map((row) => (Array.isArray(row.profile) ? row.profile[0] : row.profile))
-    .filter((profile): profile is { id: string; full_name: string; avatar_url: string | null } =>
-      Boolean(profile),
-    )
-    .map((profile) => ({ id: profile.id, name: profile.full_name, avatarUrl: profile.avatar_url }))
-
   return (
     <header className="border-border flex h-[52px] shrink-0 items-center justify-between gap-4 border-b px-5">
       <div className="flex min-w-0 items-center gap-2.5">
@@ -90,8 +81,37 @@ export async function Topbar({
           Search
           <Kbd className="ms-1 border-0 px-0">⌘K</Kbd>
         </Link>
-        {people.length > 0 ? <AvatarStack people={people} max={2} /> : null}
+        <Suspense fallback={<Skeleton className="h-6 w-11 rounded-full" />}>
+          <TopbarMembers orgSlug={orgSlug} />
+        </Suspense>
       </div>
     </header>
   )
+}
+
+/**
+ * The avatar stack, resolved off the critical path.
+ *
+ * The fallback is sized to the rendered stack (two 24px avatars overlapping) so
+ * the header does not reflow when the real one arrives.
+ */
+async function TopbarMembers({ orgSlug }: { orgSlug: string }) {
+  const auth = await requireAuthPage(orgSlug)
+  const supabase = createClient()
+
+  const { data: members } = await supabase
+    .from('org_members')
+    .select('user_id, profile:profiles!org_members_user_id_fkey(id, full_name, avatar_url)')
+    .eq('organization_id', auth.orgId)
+    .limit(12)
+
+  const people: StackedPerson[] = (members ?? [])
+    .map((row) => (Array.isArray(row.profile) ? row.profile[0] : row.profile))
+    .filter((profile): profile is { id: string; full_name: string; avatar_url: string | null } =>
+      Boolean(profile),
+    )
+    .map((profile) => ({ id: profile.id, name: profile.full_name, avatarUrl: profile.avatar_url }))
+
+  if (people.length === 0) return null
+  return <AvatarStack people={people} max={2} />
 }

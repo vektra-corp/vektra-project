@@ -1,7 +1,10 @@
 import type { Priority, TaskStatus } from '@pm/shared/constants'
 
 export interface GanttTask {
+  /** Task uuid: what a reschedule is written against. */
   id: string
+  /** 16-digit public id: what the task's URL is built from. */
+  publicId: string
   title: string
   taskNumber: number
   status: TaskStatus

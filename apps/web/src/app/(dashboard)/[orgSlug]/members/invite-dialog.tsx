@@ -55,7 +55,18 @@ export function InviteDialog({
   useEffect(() => {
     if (state?.ok) {
       setOpen(false)
-      toast({ title: 'Invite sent', description: state.data.email })
+      // Say what actually happened. The membership is created either way, so
+      // reporting "invite sent" when no mail went out would leave someone
+      // waiting for an email that is not coming.
+      toast(
+        state.data.emailed
+          ? { title: 'Invite sent', description: state.data.email }
+          : {
+              variant: 'destructive',
+              title: 'Added, but not emailed',
+              description: `${state.data.email} now has access. Send them the link yourself — email delivery is not configured or the address was rejected.`,
+            },
+      )
       router.refresh()
     }
   }, [state, router])

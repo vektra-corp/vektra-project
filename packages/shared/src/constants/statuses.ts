@@ -58,30 +58,23 @@ export const DOCUMENT_STATUSES = ['draft', 'published', 'archived'] as const
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number]
 
 // --- Commercial ---------------------------------------------------------------
-export const COMMERCIAL_DOC_TYPES = [
-  'purchase_order',
-  'sales_order',
-  'invoice',
-  'bill',
-  'quotation',
-] as const
+//
+// Purchase orders, sales orders, invoices and bills were removed from the
+// product (migration 00035). A quotation is the only commercial document that
+// remains, so this list is one entry long rather than gone: the shape is what
+// the document routes, PDF templates and numbering sequences are built on, and
+// collapsing it to a bare string would lose the type safety for no gain.
+export const COMMERCIAL_DOC_TYPES = ['quotation'] as const
 export type CommercialDocType = (typeof COMMERCIAL_DOC_TYPES)[number]
 
-/** Allowed status values per document type (claude.md §6.4, §19.2). */
+/**
+ * Allowed status values per document type (claude.md §6.4, §19.2).
+ *
+ * 'converted' is gone with the invoice: there is nothing left to convert a
+ * quotation into. An accepted quotation is now the terminal happy path.
+ */
 export const COMMERCIAL_STATUSES = {
-  purchase_order: [
-    'draft',
-    'pending_approval',
-    'approved',
-    'sent',
-    'partially_received',
-    'received',
-    'closed',
-  ],
-  sales_order: ['draft', 'confirmed', 'in_progress', 'fulfilled', 'closed'],
-  invoice: ['draft', 'sent', 'viewed', 'partially_paid', 'paid', 'overdue', 'void'],
-  bill: ['received', 'pending_approval', 'approved', 'partially_paid', 'paid'],
-  quotation: ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired', 'converted'],
+  quotation: ['draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired'],
 } as const satisfies Record<CommercialDocType, readonly string[]>
 
 export type CommercialStatus<T extends CommercialDocType = CommercialDocType> =

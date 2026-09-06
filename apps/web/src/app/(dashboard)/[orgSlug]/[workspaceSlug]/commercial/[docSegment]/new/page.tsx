@@ -45,10 +45,9 @@ export default async function NewCommercialDocPage({
 
   if (!workspace) notFound()
 
-  // A purchase order or bill goes to a vendor; everything else to a client.
-  const wanted = docType === 'purchase_order' || docType === 'bill' ? 'vendor' : 'client'
+  // A quotation is an offer to a client, so vendor-only contacts are not offered.
   const contactOptions = (contacts ?? [])
-    .filter((contact) => contact.type === wanted || contact.type === 'both')
+    .filter((contact) => contact.type === 'client' || contact.type === 'both')
     .map((contact) => ({
       id: contact.id,
       label: contact.company_name

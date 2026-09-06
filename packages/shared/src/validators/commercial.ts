@@ -73,11 +73,6 @@ export function statusSchemaFor(docType: CommercialDocType) {
   })
 }
 
-/** Recording a payment against an invoice or bill. */
-export const paymentSchema = z.object({
-  amount: z.number().positive('Enter an amount greater than zero').max(100_000_000),
-})
-
 export type ContactCreateInput = z.infer<typeof contactCreateSchema>
 // `LineItemInput` is already the calculator's input shape in utils/currency;
 // this is the validated wire form, so it carries the module in its name.

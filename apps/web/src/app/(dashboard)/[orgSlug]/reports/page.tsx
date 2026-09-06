@@ -6,7 +6,7 @@ import {
   normalizeReportColumns,
   type TaskReportColumn,
 } from '@pm/shared/constants'
-import { formatRelativeTime, initials, todayIn } from '@pm/shared/utils'
+import { formatRelativeTime, initials, publicIdToString, todayIn } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, Badge, Card, CardContent } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -61,10 +61,10 @@ export default async function ReportsPage({
     .from('tasks')
     .select(
       `id, title, status, priority, due_date, created_at, updated_at, started_at, completed_at,
-       estimated_hours, task_number, project_id,
+       public_id, estimated_hours, task_number, project_id,
        assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url),
        assigner:profiles!tasks_assigner_id_fkey(id, full_name, avatar_url),
-       project:projects(id, name),
+       project:projects(id, public_id, name, workspace:workspaces!projects_workspace_id_fkey(slug)),
        task_labels(label:labels(id, name, color))`,
     )
     .eq('organization_id', auth.orgId)
@@ -216,24 +216,40 @@ export default async function ReportsPage({
                     </tr>
                   </thead>
                   <tbody>
-                    {(tasks ?? []).map((task) => (
-                      <tr key={task.id} className="hover:bg-muted/40 border-b last:border-0">
-                        {columns.map((column) => (
-                          <td key={column} className="px-4 py-3 align-middle">
-                            {column === 'task_name' ? (
-                              <Link
-                                href={`/${params.orgSlug}/reports?task=${task.id}`}
-                                className="font-medium hover:underline"
-                              >
-                                {task.title}
-                              </Link>
-                            ) : (
-                              cell(task as never, column)
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
+                    {(tasks ?? []).map((task) => {
+                      // The link used to be `?task=<uuid>`, a parameter nothing
+                      // on this page reads — clicking a row reloaded the report.
+                      // It now opens the task, which is what it looked like it
+                      // would do all along.
+                      const project = one(task.project) as {
+                        public_id: number
+                        workspace: { slug: string } | { slug: string }[] | null
+                      } | null
+                      const workspace = project ? one(project.workspace) : null
+                      const href = workspace
+                        ? `/${params.orgSlug}/${workspace.slug}/projects/${publicIdToString(project!.public_id)}/tasks/${publicIdToString(task.public_id)}`
+                        : null
+
+                      return (
+                        <tr key={task.id} className="hover:bg-muted/40 border-b last:border-0">
+                          {columns.map((column) => (
+                            <td key={column} className="px-4 py-3 align-middle">
+                              {column === 'task_name' ? (
+                                href ? (
+                                  <Link href={href} className="font-medium hover:underline">
+                                    {task.title}
+                                  </Link>
+                                ) : (
+                                  <span className="font-medium">{task.title}</span>
+                                )
+                              ) : (
+                                cell(task as never, column)
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    })}
                     {!tasks?.length ? (
                       <tr>
                         <td

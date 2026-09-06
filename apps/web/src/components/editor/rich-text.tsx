@@ -135,6 +135,22 @@ function renderNodes(nodes: Node[] | undefined, keyPrefix: string): ReactNode[] 
             <code>{renderNodes(node.content, key)}</code>
           </pre>,
         ]
+      case 'mention': {
+        // The stored label is what the author saw when they picked the person.
+        // Rendered as plain text through React, so a crafted label is escaped
+        // like any other string — and the id is never emitted into the DOM,
+        // because nothing on this page needs to read it back out.
+        const label = typeof node.attrs?.label === 'string' ? node.attrs.label : null
+        if (!label) return []
+        return [
+          <span
+            key={key}
+            className="rounded bg-primary/10 px-1 py-0.5 font-medium text-primary"
+          >
+            @{label}
+          </span>,
+        ]
+      }
       case 'hardBreak':
         return [<br key={key} />]
       case 'horizontalRule':

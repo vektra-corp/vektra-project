@@ -3,16 +3,17 @@
 import { assertCan } from '@pm/auth/rbac'
 import type { CommercialDocType } from '@pm/shared/constants'
 import type { ActionResult } from '@pm/shared/types'
+import { publicIdToString } from '@pm/shared/utils'
 import {
   commercialDocCreateSchema,
   commercialDocUpdateSchema,
   fieldErrors,
-  paymentSchema,
   statusSchemaFor,
 } from '@pm/shared/validators'
 import { revalidatePath } from 'next/cache'
 import { toActionError } from '@/lib/action-error'
 import { requireAuth } from '@/lib/auth/context'
+import { resolveCommercialDoc } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -32,6 +33,25 @@ interface Scope {
 function commercialPath(scope: Scope, docType?: string) {
   const base = `/${scope.orgSlug}/${scope.workspaceSlug}/commercial`
   return docType ? `${base}/${docType}` : base
+}
+
+/**
+ * The uuid behind a quotation's public id, or a failure to return as-is.
+ *
+ * Routes address a document by its 16-digit public id, so every action here
+ * receives that rather than the primary key.
+ */
+async function documentUuid(
+  publicId: string,
+): Promise<{ ok: true; id: string } | { ok: false; error: ActionResult<never> }> {
+  const doc = await resolveCommercialDoc(publicId)
+  if (!doc) {
+    return {
+      ok: false,
+      error: { ok: false, code: 'NOT_FOUND', message: 'Document not found.' },
+    }
+  }
+  return { ok: true, id: doc.id }
 }
 
 function parseLineItems(raw: FormDataEntryValue | null): unknown[] {
@@ -82,7 +102,7 @@ export async function createCommercialDoc(
     const { line_items, ...doc } = parsed.data
 
     // The number comes from next_doc_number(), which increments under a row
-    // lock — two people creating an invoice at once cannot collide (§18 rule 4).
+    // lock — two people creating a quotation at once cannot collide (§18 rule 4).
     const { data: docNumber, error: numberError } = await supabase.rpc('next_doc_number', {
       org: auth.orgId,
       p_doc_type: doc.doc_type,
@@ -93,14 +113,15 @@ export async function createCommercialDoc(
       .from('commercial_documents')
       .insert({
         ...doc,
-        // A quotation's expiry is the only place valid_until is legal.
-        valid_until: doc.doc_type === 'quotation' ? (doc.valid_until ?? null) : null,
+        valid_until: doc.valid_until ?? null,
         doc_number: docNumber as string,
         organization_id: auth.orgId,
-        status: doc.doc_type === 'bill' ? 'received' : 'draft',
+        status: 'draft',
         created_by: auth.userId,
       })
-      .select('id')
+      // The form navigates straight to the new document, so it needs the id
+      // the URL uses, not the primary key.
+      .select('id, public_id')
       .single()
 
     if (error) throw error
@@ -124,7 +145,7 @@ export async function createCommercialDoc(
     }
 
     revalidatePath(commercialPath(scope, doc.doc_type))
-    return { ok: true, data: { id: created.id } }
+    return { ok: true, data: { id: publicIdToString(created.public_id) } }
   } catch (error) {
     return toActionError(error)
   }
@@ -132,12 +153,15 @@ export async function createCommercialDoc(
 
 export async function updateCommercialDoc(
   scope: Scope,
-  documentId: string,
+  documentPublicId: string,
   _prevState: ActionResult<null> | null,
   formData: FormData,
 ): Promise<ActionResult<null>> {
   const auth = await requireAuth(scope.orgSlug)
   assertCan(auth, 'commercial', 'update')
+
+  const document = await documentUuid(documentPublicId)
+  if (!document.ok) return document.error
 
   const parsed = commercialDocUpdateSchema.safeParse({
     project_id: formData.get('project_id') || null,
@@ -166,7 +190,7 @@ export async function updateCommercialDoc(
     const { data: existing } = await supabase
       .from('commercial_documents')
       .select('doc_type, status')
-      .eq('id', documentId)
+      .eq('id', document.id)
       .eq('organization_id', auth.orgId)
       .maybeSingle()
 
@@ -191,7 +215,7 @@ export async function updateCommercialDoc(
         ...patch,
         valid_until: existing.doc_type === 'quotation' ? (patch.valid_until ?? null) : null,
       })
-      .eq('id', documentId)
+      .eq('id', document.id)
       .eq('organization_id', auth.orgId)
 
     if (error) throw error
@@ -199,12 +223,12 @@ export async function updateCommercialDoc(
     // Line items are replaced wholesale: the editor sends the full list, and
     // diffing rows the client may have reordered buys nothing here.
     if (line_items !== undefined) {
-      await supabase.from('commercial_line_items').delete().eq('document_id', documentId)
+      await supabase.from('commercial_line_items').delete().eq('document_id', document.id)
 
       if (line_items.length > 0) {
         const { error: itemsError } = await supabase.from('commercial_line_items').insert(
           line_items.map((item, index) => ({
-            document_id: documentId,
+            document_id: document.id,
             organization_id: auth.orgId,
             description: item.description,
             quantity: item.quantity,
@@ -222,7 +246,7 @@ export async function updateCommercialDoc(
         await supabase
           .from('commercial_documents')
           .update({ subtotal: 0, tax_total: 0, discount_total: 0, grand_total: 0 })
-          .eq('id', documentId)
+          .eq('id', document.id)
       }
     }
 
@@ -235,11 +259,14 @@ export async function updateCommercialDoc(
 
 export async function setCommercialStatus(
   scope: Scope,
-  documentId: string,
+  documentPublicId: string,
   status: string,
 ): Promise<ActionResult<null>> {
   const auth = await requireAuth(scope.orgSlug)
   assertCan(auth, 'commercial', 'update')
+
+  const document = await documentUuid(documentPublicId)
+  if (!document.ok) return document.error
 
   const supabase = createClient()
 
@@ -247,7 +274,7 @@ export async function setCommercialStatus(
     const { data: existing } = await supabase
       .from('commercial_documents')
       .select('doc_type')
-      .eq('id', documentId)
+      .eq('id', document.id)
       .eq('organization_id', auth.orgId)
       .maybeSingle()
 
@@ -262,21 +289,15 @@ export async function setCommercialStatus(
       }
     }
 
-    // Approving is a separate permission from editing (§8).
-    if (status === 'approved') {
-      assertCan(auth, 'commercial', 'approve')
-    }
-
+    // There is no approval step left to guard: 'approved' belonged to purchase
+    // orders and bills, and `statusSchemaFor` now refuses it outright.
     const { error } = await supabase
       .from('commercial_documents')
       .update({
         status: parsed.data.status,
-        ...(status === 'approved'
-          ? { approved_by: auth.userId, approved_at: new Date().toISOString() }
-          : {}),
         ...(status === 'sent' ? { sent_at: new Date().toISOString() } : {}),
       })
-      .eq('id', documentId)
+      .eq('id', document.id)
       .eq('organization_id', auth.orgId)
 
     if (error) throw error
@@ -288,194 +309,16 @@ export async function setCommercialStatus(
   }
 }
 
-/**
- * Record a payment against an invoice or bill.
- *
- * `amount_paid` accumulates and the status follows from the comparison with
- * `grand_total`, so "paid" is always a statement about the numbers rather than
- * an independent flag someone can set.
- */
-export async function recordPayment(
-  scope: Scope,
-  documentId: string,
-  amount: number,
-): Promise<ActionResult<null>> {
-  const auth = await requireAuth(scope.orgSlug)
-  assertCan(auth, 'commercial', 'update')
-
-  const parsed = paymentSchema.safeParse({ amount })
-  if (!parsed.success) {
-    return {
-      ok: false,
-      code: 'VALIDATION_ERROR',
-      message: parsed.error.issues[0]?.message ?? 'Invalid amount.',
-    }
-  }
-
-  const supabase = createClient()
-
-  try {
-    const { data: doc } = await supabase
-      .from('commercial_documents')
-      .select('doc_type, amount_paid, grand_total')
-      .eq('id', documentId)
-      .eq('organization_id', auth.orgId)
-      .maybeSingle()
-
-    if (!doc) return { ok: false, code: 'NOT_FOUND', message: 'Document not found.' }
-    if (doc.doc_type !== 'invoice' && doc.doc_type !== 'bill') {
-      return {
-        ok: false,
-        code: 'INVALID_STATUS',
-        message: 'Only invoices and bills take payments.',
-      }
-    }
-
-    const paid = Number(doc.amount_paid) + parsed.data.amount
-    const total = Number(doc.grand_total)
-
-    if (paid > total) {
-      return {
-        ok: false,
-        code: 'VALIDATION_ERROR',
-        message: `That is more than the outstanding balance of ${(total - Number(doc.amount_paid)).toFixed(2)}.`,
-      }
-    }
-
-    const { error } = await supabase
-      .from('commercial_documents')
-      .update({
-        amount_paid: paid,
-        status: paid >= total ? 'paid' : 'partially_paid',
-      })
-      .eq('id', documentId)
-      .eq('organization_id', auth.orgId)
-
-    if (error) throw error
-
-    revalidatePath(commercialPath(scope, doc.doc_type))
-    return { ok: true, data: null }
-  } catch (error) {
-    return toActionError(error)
-  }
-}
-
-/**
- * Convert an accepted quotation into a draft invoice (§19.2).
- *
- * The invoice is a new document that references the quotation, not a mutation
- * of it: the quotation stays exactly as the customer accepted it, and both are
- * independently auditable.
- */
-export async function convertQuotationToInvoice(
-  scope: Scope,
-  quotationId: string,
-): Promise<ActionResult<{ id: string }>> {
-  const auth = await requireAuth(scope.orgSlug)
-  assertCan(auth, 'commercial', 'create')
-
-  const supabase = createClient()
-
-  try {
-    const { data: quotation } = await supabase
-      .from('commercial_documents')
-      .select(
-        'id, doc_type, status, workspace_id, project_id, contact_id, currency, notes, terms, pdf_template_id, converted_to_id',
-      )
-      .eq('id', quotationId)
-      .eq('organization_id', auth.orgId)
-      .maybeSingle()
-
-    if (!quotation || quotation.doc_type !== 'quotation') {
-      return { ok: false, code: 'NOT_FOUND', message: 'Quotation not found.' }
-    }
-
-    if (quotation.status !== 'accepted') {
-      return {
-        ok: false,
-        code: 'INVALID_STATUS',
-        message: 'Only an accepted quotation can be converted.',
-      }
-    }
-
-    // Converting twice would silently bill the customer twice.
-    if (quotation.converted_to_id) {
-      return {
-        ok: false,
-        code: 'CONFLICT',
-        message: 'This quotation has already been converted.',
-      }
-    }
-
-    const { data: lineItems } = await supabase
-      .from('commercial_line_items')
-      .select('description, quantity, unit_price, tax_rate, discount, position')
-      .eq('document_id', quotationId)
-      .order('position')
-
-    const { data: docNumber, error: numberError } = await supabase.rpc('next_doc_number', {
-      org: auth.orgId,
-      p_doc_type: 'invoice',
-    })
-    if (numberError) throw numberError
-
-    const { data: invoice, error } = await supabase
-      .from('commercial_documents')
-      .insert({
-        organization_id: auth.orgId,
-        workspace_id: quotation.workspace_id,
-        project_id: quotation.project_id,
-        doc_type: 'invoice',
-        doc_number: docNumber as string,
-        contact_id: quotation.contact_id,
-        status: 'draft',
-        currency: quotation.currency,
-        notes: quotation.notes,
-        terms: quotation.terms,
-        pdf_template_id: quotation.pdf_template_id,
-        reference_doc_id: quotation.id,
-        created_by: auth.userId,
-      })
-      .select('id')
-      .single()
-
-    if (error) throw error
-
-    if (lineItems?.length) {
-      const { error: itemsError } = await supabase.from('commercial_line_items').insert(
-        lineItems.map((item, index) => ({
-          ...item,
-          document_id: invoice.id,
-          organization_id: auth.orgId,
-          position: index,
-          line_total: 0,
-        })),
-      )
-      if (itemsError) throw itemsError
-    }
-
-    // Mark the quotation last: if anything above failed, it stays convertible
-    // rather than being stranded pointing at a document that does not exist.
-    await supabase
-      .from('commercial_documents')
-      .update({ status: 'converted', converted_to_id: invoice.id })
-      .eq('id', quotationId)
-      .eq('organization_id', auth.orgId)
-
-    revalidatePath(commercialPath(scope, 'quotation'))
-    revalidatePath(commercialPath(scope, 'invoice'))
-    return { ok: true, data: { id: invoice.id } }
-  } catch (error) {
-    return toActionError(error)
-  }
-}
 
 export async function deleteCommercialDoc(
   scope: Scope,
-  documentId: string,
+  documentPublicId: string,
 ): Promise<ActionResult<null>> {
   const auth = await requireAuth(scope.orgSlug)
   assertCan(auth, 'commercial', 'delete')
+
+  const document = await documentUuid(documentPublicId)
+  if (!document.ok) return document.error
 
   const supabase = createClient()
 
@@ -483,7 +326,7 @@ export async function deleteCommercialDoc(
     const { data: doc } = await supabase
       .from('commercial_documents')
       .select('doc_type, status')
-      .eq('id', documentId)
+      .eq('id', document.id)
       .eq('organization_id', auth.orgId)
       .maybeSingle()
 
@@ -502,7 +345,7 @@ export async function deleteCommercialDoc(
     const { error } = await supabase
       .from('commercial_documents')
       .delete()
-      .eq('id', documentId)
+      .eq('id', document.id)
       .eq('organization_id', auth.orgId)
 
     if (error) throw error

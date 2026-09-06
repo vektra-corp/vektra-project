@@ -1,5 +1,6 @@
 export * from './csv'
 export * from './slug'
+export * from './public-id'
 export * from './date'
 export * from './format'
 export * from './formatters'

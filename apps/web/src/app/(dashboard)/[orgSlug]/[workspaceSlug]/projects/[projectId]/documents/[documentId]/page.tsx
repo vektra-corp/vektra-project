@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { PageBody } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
+import { resolveDocument, resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 import { DocumentEditor } from './document-editor'
 import { VersionHistory, type VersionRow } from './version-history'
@@ -17,20 +18,29 @@ export default async function DocumentPage({
   params: { orgSlug: string; workspaceSlug: string; projectId: string; documentId: string }
 }) {
   const auth = await requireAuthPage(params.orgSlug)
+
+  // Both ids in the URL are 16-digit public ids. A document addressed under the
+  // wrong project is a 404: the URL asserts a relationship that does not hold.
+  const [project, documentRef] = await Promise.all([
+    resolveProject(params.projectId),
+    resolveDocument(params.documentId),
+  ])
+  if (!project || !documentRef || documentRef.projectId !== project.id) notFound()
+
   const supabase = createClient()
 
   const [{ data: document }, { data: versions }] = await Promise.all([
     supabase
       .from('documents')
-      .select('id, title, content, status, version')
-      .eq('id', params.documentId)
+      .select('public_id, title, content, status, version')
+      .eq('id', documentRef.id)
       .maybeSingle(),
     supabase
       .from('document_versions')
       .select(
         'id, version, content, created_at, editor:profiles!document_versions_edited_by_fkey(full_name)',
       )
-      .eq('document_id', params.documentId)
+      .eq('document_id', documentRef.id)
       .order('version', { ascending: false })
       .limit(20),
   ])
@@ -65,7 +75,9 @@ export default async function DocumentPage({
 
           <DocumentEditor
             scope={params}
-            document={document}
+            // The editor's actions address the document by the id in the URL,
+            // which is exactly the one the route already carries.
+            document={{ ...document, id: params.documentId }}
             canEdit={can(auth, 'tasks', 'update')}
             canDelete={can(auth, 'tasks', 'delete')}
           />
@@ -73,7 +85,7 @@ export default async function DocumentPage({
 
         <VersionHistory
           scope={params}
-          documentId={document.id}
+          documentId={params.documentId}
           versions={history}
           currentVersion={document.version}
           canRestore={can(auth, 'tasks', 'update')}

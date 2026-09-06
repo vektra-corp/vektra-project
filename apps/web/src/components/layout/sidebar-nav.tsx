@@ -16,6 +16,7 @@ import {
   Layers,
   LayoutDashboard,
   ListTodo,
+  Loader2,
   Receipt,
   ScrollText,
   Settings,
@@ -30,6 +31,7 @@ import {
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
+import { usePendingNav } from '@/hooks/use-pending-nav'
 
 /**
  * Icons are addressed by NAME, not by component.
@@ -105,16 +107,21 @@ export function SidebarItem({ item, indent = false }: { item: NavItem; indent?: 
   const isActive = useIsActive()
   const active = item.href ? isActive(item.href, item.exact) : false
   const Icon = ICONS[item.icon]
+  const { pending, onNavigate } = usePendingNav()
 
   const body = (
     <>
       <span className="flex w-3.5 shrink-0 justify-center" aria-hidden>
-        <Icon
-          className={cn(
-            'h-3.5 w-3.5 transition-colors',
-            active ? 'text-foreground' : 'text-faint group-hover:text-muted-foreground',
-          )}
-        />
+        {pending ? (
+          <Loader2 className="text-muted-foreground h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <Icon
+            className={cn(
+              'h-3.5 w-3.5 transition-colors',
+              active ? 'text-foreground' : 'text-faint group-hover:text-muted-foreground',
+            )}
+          />
+        )}
       </span>
       <span className="min-w-0 flex-1 truncate text-start">{item.label}</span>
       {item.count ? (
@@ -151,11 +158,15 @@ export function SidebarItem({ item, indent = false }: { item: NavItem; indent?: 
     <li>
       <Link
         href={item.href}
+        onClick={onNavigate(item.href)}
         aria-current={active ? 'page' : undefined}
+        // A row being navigated to is treated as active for styling: the click
+        // should land visibly straight away rather than after the server replies.
+        data-pending={pending ? '' : undefined}
         className={cn(
           rowClass,
           indent && 'ps-8 text-nav',
-          active
+          active || pending
             ? 'bg-surface-hover text-foreground'
             : 'text-muted-foreground hover:bg-surface-hover/60 hover:text-foreground',
         )}
@@ -226,6 +237,7 @@ export function SidebarProjectGroup({
   views: NavItem[]
 }) {
   const isActive = useIsActive()
+  const { pending, onNavigate } = usePendingNav()
   const base = `/${orgSlug}/${project.workspaceSlug}/projects/${project.id}`
   const inProject = isActive(base)
   const Chevron = inProject ? ChevronDown : ChevronRight
@@ -235,18 +247,23 @@ export function SidebarProjectGroup({
       <li>
         <Link
           href={`${base}/board`}
+          onClick={onNavigate(`${base}/board`)}
           className={cn(
             'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-ui transition-colors',
-            inProject
+            inProject || pending
               ? 'bg-surface-hover text-foreground'
               : 'text-muted-foreground hover:bg-surface-hover/60 hover:text-foreground',
           )}
         >
           <span className="flex w-3.5 shrink-0 justify-center" aria-hidden>
-            <span
-              className="h-[7px] w-[7px] rounded-full"
-              style={{ backgroundColor: project.color ?? 'hsl(var(--status-progress))' }}
-            />
+            {pending ? (
+              <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />
+            ) : (
+              <span
+                className="h-[7px] w-[7px] rounded-full"
+                style={{ backgroundColor: project.color ?? 'hsl(var(--status-progress))' }}
+              />
+            )}
           </span>
           <span className="min-w-0 flex-1 truncate text-start">{project.name}</span>
           <Chevron className="text-subtle rtl-flip h-2.5 w-2.5 shrink-0" aria-hidden />

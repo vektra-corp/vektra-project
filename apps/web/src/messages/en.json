@@ -46,6 +46,7 @@
     "continue_with": "Or continue with",
     "continue_with_google": "Continue with Google",
     "invalid_credentials": "That email and password combination is not correct.",
+    "invite_expired": "That invitation link has expired or was already used. Ask whoever invited you to send a new one.",
     "email_not_confirmed": "Confirm your email address before signing in.",
     "rate_limited": "Too many attempts. Try again in {minutes} minutes.",
     "oauth_failed": "That sign-in could not be completed. Try again.",
@@ -86,7 +87,6 @@
     "inbox": "Inbox",
     "myTasks": "My tasks",
     "jumpTo": "Jump to…",
-    "workspaceCaption": "Delivery · Workspace",
     "work": "Work",
     "commercial": "Commercial",
     "insights": "Insights",
@@ -97,10 +97,6 @@
     "documents": "Documents",
     "workload": "Workload",
     "workflows": "Workflows",
-    "purchaseOrders": "Purchase orders",
-    "salesOrders": "Sales orders",
-    "invoices": "Invoices",
-    "bills": "Bills",
     "teamAndClients": "Team & clients",
     "noWorkspaces": "No workspaces yet",
     "people": "People",
@@ -110,7 +106,7 @@
     "contacts": "Contacts",
     "pdfTemplates": "PDF templates",
     "timesheets": "Timesheets",
-    "revenue": "Revenue"
+    "revenue": "Pipeline"
   },
   "onboarding": {
     "title": "Create your organization",
@@ -174,12 +170,9 @@
     }
   },
   "commercial": {
-    "invoice": {
-      "title": "Invoice",
-      "number": "Invoice #{number}"
-    },
     "quotation": {
       "title": "Quotation",
+      "number": "Quotation #{number}",
       "valid_until": "Valid until {date}"
     }
   }

@@ -43,8 +43,7 @@ export const DEFAULT_INTEGRATION_EVENTS: readonly EventType[] = [
   'task.created',
   'task.completed',
   'comment.created',
-  'commercial_document.approved',
-  'commercial_document.paid',
+  'commercial_document.status_changed',
 ]
 
 export interface SlackConfig {

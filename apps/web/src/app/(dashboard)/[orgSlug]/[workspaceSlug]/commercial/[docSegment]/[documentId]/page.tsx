@@ -1,6 +1,6 @@
 import { can } from '@pm/auth/rbac'
 import type { CommercialDocType } from '@pm/shared/constants'
-import { formatCurrency, formatDate } from '@pm/shared/utils'
+import { formatCurrency, formatDate, publicIdToString } from '@pm/shared/utils'
 import { Badge, Button } from '@pm/ui'
 import { FileDown, Pencil } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -11,6 +11,7 @@ import { CustomFieldInputs } from '@/components/custom-fields/custom-field-input
 import { PageBody } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { loadCustomFields } from '@/lib/custom-fields'
+import { resolveCommercialDoc } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 import { DOC_TYPE_LABELS, SEGMENT_TO_DOC_TYPE, statusVariant } from '../../doc-types'
 import { DocumentActions } from '../../document-actions'
@@ -31,6 +32,11 @@ export default async function CommercialDocPage({
   if (!docType) notFound()
 
   const auth = await requireAuthPage(params.orgSlug)
+
+  // The URL carries the quotation's 16-digit public id.
+  const resolved = await resolveCommercialDoc(params.documentId)
+  if (!resolved) notFound()
+
   const locale = await getLocale()
   const supabase = createClient()
 
@@ -39,18 +45,17 @@ export default async function CommercialDocPage({
       .from('commercial_documents')
       .select(
         `id, doc_type, doc_number, status, issue_date, due_date, valid_until, currency,
-         subtotal, tax_total, discount_total, grand_total, amount_paid, notes, terms,
-         converted_to_id, reference_doc_id,
+         subtotal, tax_total, discount_total, grand_total, notes, terms,
          contact:contacts!commercial_documents_contact_id_fkey(contact_name, company_name, email),
-         project:projects!commercial_documents_project_id_fkey(id, name)`,
+         project:projects!commercial_documents_project_id_fkey(public_id, name)`,
       )
-      .eq('id', params.documentId)
+      .eq('id', resolved.id)
       .eq('organization_id', auth.orgId)
       .maybeSingle(),
     supabase
       .from('commercial_line_items')
       .select('id, description, quantity, unit_price, tax_rate, discount, line_total')
-      .eq('document_id', params.documentId)
+      .eq('document_id', resolved.id)
       .order('position'),
   ])
 
@@ -68,8 +73,7 @@ export default async function CommercialDocPage({
   const money = (value: number) => formatCurrency(Number(value), doc.currency, locale)
   const date = (value: string) => formatDate(value, { locale, dateFormat: 'YYYY-MM-DD' })
 
-  const editable = ['draft', 'received', 'pending_approval'].includes(doc.status)
-  const outstanding = Number(doc.grand_total) - Number(doc.amount_paid)
+  const editable = doc.status === 'draft'
 
   return (
     <PageBody className="pt-2">
@@ -93,7 +97,7 @@ export default async function CommercialDocPage({
                 {/* Opens in a new tab: the response is a PDF, so navigating the
                     current tab would replace the page with a file viewer. */}
                 <a
-                  href={`/api/commercial/${doc.id}/pdf?org=${params.orgSlug}`}
+                  href={`/api/commercial/${params.documentId}/pdf?org=${params.orgSlug}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -104,7 +108,7 @@ export default async function CommercialDocPage({
 
               {editable && can(auth, 'commercial', 'update') ? (
                 <Button asChild variant="subtle" size="sm">
-                  <Link href={`${base}/${doc.id}/edit`}>
+                  <Link href={`${base}/${params.documentId}/edit`}>
                     <Pencil className="h-3 w-3" aria-hidden />
                     Edit
                   </Link>
@@ -113,58 +117,30 @@ export default async function CommercialDocPage({
 
               <DocumentActions
                 scope={params}
-                documentId={doc.id}
+                documentId={params.documentId}
                 docType={docType as CommercialDocType}
                 docSegment={params.docSegment}
                 status={doc.status}
-                grandTotal={Number(doc.grand_total)}
-                amountPaid={Number(doc.amount_paid)}
-                currency={doc.currency}
-                locale={locale}
-                isConverted={Boolean(doc.converted_to_id)}
                 canDelete={can(auth, 'commercial', 'delete')}
               />
             </div>
           </div>
 
-          {doc.converted_to_id ? (
-            <p className="pt-2 text-base text-muted-foreground">
-              Converted to{' '}
-              <Link
-                href={`/${params.orgSlug}/${params.workspaceSlug}/commercial/invoices/${doc.converted_to_id}`}
-                className="text-primary hover:underline"
-              >
-                an invoice
-              </Link>
-              .
-            </p>
-          ) : null}
         </div>
 
         <dl className="grid gap-4 rounded-lg border border-border bg-surface p-5 shadow-card sm:grid-cols-3">
           <Fact
-            label={docType === 'purchase_order' || docType === 'bill' ? 'Vendor' : 'Client'}
+            label="Client"
             value={contact ? (contact.company_name ?? contact.contact_name) : '—'}
           />
           <Fact label="Issued" value={date(doc.issue_date)} />
-          <Fact
-            label={docType === 'quotation' ? 'Valid until' : 'Due'}
-            value={
-              docType === 'quotation'
-                ? doc.valid_until
-                  ? date(doc.valid_until)
-                  : '—'
-                : doc.due_date
-                  ? date(doc.due_date)
-                  : '—'
-            }
-          />
+          <Fact label="Valid until" value={doc.valid_until ? date(doc.valid_until) : '—'} />
           {project ? (
             <Fact
               label="Project"
               value={
                 <Link
-                  href={`/${params.orgSlug}/${params.workspaceSlug}/projects/${project.id}/board`}
+                  href={`/${params.orgSlug}/${params.workspaceSlug}/projects/${publicIdToString(project.public_id)}/board`}
                   className="text-primary hover:underline"
                 >
                   {project.name}
@@ -225,16 +201,6 @@ export default async function CommercialDocPage({
             <div className="border-t border-border-subtle pt-1.5">
               <Row label="Total" value={money(Number(doc.grand_total))} emphasis />
             </div>
-            {Number(doc.amount_paid) > 0 ? (
-              <>
-                <Row label="Paid" value={money(Number(doc.amount_paid))} />
-                <Row
-                  label="Outstanding"
-                  value={money(outstanding)}
-                  tone={outstanding > 0 ? 'warning' : 'success'}
-                />
-              </>
-            ) : null}
           </dl>
         </div>
 

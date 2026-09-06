@@ -6,15 +6,17 @@ import { Widget, WidgetEmpty } from './widget'
 export interface RevenueMonth {
   month: string
   currency: string
-  invoicedRevenue: number
-  outstandingInvoices: number
-  overdueInvoices: number
   pipelineQuotations: number
   acceptedQuotations: number
+  rejectedQuotations: number
 }
 
 /**
- * Revenue figures (§19.9).
+ * Pipeline figures (§19.9).
+ *
+ * Invoiced, outstanding and overdue were invoice-derived and left with the
+ * invoice (migration 00035). What remains is the quotation pipeline: value
+ * offered, value won, value lost.
  *
  * Every figure is a single magnitude, so these are stat tiles and a bar list
  * rather than charts — a plot of one number adds ink without adding
@@ -63,7 +65,7 @@ export function RevenueTile({
 }
 
 /**
- * Revenue over time.
+ * Won quotation value over time.
  *
  * A horizontal bar per month, scaled against the largest month in the window,
  * with the value direct-labelled so it never has to be read off the bar. One
@@ -82,19 +84,19 @@ export function RevenueTrend({
 
   if (inCurrency.length === 0) {
     return (
-      <Widget title="Revenue trend" category="revenue" className="h-full">
-        <WidgetEmpty>No invoices issued yet.</WidgetEmpty>
+      <Widget title="Accepted trend" category="revenue" className="h-full">
+        <WidgetEmpty>No quotations issued yet.</WidgetEmpty>
       </Widget>
     )
   }
 
-  const peak = Math.max(...inCurrency.map((month) => month.invoicedRevenue), 1)
+  const peak = Math.max(...inCurrency.map((month) => month.acceptedQuotations), 1)
 
   return (
-    <Widget title={`Revenue trend · ${currency}`} category="revenue" className="h-full">
+    <Widget title={`Accepted quotations · ${currency}`} category="revenue" className="h-full">
       <ul className="space-y-2 overflow-y-auto px-4 py-3">
         {inCurrency.map((month) => {
-          const pct = Math.round((month.invoicedRevenue / peak) * 100)
+          const pct = Math.round((month.acceptedQuotations / peak) * 100)
           const label = new Date(`${month.month}T00:00:00`).toLocaleDateString(locale, {
             month: 'short',
             year: 'numeric',
@@ -106,11 +108,11 @@ export function RevenueTrend({
               <span className="h-4 min-w-0 flex-1 overflow-hidden rounded bg-track">
                 <span
                   className="block h-full rounded bg-gradient-to-r from-brand-from to-brand-to"
-                  style={{ width: `${Math.max(pct, month.invoicedRevenue > 0 ? 2 : 0)}%` }}
+                  style={{ width: `${Math.max(pct, month.acceptedQuotations > 0 ? 2 : 0)}%` }}
                 />
               </span>
               <span className="w-28 shrink-0 text-end text-base tabular-nums text-muted-foreground">
-                {formatCurrency(month.invoicedRevenue, month.currency, locale)}
+                {formatCurrency(month.acceptedQuotations, month.currency, locale)}
               </span>
             </li>
           )

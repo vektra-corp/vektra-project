@@ -159,11 +159,11 @@ describe('describeEvent', () => {
   it('renders a commercial document as a document', () => {
     expect(
       describeEvent({
-        eventType: 'commercial_document.paid',
-        payload: { new: { doc_number: 'INV-0007' } },
+        eventType: 'commercial_document.updated',
+        payload: { new: { doc_number: 'QUO-0007' } },
         actorName: 'Ada',
       }),
-    ).toBe('Ada paid document "INV-0007"')
+    ).toBe('Ada updated document "QUO-0007"')
   })
 
   it('degrades gracefully for an event type it has no words for', () => {

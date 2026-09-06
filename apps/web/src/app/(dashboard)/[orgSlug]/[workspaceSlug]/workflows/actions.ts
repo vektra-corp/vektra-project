@@ -10,6 +10,7 @@ import {
   type WorkflowTriggerType,
 } from '@pm/shared/constants'
 import type { ActionResult } from '@pm/shared/types'
+import { publicIdToString } from '@pm/shared/utils'
 import { revalidatePath } from 'next/cache'
 import { toActionError } from '@/lib/action-error'
 import { requireAuth } from '@/lib/auth/context'
@@ -107,7 +108,9 @@ export async function createWorkflow(
         // could only ever be a mistake.
         is_active: false,
       })
-      .select('id')
+      // The dialog navigates straight to the new workflow, so it needs the id
+      // the URL uses, not the primary key.
+      .select('public_id')
       .single()
 
     if (error) throw error
@@ -115,7 +118,10 @@ export async function createWorkflow(
     revalidatePath(workflowsPath(scope))
     // The plaintext token travels back exactly once, in this response. It is
     // not stored and cannot be re-read.
-    return { ok: true, data: { id: data.id, webhookToken: minted?.token } }
+    return {
+      ok: true,
+      data: { id: publicIdToString(data.public_id), webhookToken: minted?.token },
+    }
   } catch (error) {
     return toActionError(error)
   }

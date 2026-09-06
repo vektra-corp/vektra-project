@@ -1,16 +1,19 @@
-import { initials, projectKey, todayIn } from '@pm/shared/utils'
+import { initials, publicIdToString, todayIn } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage, DataTable, type DataTableColumn } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { PageBody } from '@/components/layout/page-body'
 import { ProjectViewTabs } from '@/components/projects/project-tabs'
 import { DueDate, TaskPriorityIcon, TaskStatusBadge } from '@/components/tasks/task-badges'
 import { requireAuthPage } from '@/lib/auth/context'
+import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'List' }
 
 interface Row {
+  /** 16-digit public id — this row exists to be linked to. */
   id: string
   title: string
   status: string
@@ -27,27 +30,30 @@ export default async function ListPage({
   params: { orgSlug: string; workspaceSlug: string; projectId: string }
 }) {
   const auth = await requireAuthPage(params.orgSlug)
+
+  const project = await resolveProject(params.projectId)
+  if (!project) notFound()
+
   const supabase = createClient()
 
-  const [{ data: tasks }, { data: project }] = await Promise.all([
+  const [{ data: tasks }] = await Promise.all([
     supabase
       .from('tasks')
       .select(
-        `id, title, status, priority, due_date, task_number, updated_at,
+        `public_id, title, status, priority, due_date, task_number, updated_at,
          assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url)`,
       )
-      .eq('project_id', params.projectId)
+      .eq('project_id', project.id)
       .order('status')
       .order('position'),
-    supabase.from('projects').select('name').eq('id', params.projectId).maybeSingle(),
   ])
 
   const today = todayIn(auth.orgTimezone)
   const base = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}`
-  const prefix = projectKey(project?.name ?? 'Task')
+  const prefix = project.key
 
   const rows: Row[] = (tasks ?? []).map((task) => ({
-    id: task.id,
+    id: publicIdToString(task.public_id),
     title: task.title,
     status: task.status,
     priority: task.priority,

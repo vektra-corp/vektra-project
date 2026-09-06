@@ -1,8 +1,8 @@
 'use client'
 
-import { SegmentedGroup, segmentedItemClass } from '@pm/ui'
-import Link from 'next/link'
+import { SegmentedGroup } from '@pm/ui'
 import { usePathname } from 'next/navigation'
+import { SegmentedNavLink } from '@/components/layout/nav-link'
 
 export function TeamNav({ orgSlug }: { orgSlug: string }) {
   const pathname = usePathname()
@@ -14,14 +14,9 @@ export function TeamNav({ orgSlug }: { orgSlug: string }) {
   return (
     <SegmentedGroup aria-label="Team sections">
       {tabs.map((tab) => (
-        <Link
-          key={tab.href}
-          href={tab.href}
-          aria-current={pathname === tab.href ? 'page' : undefined}
-          className={segmentedItemClass({ active: pathname === tab.href })}
-        >
+        <SegmentedNavLink key={tab.href} href={tab.href} active={pathname === tab.href}>
           {tab.label}
-        </Link>
+        </SegmentedNavLink>
       ))}
     </SegmentedGroup>
   )

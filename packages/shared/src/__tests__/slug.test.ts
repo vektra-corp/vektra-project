@@ -67,6 +67,10 @@ describe('uniqueSlug', () => {
 })
 
 describe('projectKey', () => {
+  // The key column carries CHECK (key ~ '^[A-Z][A-Z0-9]{1,9}$'), so every
+  // derived value has to satisfy that or the insert fails.
+  const LEGAL = /^[A-Z][A-Z0-9]{1,9}$/
+
   it('takes the first three letters of a single leading word', () => {
     expect(projectKey('Atlas Migration')).toBe('ATL')
     expect(projectKey('Platform')).toBe('PLA')
@@ -74,11 +78,31 @@ describe('projectKey', () => {
 
   it('combines short words rather than emitting a one-letter key', () => {
     expect(projectKey('Go Live')).toBe('GOL')
-    expect(projectKey('R D')).toBe('RDX')
+    expect(projectKey('R D')).toBe('RD')
   })
 
   it('ignores punctuation and falls back for an empty name', () => {
-    expect(projectKey('  @@@ ')).toBe('TSK')
+    expect(projectKey('  @@@ ')).toBe('PRJ')
     expect(projectKey('web-app rewrite')).toBe('WEB')
+  })
+
+  it('never starts the key with a digit', () => {
+    // '3M Rollout' would otherwise derive '3MR', which the CHECK rejects.
+    expect(projectKey('3M Rollout')).toBe('MR')
+    expect(projectKey('2024')).toBe('PRJ')
+  })
+
+  it('always produces a value the column will accept', () => {
+    for (const name of [
+      'Atlas Migration',
+      'Q',
+      '3M Rollout',
+      '2024',
+      '  @@@ ',
+      'web-app rewrite',
+      'Go Live',
+    ]) {
+      expect(projectKey(name)).toMatch(LEGAL)
+    }
   })
 })

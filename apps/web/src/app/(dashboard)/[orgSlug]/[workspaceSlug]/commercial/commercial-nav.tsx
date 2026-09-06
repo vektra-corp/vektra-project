@@ -1,19 +1,15 @@
 'use client'
 
-import { SegmentedGroup, segmentedItemClass } from '@pm/ui'
-import Link from 'next/link'
+import { SegmentedGroup } from '@pm/ui'
 import { usePathname } from 'next/navigation'
+import { SegmentedNavLink } from '@/components/layout/nav-link'
 
-/** Section switcher across the five document types plus contacts. */
+/** Section switcher: quotations and contacts, the two that remain. */
 export function CommercialNav({ base }: { base: string }) {
   const pathname = usePathname()
 
   const tabs = [
     { segment: 'quotations', label: 'Quotations' },
-    { segment: 'invoices', label: 'Invoices' },
-    { segment: 'sales-orders', label: 'Sales orders' },
-    { segment: 'purchase-orders', label: 'Purchase orders' },
-    { segment: 'bills', label: 'Bills' },
     { segment: 'contacts', label: 'Contacts' },
   ]
 
@@ -22,14 +18,9 @@ export function CommercialNav({ base }: { base: string }) {
       {tabs.map((tab) => {
         const href = `${base}/${tab.segment}`
         return (
-          <Link
-            key={tab.segment}
-            href={href}
-            aria-current={pathname.startsWith(href) ? 'page' : undefined}
-            className={segmentedItemClass({ active: pathname.startsWith(href) })}
-          >
+          <SegmentedNavLink key={tab.segment} href={href} active={pathname.startsWith(href)}>
             {tab.label}
-          </Link>
+          </SegmentedNavLink>
         )
       })}
     </SegmentedGroup>

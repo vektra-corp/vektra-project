@@ -5,7 +5,7 @@ import {
   parseFieldOptions,
   type CustomFieldDefinition,
 } from '@pm/shared/constants'
-import { formatRelativeTime, initials, projectKey, todayIn } from '@pm/shared/utils'
+import { formatRelativeTime, initials, todayIn } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage, Button } from '@pm/ui'
 import { Columns3, X } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -23,6 +23,7 @@ import { DueDate, TaskStatusBadge } from '@/components/tasks/task-badges'
 import { TaskDescription } from '@/components/tasks/task-description'
 import { TaskFields } from '@/components/tasks/task-fields'
 import { requireAuthPage } from '@/lib/auth/context'
+import { resolveProject, resolveTask } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 
 interface Member {
@@ -39,18 +40,30 @@ export default async function TaskDetailPage({
   params: { orgSlug: string; workspaceSlug: string; projectId: string; taskId: string }
 }) {
   const auth = await requireAuthPage(params.orgSlug)
+
+  // Both ids in the URL are 16-digit public ids. Resolving them together costs
+  // one round trip each and gives the page the uuids every query below needs,
+  // plus the project key the identity bar reads.
+  const [project, taskRef] = await Promise.all([
+    resolveProject(params.projectId),
+    resolveTask(params.taskId),
+  ])
+  // A task addressed under the wrong project is a 404, not a redirect: the URL
+  // asserts a relationship that does not hold.
+  if (!project || !taskRef || taskRef.projectId !== project.id) notFound()
+
   const locale = await getLocale()
   const supabase = createClient()
 
   const { data: task } = await supabase
     .from('tasks')
     .select(
-      `id, title, description, status, priority, due_date, start_date, estimated_hours,
+      `id, public_id, title, description, status, priority, due_date, start_date, estimated_hours,
        actual_hours, task_number, is_milestone, started_at, completed_at, created_at, updated_at,
        assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url),
        assigner:profiles!tasks_assigner_id_fkey(id, full_name, avatar_url)`,
     )
-    .eq('id', params.taskId)
+    .eq('id', taskRef.id)
     .maybeSingle()
 
   if (!task) notFound()
@@ -68,14 +81,14 @@ export default async function TaskDetailPage({
         .select(
           'id, title, status, position, assignee:profiles!subtasks_assignee_id_fkey(id, full_name, avatar_url)',
         )
-        .eq('task_id', params.taskId)
+        .eq('task_id', taskRef.id)
         .order('position'),
       supabase
         .from('comments')
         .select(
           'id, body, is_internal, is_edited, created_at, author:profiles!comments_author_id_fkey(id, full_name, avatar_url)',
         )
-        .eq('task_id', params.taskId)
+        .eq('task_id', taskRef.id)
         .order('created_at'),
       supabase
         .from('org_members')
@@ -84,7 +97,7 @@ export default async function TaskDetailPage({
       supabase
         .from('attachments')
         .select('id, file_name, file_size, mime_type, created_at, uploaded_by')
-        .eq('task_id', params.taskId)
+        .eq('task_id', taskRef.id)
         .order('created_at', { ascending: false }),
       supabase
         .from('custom_fields')
@@ -95,7 +108,7 @@ export default async function TaskDetailPage({
       supabase
         .from('custom_field_values')
         .select('custom_field_id, value')
-        .eq('entity_id', params.taskId),
+        .eq('entity_id', taskRef.id),
     ])
 
   // PostgREST returns to-one embeds as objects; the generated types permit an
@@ -115,17 +128,8 @@ export default async function TaskDetailPage({
     .sort((a, b) => a.full_name.localeCompare(b.full_name))
 
   const projectBase = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}`
-
-  // The identity bar reads "ATL-241", so the task needs its project's key. The
-  // project layout already loaded the name, but a layout cannot hand data to
-  // its page, so this is the one extra round trip that buys the id.
-  const { data: project } = await supabase
-    .from('projects')
-    .select('name')
-    .eq('id', params.projectId)
-    .maybeSingle()
-  const projectName = project?.name ?? 'Project'
-  const prefix = projectKey(projectName)
+  const projectName = project.name
+  const prefix = project.key
 
   const fieldDefinitions: CustomFieldDefinition[] = (customFields ?? []).map((field) => ({
     id: field.id,
@@ -170,7 +174,7 @@ export default async function TaskDetailPage({
 
         <span className="ms-auto flex items-center gap-1.5">
           <Button asChild variant="subtle" size="sm">
-            <Link href={`${projectBase}/tasks/${task.id}/board`}>
+            <Link href={`${projectBase}/tasks/${taskRef.publicId}/board`}>
               <Columns3 className="h-3.5 w-3.5" aria-hidden />
               Subtask board
             </Link>
