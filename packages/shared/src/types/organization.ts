@@ -1,5 +1,5 @@
 import type { DateFormat, Locale, TimeFormat } from '../constants/locales'
-import type { PlanName } from '../constants/plans'
+import type { PlanTier } from '../constants/plans'
 import type { OrgRole, OrgStatus, WorkspaceRole } from '../constants/statuses'
 import type { Address, Timestamps, UUID, UserSummary } from './common'
 
@@ -96,7 +96,7 @@ export interface WorkspaceMember {
 /** Resolved tenant context for the current request. Built once in middleware. */
 export interface OrgContext {
   organization: Pick<Organization, 'id' | 'name' | 'slug' | 'status' | 'timezone' | 'currency'>
-  plan: PlanName
+  plan: PlanTier
   role: OrgRole
   user: UserSummary
 }

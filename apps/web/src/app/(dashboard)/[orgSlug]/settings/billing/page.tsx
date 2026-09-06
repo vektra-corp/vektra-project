@@ -1,16 +1,24 @@
 import { ORG_ADMIN_ROLES } from '@pm/auth/constants'
-import { PLAN_LIMITS, type PlanName } from '@pm/shared/constants'
-import { formatDate } from '@pm/shared/utils'
-import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@pm/ui'
+import { featureEnabled, limitFor } from '@pm/shared/billing'
+import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@pm/ui'
 import type { Metadata } from 'next'
 import { PageBody } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
 import { createClient } from '@/lib/supabase/server'
-import { startCheckout, openBillingPortal } from './actions'
 
 export const metadata: Metadata = { title: 'Billing' }
 
+/**
+ * What this organization is on, and what that includes.
+ *
+ * Everything here reads `auth.entitlements`, resolved by `org_entitlements()`
+ * rather than from `organizations.plan_id` — which is no longer the authority
+ * for anything, and which a tenant can no longer write (migration 00037).
+ *
+ * Checkout controls are deliberately absent until the Razorpay and PayPal
+ * paths land. A button that cannot complete a payment is worse than no button.
+ */
 export default async function BillingPage({ params }: { params: { orgSlug: string } }) {
   const auth = await requireAuthPage(params.orgSlug)
 
@@ -19,20 +27,10 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
 
   const supabase = createClient()
 
-  const [{ data: organization }, { data: plans }, { data: usage }, seatCount] = await Promise.all([
-    supabase
-      .from('organizations')
-      .select('id, name, status, trial_ends_at, stripe_customer_id, plan:plans(name, display_name)')
-      .eq('id', auth.orgId)
-      .maybeSingle(),
-    supabase
-      .from('plans')
-      .select('id, name, display_name, stripe_price_id_monthly')
-      .eq('is_active', true)
-      .order('sort_order'),
+  const [{ data: usage }, seatCount] = await Promise.all([
     supabase
       .from('usage_counters')
-      .select('metric, current_value, limit_value')
+      .select('metric, current_value')
       .eq('organization_id', auth.orgId),
     supabase
       .from('org_members')
@@ -40,124 +38,111 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
       .eq('organization_id', auth.orgId),
   ])
 
-  const planRow = Array.isArray(organization?.plan) ? organization?.plan[0] : organization?.plan
-  const currentPlan = (planRow?.name ?? 'starter') as PlanName
-  const limits = PLAN_LIMITS[currentPlan]
+  const { entitlements } = auth
+  const seats = seatCount.count ?? 0
 
   return (
-    <>
-      <PageBody>
-        <div className="max-w-3xl space-y-6">
-          <div>
-            <h1 className="text-head font-semibold">Billing</h1>
-            <p className="text-muted-foreground text-ui">
-              Manage your subscription and see what your plan includes.
-            </p>
-          </div>
+    <PageBody>
+      <div className="max-w-3xl space-y-6">
+        <div>
+          <h1 className="text-head font-semibold">Billing</h1>
+          <p className="text-muted-foreground text-ui">
+            Your current plan and what it includes.
+          </p>
+        </div>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <CardDescription>Current plan</CardDescription>
-                  <CardTitle className="flex items-center gap-2">
-                    {planRow?.display_name ?? 'Starter'}
-                    <Badge variant={organization?.status === 'active' ? 'secondary' : 'outline'}>
-                      {organization?.status}
-                    </Badge>
-                  </CardTitle>
-                </div>
-                {organization?.stripe_customer_id ? (
-                  <form action={openBillingPortal}>
-                    <Button type="submit" variant="outline">
-                      Manage subscription
-                    </Button>
-                  </form>
-                ) : null}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <CardDescription>Current plan</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  {entitlements.planDisplayName}
+                  <Badge variant={auth.orgStatus === 'active' ? 'secondary' : 'outline'}>
+                    {auth.orgStatus}
+                  </Badge>
+                </CardTitle>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-2 text-ui">
-              {organization?.trial_ends_at && organization.status === 'trial' ? (
-                <p className="text-muted-foreground">
-                  Trial ends{' '}
-                  {formatDate(organization.trial_ends_at, {
-                    locale: 'en',
-                    dateFormat: 'YYYY-MM-DD',
-                  })}
-                </p>
-              ) : null}
-              <p className="text-muted-foreground">
-                {seatCount.count ?? 0} {seatCount.count === 1 ? 'seat' : 'seats'} in use
-              </p>
-            </CardContent>
-          </Card>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2 text-ui">
+            <SourceNote source={entitlements.source} />
+            <p className="text-muted-foreground">
+              {seats} {seats === 1 ? 'seat' : 'seats'} in use
+            </p>
+          </CardContent>
+        </Card>
 
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Included in your plan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <Limit label="Projects" value={limitFor(entitlements, 'projects')} />
+              <Limit label="Portal users" value={limitFor(entitlements, 'portal_users')} />
+              <Limit
+                label="Workflows per workspace"
+                value={limitFor(entitlements, 'workflows_per_workspace')}
+              />
+              <Limit
+                label="Workflow runs per month"
+                value={limitFor(entitlements, 'workflow_runs_per_month')}
+              />
+              <Feature label="Gantt timeline" enabled={featureEnabled(entitlements, 'gantt')} />
+              <Feature
+                label="Commercial documents"
+                enabled={featureEnabled(entitlements, 'commercial')}
+              />
+              <Feature
+                label="Custom fields"
+                enabled={featureEnabled(entitlements, 'custom_fields')}
+              />
+              <Feature
+                label="Custom roles"
+                enabled={featureEnabled(entitlements, 'custom_roles')}
+              />
+            </dl>
+          </CardContent>
+        </Card>
+
+        {usage && usage.length > 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Included in your plan</CardTitle>
+              <CardTitle className="text-base">Usage this period</CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="grid gap-3 sm:grid-cols-2">
-                <Limit label="Projects" value={limits.projects} />
-                <Limit label="Portal users" value={limits.portal_users} />
-                <Limit label="Workflows per workspace" value={limits.workflows_per_workspace} />
-                <Limit label="Workflow runs per month" value={limits.workflow_runs_per_month} />
-                <Feature label="Gantt timeline" enabled={limits.gantt} />
-                <Feature label="Commercial documents" enabled={limits.commercial} />
-                <Feature label="Custom fields" enabled={limits.custom_fields} />
-                <Feature label="Custom roles" enabled={limits.custom_roles} />
+                {usage.map((row) => (
+                  <div key={row.metric} className="flex justify-between text-ui">
+                    <dt className="text-muted-foreground">{row.metric}</dt>
+                    <dd className="tabular-nums">{row.current_value}</dd>
+                  </div>
+                ))}
               </dl>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Change plan</CardTitle>
-              <CardDescription>Billed per seat, per month.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-3">
-              {(plans ?? []).map((plan) => (
-                <form key={plan.id} action={startCheckout}>
-                  <input type="hidden" name="plan_id" value={plan.id} />
-                  <Button
-                    type="submit"
-                    variant={plan.name === currentPlan ? 'secondary' : 'outline'}
-                    className="w-full"
-                    disabled={plan.name === currentPlan || !plan.stripe_price_id_monthly}
-                  >
-                    {plan.name === currentPlan
-                      ? `${plan.display_name} (current)`
-                      : plan.display_name}
-                  </Button>
-                </form>
-              ))}
-            </CardContent>
-          </Card>
-
-          {usage && usage.length > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Usage this period</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid gap-3 sm:grid-cols-2">
-                  {usage.map((row) => (
-                    <div key={row.metric} className="flex justify-between text-ui">
-                      <dt className="text-muted-foreground">{row.metric}</dt>
-                      <dd className="tabular-nums">
-                        {row.current_value}
-                        {row.limit_value ? ` / ${row.limit_value}` : ''}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </CardContent>
-            </Card>
-          ) : null}
-        </div>
-      </PageBody>
-    </>
+        ) : null}
+      </div>
+    </PageBody>
   )
+}
+
+/** Why this org has the plan it has. A comped or trial plan should say so. */
+function SourceNote({ source }: { source: string }) {
+  if (source === 'early_access') {
+    return <p className="text-muted-foreground">Early Access — granted, no charge.</p>
+  }
+  if (source === 'comp') {
+    return <p className="text-muted-foreground">Complimentary access — no charge.</p>
+  }
+  if (source === 'trial') {
+    return <p className="text-muted-foreground">Trial.</p>
+  }
+  if (source === 'starter_default') {
+    return <p className="text-muted-foreground">Free plan.</p>
+  }
+  return null
 }
 
 function Limit({ label, value }: { label: string; value: number | null }) {

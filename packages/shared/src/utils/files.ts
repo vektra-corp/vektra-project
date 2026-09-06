@@ -1,4 +1,3 @@
-import { PLAN_LIMITS, type PlanName } from '../constants/plans'
 
 /**
  * File upload rules (claude.md §13.9).
@@ -80,7 +79,8 @@ export type FileRejection =
  */
 export function validateUpload(
   file: { name: string; size: number; type: string },
-  plan: PlanName,
+  /** Ceiling from the org's resolved entitlements. `null` means unlimited. */
+  maxSizeBytes: number | null,
 ): FileRejection {
   const extension = extensionOf(file.name)
 
@@ -114,12 +114,11 @@ export function validateUpload(
     }
   }
 
-  const maxSize = PLAN_LIMITS[plan].max_file_size_bytes
-  if (file.size > maxSize) {
+  if (maxSizeBytes !== null && file.size > maxSizeBytes) {
     return {
       ok: false,
       code: 'FILE_TOO_LARGE',
-      message: `Files must be under ${Math.round(maxSize / 1_048_576)} MB on this plan`,
+      message: `Files must be under ${Math.round(maxSizeBytes / 1_048_576)} MB on this plan`,
     }
   }
 

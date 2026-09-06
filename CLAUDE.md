@@ -17,7 +17,7 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 
 **Core hierarchy:** Organization → Workspace → Project → Task → Subtask
 
-**Monetization:** three Stripe subscription tiers (Starter, Growth, Enterprise) billed per seat per month.
+**Monetization:** three subscription tiers (Starter, Growth, Enterprise) billed per seat per month, plus operator-created custom plans. Payments run through **Razorpay** for Indian organizations and **PayPal** for everyone else, chosen server-side from the organization's billing country.
 
 ---
 
@@ -25,7 +25,7 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 
 - Multi-tenant isolation enforced at the **database level** (RLS on every table), not just app code.
 - All three clients (web, admin, future mobile) consume the **same API layer** — no client-specific backends.
-- All external service calls (Stripe, email, AI, integrations) go through the **API layer**, never directly from the client.
+- All external service calls (payment gateways, email, AI, integrations) go through the **API layer**, never directly from the client.
 - Every mutation emits an **event** to the events table — this powers workflows, activity feeds, audit logs, and integrations.
 - **Denormalize `organization_id`** onto every table for fast RLS checks — never rely on joins through parent tables for tenant isolation.
 - Prefer **server components** for data fetching, **client components** only when interactivity is required.
@@ -47,10 +47,11 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 | Auth | Supabase Auth | included | JWT with custom claims (org_id, org_role) |
 | Storage | Supabase Storage | included | S3-backed, signed URLs, CDN-fronted |
 | Realtime | Supabase Realtime | included | Postgres changes + broadcast channels |
-| Edge Functions | Supabase Edge Functions | Deno | Stripe webhooks, PDF gen, AI orchestration |
+| Edge Functions | Supabase Edge Functions | Deno | PDF gen, AI orchestration |
 | Background jobs | Inngest | free tier | Durable execution: imports, exports, workflows, digests |
 | Cache | Upstash Redis | free tier | Rate limiting, session cache, job locks |
-| Payments | Stripe Billing | API v2024 | Subscriptions, proration, dunning |
+| Payments (India) | Razorpay Subscriptions | API v1 | e-mandate / UPI Autopay, INR, 18% GST |
+| Payments (rest of world) | PayPal Subscriptions | API v1 | Billing agreements, USD, zero-rated export |
 | Email | Resend | free→paid | DKIM/SPF/DMARC on your domain from day one |
 | Monitoring | Sentry | free→paid | Source maps, performance, session replay |
 | Uptime | Better Stack | free tier | Status page, log aggregation, alerting |
@@ -126,7 +127,8 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 │   │   │   │   │   └── layout.tsx   # Sidebar + topbar
 │   │   │   │   ├── api/
 │   │   │   │   │   ├── webhooks/
-│   │   │   │   │   │   ├── stripe/route.ts
+│   │   │   │   │   │   ├── razorpay/route.ts
+│   │   │   │   │   │   ├── paypal/route.ts
 │   │   │   │   │   │   └── integrations/[integrationId]/route.ts
 │   │   │   │   │   ├── inngest/route.ts
 │   │   │   │   │   └── cron/
@@ -150,7 +152,7 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 │   │   │   │   │   ├── server.ts     # Server component client
 │   │   │   │   │   ├── middleware.ts  # Middleware client
 │   │   │   │   │   └── admin.ts      # Service role client (server only)
-│   │   │   │   ├── stripe.ts
+│   │   │   │   ├── payments/
 │   │   │   │   ├── inngest.ts
 │   │   │   │   └── utils.ts
 │   │   │   └── styles/
@@ -267,8 +269,6 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 │   │   ├── 00008_admin.sql
 │   │   └── 00009_rls_policies.sql
 │   ├── functions/                     # Supabase Edge Functions
-│   │   ├── stripe-webhook/
-│   │   │   └── index.ts
 │   │   ├── pdf-generator/
 │   │   │   └── index.ts
 │   │   ├── workflow-engine/
@@ -323,9 +323,15 @@ pnpm dev:admin    # Admin portal only at localhost:3001
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=          # Server-side only, never exposed to client
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+RAZORPAY_WEBHOOK_SECRET=
+NEXT_PUBLIC_RAZORPAY_KEY_ID=
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_WEBHOOK_ID=
+BILLING_SELLER_GSTIN=
+BILLING_SELLER_STATE=
 RESEND_API_KEY=
 INNGEST_EVENT_KEY=
 INNGEST_SIGNING_KEY=
@@ -1086,6 +1092,67 @@ CREATE TABLE feature_flags (
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
 ```
+
+### 6.8b Billing & payments (migration `00037`)
+
+Stripe was removed. Razorpay serves India, PayPal serves everywhere else, and
+the gateway is derived server-side from `organizations.billing_country` — never
+chosen by the customer, because that choice is also a choice of tax regime.
+
+| Table | What it holds |
+|---|---|
+| `plan_prices` | Per-seat, **tax-exclusive** price per plan/currency/interval, in integer minor units |
+| `provider_plan_refs` | Gateway-side plan objects, created on demand, with the tax-inclusive amount they were created at |
+| `subscriptions` | **The entitlement authority.** One live row per org plus terminated history |
+| `payments` | The ledger: every attempt, successful or failed |
+| `payment_webhook_events` | Raw webhooks; `UNIQUE(provider, provider_event_id)` is the replay defence |
+| `billing_invoices` | Vektra Corporation GST invoices, with buyer and seller snapshot at issue |
+| `billing_invoice_sends` | Delivery attempts, so "resend" is auditable |
+| `billing_invoice_sequences` | Gapless per-FY counter — a table row, not a sequence, so it rolls back with the invoice |
+| `platform_audit_logs` | Operator actions, including platform-wide ones with no tenant |
+
+**Two live privilege-escalation holes were closed by this migration.** Both
+predate the payment work and both are worth understanding, because they are the
+reason the rules below are phrased the way they are.
+
+1. **A tenant could upgrade themselves for free.** `authenticated` holds full
+   DML on every table, and the `"Owners can update their organization"` policy
+   constrains only which ROW an owner may write, never which COLUMNS — RLS
+   cannot express a column. So an owner could `PATCH /rest/v1/organizations`
+   with `{"plan_id": "<enterprise>"}` using nothing but their own anon key, and
+   the enterprise plan id is readable by `anon` because the pricing page needs
+   the catalogue. Closed with `grant_columns_except()` on `organizations`, and
+   independently neutralised because entitlement no longer reads `plan_id` at
+   all.
+
+2. **A tenant could reset their own usage, or exhaust another tenant's.**
+   `increment_usage(org, metric, delta)` is `SECURITY DEFINER`, takes the
+   organization as an *argument*, and was granted to `authenticated` by the
+   blanket `GRANT EXECUTE ON ALL FUNCTIONS`. Closed by revoking it and adding
+   `increment_usage_self()`, which takes the org from the JWT, plus
+   `can_create()` for the metrics that actually gate creation.
+
+**Rules for anything that touches billing:**
+
+- **No end-user session writes a billing table.** None of them has an INSERT,
+  UPDATE or DELETE policy, and the privilege is revoked outright. Every write
+  is the service role, from a signature-verified webhook or a background job.
+  Note that `ALTER DEFAULT PRIVILEGES` in `00009` grants `authenticated` full
+  DML on *newly created* tables, so a new billing table must revoke explicitly
+  and must enable RLS — neither is optional.
+- **Entitlement comes from `org_entitlements()`,** never from
+  `organizations.plan_id`. It is carried on every request by
+  `current_auth_context` and read through `featureEnabled()` / `limitFor()`
+  from `@pm/shared/billing`. The old `planHasFeature(planName, …)` was removed:
+  keyed on a plan's name, it granted an operator-created custom plan nothing.
+- **The client never sends an amount.** A checkout names a plan; the price is
+  read from `plan_prices` and the seat count from `billable_seats()`.
+- **`payments.amount_mismatch` is a generated column.** If the gateway charged
+  something other than what we priced, entitlement is withheld and the row is
+  surfaced to operators.
+- **Caps recount rather than trust a counter** for `projects` and
+  `portal_users`. A counter is a number that can be desynchronised from
+  reality; `count(*)` is reality.
 
 ### 6.9 Utility functions
 
@@ -1923,8 +1990,23 @@ export function verifyCsrf(request: NextRequest): void {
 // - JWTs stored in httpOnly, Secure, SameSite=Lax cookies (Lax for OAuth redirects)
 // - Access tokens: 1-hour expiry. Refresh tokens: 30-day expiry with rotation.
 // - On every refresh, the old refresh token is invalidated (rotation).
-// - auth.getUser() is called in EVERY server action and API route — never trust
-//   the client's claim of identity.
+// - Identity is ALWAYS cryptographically established, never read from the cookie.
+//   Two ways satisfy that, and which one to use depends on the layer:
+//     * middleware  → auth.getUser(). Revalidates against the auth server, so a
+//       revoked session is stopped before any render. It also returns the
+//       enrolled MFA factor list, which is not a JWT claim and which the second
+//       -factor gate needs. This call is what makes revocation prompt.
+//     * renders and server actions → auth.getClaims(). The project signs with
+//       an asymmetric key (ES256), so this verifies the signature locally
+//       against the cached JWKS — a forged or tampered cookie fails exactly as
+//       it would at the auth server, with no round trip. Revocation is already
+//       covered by the middleware call on the same request, so repeating
+//       getUser() here only paid for the same fact twice.
+//   auth.getSession() remains forbidden everywhere: it decodes without
+//   verifying, so it is trivially forgeable.
+//   If the project is ever moved back to a symmetric JWT secret, getClaims()
+//   falls back to getUser() by itself and everything stays correct — it just
+//   stops being free. See apps/web/src/lib/auth/jwks.ts.
 // - MFA (TOTP) is optional per user, enforceable per org on Enterprise tier.
 // - OAuth providers (Google, GitHub) go through Supabase Auth PKCE flow.
 // - Password requirements: minimum 8 chars, checked against haveibeenpwned API

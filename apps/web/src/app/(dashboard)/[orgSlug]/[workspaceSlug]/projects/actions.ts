@@ -65,7 +65,7 @@ export async function createProject(
     }
   }
 
-  await assertPlanLimit(supabase, auth.orgId, 'projects')
+  await assertPlanLimit(supabase, 'projects')
 
   // Nobody is asked for a key on the create form; one is derived from the name
   // and can be changed in project settings afterwards.
@@ -106,7 +106,7 @@ export async function createProject(
     role: 'owner',
   })
 
-  await incrementUsage(supabase, auth.orgId, 'projects')
+  await incrementUsage(supabase, 'projects')
   revalidatePath(`/${orgSlug}/${workspaceSlug}/projects`)
 
   // The caller redirects to this id, so it must be the one the URL uses.

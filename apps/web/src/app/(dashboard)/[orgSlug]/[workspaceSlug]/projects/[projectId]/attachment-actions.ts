@@ -1,12 +1,9 @@
 'use server'
 
 import { assertCan } from '@pm/auth/rbac'
-import {
-  SIGNED_URL_TTL_SECONDS,
-  attachmentPath,
-  validateUpload,
-  type PlanName,
-} from '@pm/shared'
+import { incrementUsage } from '@pm/db'
+import { SIGNED_URL_TTL_SECONDS, attachmentPath, validateUpload } from '@pm/shared'
+import { limitFor } from '@pm/shared/billing'
 import { appError } from '@pm/shared/errors'
 import { sanitizeFileName } from '@pm/shared/sanitize'
 import type { ActionResult } from '@pm/shared/types'
@@ -28,20 +25,6 @@ interface Scope {
   orgSlug: string
   workspaceSlug: string
   projectId: string
-}
-
-async function planFor(
-  supabase: ReturnType<typeof createClient>,
-  orgId: string,
-): Promise<PlanName> {
-  const { data } = await supabase
-    .from('organizations')
-    .select('plan:plans(name)')
-    .eq('id', orgId)
-    .maybeSingle()
-
-  const plan = Array.isArray(data?.plan) ? data?.plan[0] : data?.plan
-  return (plan?.name ?? 'starter') as PlanName
 }
 
 /**
@@ -73,24 +56,24 @@ export async function createUploadUrl(
     return { ok: false, code: 'NOT_FOUND', message: 'Task not found' }
   }
 
-  const plan = await planFor(supabase, auth.orgId)
-
-  const verdict = validateUpload(file, plan)
+  // Both ceilings come from the resolved entitlements rather than from a plan
+  // name or from usage_counters.limit_value, so a custom plan is honoured and a
+  // tampered counter cannot widen them.
+  const verdict = validateUpload(file, limitFor(auth.entitlements, 'max_file_size_bytes'))
   if (!verdict.ok) {
     return { ok: false, code: verdict.code, message: verdict.message }
   }
 
-  // Storage quota is metered per org (§17).
+  // Storage quota is metered per org (§17). The ceiling is the plan's; only the
+  // running total comes from the counter.
   const { data: usage } = await supabase
     .from('usage_counters')
-    .select('current_value, limit_value')
+    .select('current_value')
     .eq('organization_id', auth.orgId)
     .eq('metric', 'storage_bytes')
     .maybeSingle()
 
-  // No counter row yet means nothing has been uploaded; a null limit is
-  // unlimited. Only an explicit numeric ceiling can reject the upload.
-  const storageLimit = usage?.limit_value ?? null
+  const storageLimit = limitFor(auth.entitlements, 'storage_bytes')
   if (storageLimit !== null && (usage?.current_value ?? 0) + file.size > storageLimit) {
     return {
       ok: false,
@@ -178,11 +161,7 @@ export async function recordAttachment(
     return { ok: false, code: 'INTERNAL_ERROR', message: error.message }
   }
 
-  await supabase.rpc('increment_usage', {
-    org: auth.orgId,
-    p_metric: 'storage_bytes',
-    p_delta: input.size,
-  })
+  await incrementUsage(supabase, 'storage_bytes', input.size)
 
   revalidatePath(`/${scope.orgSlug}/${scope.workspaceSlug}/projects/${scope.projectId}`)
   return { ok: true, data: null }
@@ -225,7 +204,9 @@ export async function deleteAttachment(
   scope: Scope,
   attachmentId: string,
 ): Promise<ActionResult<null>> {
-  const auth = await requireAuth(scope.orgSlug)
+  // Called for the gate, not for a value: it establishes the session and the
+  // tenant before any query runs. Deletion is then scoped by RLS.
+  await requireAuth(scope.orgSlug)
   const supabase = createClient()
 
   const { data: attachment } = await supabase
@@ -241,11 +222,7 @@ export async function deleteAttachment(
   if (error) return { ok: false, code: 'FORBIDDEN', message: 'Not permitted' }
 
   await supabase.storage.from('attachments').remove([attachment.storage_path])
-  await supabase.rpc('increment_usage', {
-    org: auth.orgId,
-    p_metric: 'storage_bytes',
-    p_delta: -attachment.file_size,
-  })
+  await incrementUsage(supabase, 'storage_bytes', -attachment.file_size)
 
   revalidatePath(`/${scope.orgSlug}/${scope.workspaceSlug}/projects/${scope.projectId}`)
   return { ok: true, data: null }

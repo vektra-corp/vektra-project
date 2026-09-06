@@ -12,9 +12,9 @@
 -- Plans — mirrors PLAN_LIMITS in packages/shared/src/constants/plans.ts
 -- -----------------------------------------------------------------------------
 
-INSERT INTO plans (name, display_name, sort_order, limits, features) VALUES
+INSERT INTO plans (name, tier, display_name, sort_order, limits, features) VALUES
 (
-  'starter', 'Starter', 1,
+  'starter', 'starter', 'Starter', 1,
   '{"projects": 10, "storage_bytes": 1073741824, "max_file_size_bytes": 10485760,
     "portal_users": 0, "workflows_per_workspace": 3, "workflow_runs_per_month": 500,
     "documents_per_project": 5}'::jsonb,
@@ -23,7 +23,7 @@ INSERT INTO plans (name, display_name, sort_order, limits, features) VALUES
     "api_access": false}'::jsonb
 ),
 (
-  'growth', 'Growth', 2,
+  'growth', 'growth', 'Growth', 2,
   '{"projects": null, "storage_bytes": 10737418240, "max_file_size_bytes": 52428800,
     "portal_users": 5, "workflows_per_workspace": 20, "workflow_runs_per_month": 5000,
     "documents_per_project": null}'::jsonb,
@@ -32,7 +32,7 @@ INSERT INTO plans (name, display_name, sort_order, limits, features) VALUES
     "api_access": false}'::jsonb
 ),
 (
-  'enterprise', 'Enterprise', 3,
+  'enterprise', 'enterprise', 'Enterprise', 3,
   '{"projects": null, "storage_bytes": null, "max_file_size_bytes": 104857600,
     "portal_users": null, "workflows_per_workspace": null,
     "workflow_runs_per_month": 50000, "documents_per_project": null}'::jsonb,
@@ -41,6 +41,28 @@ INSERT INTO plans (name, display_name, sort_order, limits, features) VALUES
     "api_access": true}'::jsonb
 )
 ON CONFLICT (name) DO NOTHING;
+
+-- -----------------------------------------------------------------------------
+-- Plan prices — DEVELOPMENT PLACEHOLDERS
+--
+-- Tax-exclusive, per seat, per month, in minor units (paise / cents). These are
+-- not the real prices: production values are set by an operator through the
+-- admin console. They exist so a local checkout has something to sell.
+-- -----------------------------------------------------------------------------
+
+INSERT INTO plan_prices (plan_id, currency, billing_interval, unit_amount_minor)
+SELECT p.id, v.currency, 'monthly', v.amount
+FROM plans p
+JOIN (VALUES
+  ('starter',    'INR', 49900::bigint),   -- Rs 499 / seat / month, ex-GST
+  ('starter',    'USD',  900::bigint),    -- $9
+  ('growth',     'INR', 99900::bigint),   -- Rs 999
+  ('growth',     'USD', 1900::bigint),    -- $19
+  ('enterprise', 'INR', 249900::bigint),  -- Rs 2499
+  ('enterprise', 'USD', 4900::bigint)     -- $49
+) AS v(plan_name, currency, amount) ON v.plan_name = p.name
+WHERE p.organization_id IS NULL
+ON CONFLICT (plan_id, currency, billing_interval) DO NOTHING;
 
 -- -----------------------------------------------------------------------------
 -- Feature flags

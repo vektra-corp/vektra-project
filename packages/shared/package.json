@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./constants": "./src/constants/index.ts",
+    "./billing": "./src/billing/index.ts",
     "./types": "./src/types/index.ts",
     "./validators": "./src/validators/index.ts",
     "./utils": "./src/utils/index.ts",

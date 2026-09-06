@@ -1,5 +1,5 @@
 import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
-import { PLAN_LIMITS, type PlanName } from '@pm/shared/constants'
+import { limitFor } from '@pm/shared/billing'
 import type { Metadata } from 'next'
 import { PageBody } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
@@ -52,8 +52,7 @@ export default async function PortalSettingsPage({ params }: { params: { orgSlug
 
   // Portal seats are a plan limit (§17). Starter has none, so the invite button
   // is disabled rather than failing after the fact.
-  const plan = (auth.planName ?? 'starter') as PlanName
-  const seatLimit = PLAN_LIMITS[plan]?.portal_users ?? null
+  const seatLimit = limitFor(auth.entitlements, 'portal_users')
 
   return (
     <PageBody>

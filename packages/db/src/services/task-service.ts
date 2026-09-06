@@ -22,7 +22,7 @@ export interface CreateTaskInput extends Omit<TablesInsert<'tasks'>, 'organizati
 export async function createTask(db: Db, input: CreateTaskInput) {
   const { orgId, userId, labelIds = [], ...task } = input
 
-  await assertPlanLimit(db, orgId, 'tasks')
+  await assertPlanLimit(db, 'tasks')
 
   // Business rule 3: a card always sits in a column, and the column determines
   // the status. When the caller does not name one, use the board's first column.
@@ -72,7 +72,7 @@ export async function createTask(db: Db, input: CreateTaskInput) {
     )
   }
 
-  await incrementUsage(db, orgId, 'tasks')
+  await incrementUsage(db, 'tasks')
   return created
 }
 
@@ -205,9 +205,12 @@ export function positionForDrop(
 }
 
 export async function deleteTask(db: Db, taskId: string, orgId: string) {
-  const result = await db.from('tasks').delete().eq('id', taskId)
+  // Scoped by org as well as id. RLS already prevents reaching another tenant's
+  // task, but stating it here means a service-role caller — which bypasses RLS —
+  // cannot delete across tenants by passing only an id.
+  const result = await db.from('tasks').delete().eq('id', taskId).eq('organization_id', orgId)
   if (result.error) throw result.error
-  await incrementUsage(db, orgId, 'tasks', -1)
+  await incrementUsage(db, 'tasks', -1)
 }
 
 /** Progress across a task's subtasks, for the card's progress bar. */

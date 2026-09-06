@@ -1,5 +1,5 @@
 import { can } from '@pm/auth/rbac'
-import { PLAN_LIMITS, type PlanName } from '@pm/shared/constants'
+import { featureEnabled } from '@pm/shared/billing'
 import { publicIdToString, todayIn } from '@pm/shared/utils'
 import { Button } from '@pm/ui'
 import { Lock } from 'lucide-react'
@@ -44,8 +44,7 @@ export default async function TimelinePage({
 
   // Gantt is a paid feature (§17). Gate it here rather than rendering an empty
   // chart, so the reason is legible instead of looking broken.
-  const plan = (auth.planName ?? 'starter') as PlanName
-  if (!PLAN_LIMITS[plan]?.gantt) {
+  if (!featureEnabled(auth.entitlements, 'gantt')) {
     return (
       <>
         <div className="px-5 py-3">

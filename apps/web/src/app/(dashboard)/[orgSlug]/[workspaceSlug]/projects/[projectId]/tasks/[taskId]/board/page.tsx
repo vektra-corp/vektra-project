@@ -1,5 +1,5 @@
 import { can } from '@pm/auth/rbac'
-import { PLAN_LIMITS, type PlanName } from '@pm/shared/constants'
+import { featureEnabled } from '@pm/shared/billing'
 import { todayIn } from '@pm/shared/utils'
 import { Button } from '@pm/ui'
 import { ArrowLeft, Lock } from 'lucide-react'
@@ -58,8 +58,7 @@ export default async function SubtaskBoardPage({
   // A paid feature (§17). Gated here rather than rendering an empty board, so
   // the reason is legible instead of looking broken — and gated before
   // provisioning, so a Starter org never accumulates board rows it cannot use.
-  const plan = (auth.planName ?? 'starter') as PlanName
-  if (!PLAN_LIMITS[plan]?.subtask_kanban) {
+  if (!featureEnabled(auth.entitlements, 'subtask_kanban')) {
     return (
       <PageBody className="pt-4">
         <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">

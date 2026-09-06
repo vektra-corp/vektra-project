@@ -50,12 +50,18 @@ export const PLAN_LIMITS = {
   },
 } as const
 
-export type PlanName = keyof typeof PLAN_LIMITS
-export type PlanLimits = (typeof PLAN_LIMITS)[PlanName]
+/**
+ * The plan FAMILY. Since 00037 a plan's `name` is a free-form key (so an
+ * operator can create `acme-growth-2026` for one tenant), which means the name
+ * can no longer answer "which family is this". `tier` can, and it is what
+ * "downgrade to Starter" and the missing-limit fallback both read.
+ */
+export const PLAN_TIERS = ['starter', 'growth', 'enterprise'] as const
+export type PlanTier = (typeof PLAN_TIERS)[number]
 
-export const PLAN_NAMES = ['starter', 'growth', 'enterprise'] as const
+export type PlanLimits = (typeof PLAN_LIMITS)[PlanTier]
 
-export const PLAN_DISPLAY_NAMES: Record<PlanName, string> = {
+export const PLAN_DISPLAY_NAMES: Record<PlanTier, string> = {
   starter: 'Starter',
   growth: 'Growth',
   enterprise: 'Enterprise',
@@ -72,6 +78,19 @@ export const METERED_METRICS = [
 
 export type MeteredMetric = (typeof METERED_METRICS)[number]
 
+/** Numeric keys inside a plan's `limits` jsonb. */
+export const PLAN_LIMIT_KEYS = [
+  'projects',
+  'storage_bytes',
+  'max_file_size_bytes',
+  'portal_users',
+  'workflows_per_workspace',
+  'workflow_runs_per_month',
+  'documents_per_project',
+] as const
+
+export type PlanLimitKey = (typeof PLAN_LIMIT_KEYS)[number]
+
 /** Boolean capability gates. Keys match PLAN_LIMITS boolean fields. */
 export const PLAN_FEATURES = [
   'custom_fields',
@@ -85,19 +104,15 @@ export const PLAN_FEATURES = [
 
 export type PlanFeature = (typeof PLAN_FEATURES)[number]
 
-/** Whether a plan includes a boolean feature. Fails closed on an unknown plan (§2). */
-export function planHasFeature(plan: PlanName | null | undefined, feature: PlanFeature): boolean {
-  if (!plan) return false
-  const limits = PLAN_LIMITS[plan] as Record<string, unknown> | undefined
-  return limits?.[feature] === true
-}
-
-/** Numeric ceiling for a metric on a plan. `null` means unlimited. */
-export function planLimitFor(
-  plan: PlanName,
-  metric: 'projects' | 'storage_bytes' | 'max_file_size_bytes' | 'portal_users',
-): number | null {
-  return PLAN_LIMITS[plan][metric]
-}
+/**
+ * `planHasFeature` and `planLimitFor` used to live here, keyed on the plan's
+ * name. They were removed in 00037: a name-keyed lookup cannot describe an
+ * operator-created custom plan, so such a plan gated exactly like Starter no
+ * matter what its `features` jsonb said.
+ *
+ * Use `featureEnabled()` and `limitFor()` from `@pm/shared/billing` instead.
+ * They read the plan's own jsonb, resolved per request by `org_entitlements()`,
+ * and fall back to the tables above only as a floor.
+ */
 
 export const TRIAL_DAYS = 14

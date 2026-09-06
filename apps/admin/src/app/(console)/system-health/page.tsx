@@ -111,8 +111,13 @@ export default async function SystemHealthPage() {
 
   // Presence only. The values are secrets and must never reach a rendered page.
   const configuration: { label: string; configured: boolean }[] = [
-    { label: 'Stripe secret key', configured: Boolean(process.env.STRIPE_SECRET_KEY) },
-    { label: 'Stripe webhook secret', configured: Boolean(process.env.STRIPE_WEBHOOK_SECRET) },
+    { label: 'Razorpay key secret', configured: Boolean(process.env.RAZORPAY_KEY_SECRET) },
+    {
+      label: 'Razorpay webhook secret',
+      configured: Boolean(process.env.RAZORPAY_WEBHOOK_SECRET),
+    },
+    { label: 'PayPal client secret', configured: Boolean(process.env.PAYPAL_CLIENT_SECRET) },
+    { label: 'PayPal webhook id', configured: Boolean(process.env.PAYPAL_WEBHOOK_ID) },
     { label: 'Resend API key', configured: Boolean(process.env.RESEND_API_KEY) },
     { label: 'Inngest signing key', configured: Boolean(process.env.INNGEST_SIGNING_KEY) },
     { label: 'Upstash Redis', configured: Boolean(process.env.UPSTASH_REDIS_REST_URL) },
