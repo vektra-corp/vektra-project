@@ -152,7 +152,7 @@ jobs:
     needs: [verify, changed, migrate]
     environment:
       name: production
-      url: https://project.vektracorp.in
+      url: https://projects.vektracorp.in
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -194,7 +194,7 @@ jobs:
         run: |
           set -euo pipefail
           for url in \
-            "https://project.vektracorp.in/login" \
+            "https://projects.vektracorp.in/login" \
             "https://admin.vektracorp.in/project/login"; do
             code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 --retry 5 --retry-delay 5 "$url")
             echo "$url -> $code"

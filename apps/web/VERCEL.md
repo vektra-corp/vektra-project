@@ -7,7 +7,7 @@ Set these in the project's dashboard; the file next to this one covers the rest.
 | Root Directory | `apps/web` |
 | Include files outside root directory | **On** — the build needs `packages/*` and the lockfile |
 | Node.js version | 20.x |
-| Production domain | `project.vektracorp.in` |
+| Production domain | `projects.vektracorp.in` |
 
 `regions: ["bom1"]` in `vercel.json` is Mumbai. It is set deliberately: the
 Supabase project is in `ap-southeast-2` (Sydney), and every server-rendered page

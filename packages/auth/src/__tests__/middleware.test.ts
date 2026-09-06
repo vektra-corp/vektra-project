@@ -244,14 +244,14 @@ describe('isAllowedOrigin — configured URLs that carry a path', () => {
   // subdomain is shared across products. An Origin header never has a path, so
   // a string comparison against the configured URL would never match and every
   // admin mutation would be refused as CSRF.
-  const configured = ['https://project.vektracorp.in', 'https://admin.vektracorp.in/project']
+  const configured = ['https://projects.vektracorp.in', 'https://admin.vektracorp.in/project']
 
   it('matches an origin against a configured URL that has a path', () => {
     expect(isAllowedOrigin('https://admin.vektracorp.in', configured)).toBe(true)
   })
 
   it('still matches a plain configured origin', () => {
-    expect(isAllowedOrigin('https://project.vektracorp.in', configured)).toBe(true)
+    expect(isAllowedOrigin('https://projects.vektracorp.in', configured)).toBe(true)
   })
 
   it('refuses a different host', () => {
@@ -263,8 +263,8 @@ describe('isAllowedOrigin — configured URLs that carry a path', () => {
   })
 
   it('treats scheme and port as part of the origin', () => {
-    expect(isAllowedOrigin('http://project.vektracorp.in', configured)).toBe(false)
-    expect(isAllowedOrigin('https://project.vektracorp.in:8443', configured)).toBe(false)
+    expect(isAllowedOrigin('http://projects.vektracorp.in', configured)).toBe(false)
+    expect(isAllowedOrigin('https://projects.vektracorp.in:8443', configured)).toBe(false)
   })
 
   it('refuses a missing or unparseable origin', () => {
@@ -274,7 +274,7 @@ describe('isAllowedOrigin — configured URLs that carry a path', () => {
   })
 
   it('refuses everything when nothing is configured', () => {
-    expect(isAllowedOrigin('https://project.vektracorp.in', [])).toBe(false)
-    expect(isAllowedOrigin('https://project.vektracorp.in', [undefined])).toBe(false)
+    expect(isAllowedOrigin('https://projects.vektracorp.in', [])).toBe(false)
+    expect(isAllowedOrigin('https://projects.vektracorp.in', [undefined])).toBe(false)
   })
 })

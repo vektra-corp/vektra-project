@@ -4,7 +4,7 @@ One repository, two Vercel projects, two subdomains of `vektracorp.in`.
 
 | App | Vercel root directory | URL |
 |---|---|---|
-| `apps/web` | `apps/web` | `https://project.vektracorp.in` |
+| `apps/web` | `apps/web` | `https://projects.vektracorp.in` |
 | `apps/admin` | `apps/admin` | `https://admin.vektracorp.in/project` |
 
 The admin console is mounted at a **path** because `admin.vektracorp.in` is
@@ -72,7 +72,7 @@ outside root directory** (the build needs `packages/*` and the lockfile), Node
 Set the environment variables from `.env.example` on both, for Production and
 Preview. Note especially:
 
-- `NEXT_PUBLIC_APP_URL=https://project.vektracorp.in`
+- `NEXT_PUBLIC_APP_URL=https://projects.vektracorp.in`
 - `NEXT_PUBLIC_ADMIN_URL=https://admin.vektracorp.in/project`
 - `INNGEST_SIGNING_KEY` — **currently empty.** It is the only thing
   authenticating `/api/inngest`, which is excluded from auth middleware because
@@ -85,7 +85,7 @@ Preview. Note especially:
 Two CNAMEs at the registrar, both to `cname.vercel-dns.com`:
 
 ```
-project.vektracorp.in   CNAME   cname.vercel-dns.com
+projects.vektracorp.in   CNAME   cname.vercel-dns.com
 admin.vektracorp.in     CNAME   cname.vercel-dns.com
 ```
 
@@ -93,8 +93,8 @@ Vercel issues and renews the certificates.
 
 ### 4. Supabase
 
-- **Auth → URL Configuration:** Site URL `https://project.vektracorp.in`, and add
-  `https://project.vektracorp.in/auth/callback` to the redirect allow-list.
+- **Auth → URL Configuration:** Site URL `https://projects.vektracorp.in`, and add
+  `https://projects.vektracorp.in/auth/callback` to the redirect allow-list.
   Invites and portal links break without it.
 - **Auth → SMTP and Email Templates:** both are set by
   `SUPABASE_ACCESS_TOKEN=sbp_... pnpm auth:configure`, which is the supported
@@ -106,13 +106,13 @@ Vercel issues and renews the certificates.
 
 ### 5. Stripe
 
-- Webhook endpoint → `https://project.vektracorp.in/api/webhooks/stripe`
+- Webhook endpoint → `https://projects.vektracorp.in/api/webhooks/stripe`
 - Put the **new** signing secret in `STRIPE_WEBHOOK_SECRET`. It differs per
   endpoint; the test-mode one will not verify.
 
 ### 6. Inngest
 
-- App URL → `https://project.vektracorp.in/api/inngest`
+- App URL → `https://projects.vektracorp.in/api/inngest`
 - Set `INNGEST_EVENT_KEY` and `INNGEST_SIGNING_KEY`.
 - Confirm the route reports `{"function_count":9}`.
 
