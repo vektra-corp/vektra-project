@@ -7,11 +7,20 @@
  * script introspects any Postgres connection directly and emits the same
  * `Database` shape the Supabase client expects.
  *
- *   node scripts/gen-types.mjs "postgresql://postgres@127.0.0.1:54322/postgres" \
- *     > packages/db/src/types.ts
+ *   node scripts/gen-types.mjs "postgres://..." --out packages/db/src/types.ts
+ *
+ * Prefer --out over `>`. The shell truncates the target before the command
+ * runs, so a generator that fails for any reason — an unreachable database, a
+ * missing `supabase link` — leaves an empty types.ts behind. That is not a
+ * loud failure: the Supabase client silently degrades to `any`, local
+ * typecheck still passes, and the build breaks later with an unrelated-looking
+ * "implicitly has an 'any' type" in whichever file happens to map over a
+ * relation. It has already cost one failed production deploy.
  *
  * Keep the two in sync: if the official generator's output ever differs, it wins.
  */
+import { renameSync, writeFileSync } from 'node:fs'
+
 import './load-env.mjs'
 import pg from 'pg'
 
@@ -347,4 +356,22 @@ out.push('')
 out.push('export type TableName = keyof PublicSchema["Tables"]')
 out.push('')
 
-process.stdout.write(out.join('\n'))
+const contents = out.join('\n')
+
+const outFlag = process.argv.indexOf('--out')
+if (outFlag === -1) {
+  process.stdout.write(contents)
+} else {
+  const target = process.argv[outFlag + 1]
+  if (!target) {
+    console.error('--out needs a path')
+    process.exit(1)
+  }
+  // Write beside the target and rename: rename is atomic within a filesystem,
+  // so the file is either the old contents or the complete new ones, never
+  // empty or half-written.
+  const temporary = `${target}.tmp`
+  writeFileSync(temporary, contents)
+  renameSync(temporary, target)
+  console.error(`Wrote ${target} (${contents.length} bytes)`)
+}
