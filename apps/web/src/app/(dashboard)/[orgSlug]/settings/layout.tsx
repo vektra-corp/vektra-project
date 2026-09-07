@@ -50,8 +50,11 @@ export default async function SettingsLayout({
   return (
     <>
       <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: 'Settings' }]} />
-      <SettingsNav orgSlug={params.orgSlug} tabs={tabs} />
-      {children}
+      {/* Rail beside the panel, both filling what the topbar leaves. */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <SettingsNav orgSlug={params.orgSlug} tabs={tabs} />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+      </div>
     </>
   )
 }

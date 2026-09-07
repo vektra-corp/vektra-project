@@ -4,6 +4,7 @@ import { Button } from '@pm/ui'
 import { useTranslations } from 'next-intl'
 import { useFormStatus } from 'react-dom'
 import { signInWithGoogle } from './actions'
+import { AuthDivider } from './auth-card'
 
 /** Google's mark, inlined so the button renders before any network round trip. */
 function GoogleMark() {
@@ -32,7 +33,7 @@ function GoogleMark() {
 function GoogleButton({ label }: { label: string }) {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" variant="subtle" className="w-full" loading={pending}>
+    <Button type="submit" variant="subtle" size="lg" className="w-full rounded-[9px]" loading={pending}>
       {pending ? null : <GoogleMark />}
       {label}
     </Button>
@@ -53,17 +54,16 @@ export function SocialAuth({ next }: { next?: string }) {
   const t = useTranslations('auth')
 
   return (
-    <div className="mt-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <span className="h-px flex-1 bg-border" />
-        <span className="text-xs text-faint">{t('continue_with')}</span>
-        <span className="h-px flex-1 bg-border" />
-      </div>
+    <>
+      {/* The AuthCard already sets the 22px rhythm between blocks, so the
+          divider and the button are siblings in it rather than a nested stack
+          with a margin of its own. */}
+      <AuthDivider label={t('continue_with')} />
 
       <form action={signInWithGoogle}>
         {next ? <input type="hidden" name="next" value={next} /> : null}
         <GoogleButton label={t('continue_with_google')} />
       </form>
-    </div>
+    </>
   )
 }

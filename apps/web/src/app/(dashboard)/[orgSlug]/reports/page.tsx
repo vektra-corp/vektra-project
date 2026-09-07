@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, Badge, Card, CardContent } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getLocale } from 'next-intl/server'
-import { PageBody } from '@/components/layout/page-body'
+import { PageBody, SectionHeader } from '@/components/layout/page-body'
 import { Topbar } from '@/components/layout/topbar'
 import { ReportFilters } from '@/components/reports/report-filters'
 import { DueDate, TaskPriorityIcon, TaskStatusBadge } from '@/components/tasks/task-badges'
@@ -181,14 +181,13 @@ export default async function ReportsPage({
   return (
     <>
       <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: 'Task report' }]} />
+      <SectionHeader
+        title="Task report"
+        count={`${tasks?.length ?? 0} tasks${(tasks?.length ?? 0) === 100 ? ' (first 100)' : ''}`}
+      />
+
       <PageBody>
         <div className="space-y-4">
-          <div>
-            <h1 className="text-head font-semibold">Task report</h1>
-            <p className="text-muted-foreground text-ui">
-              {tasks?.length ?? 0} tasks{(tasks?.length ?? 0) === 100 ? ' (first 100)' : ''}
-            </p>
-          </div>
 
           <ReportFilters
             statuses={TASK_STATUSES}

@@ -2,7 +2,7 @@ import { publicIdToString, todayIn } from '@pm/shared/utils'
 import { DataTable, type DataTableColumn, Badge } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { PageBody } from '@/components/layout/page-body'
+import { PageBody, SectionHeader } from '@/components/layout/page-body'
 import { Topbar } from '@/components/layout/topbar'
 import { DueDate, TaskPriorityIcon, TaskStatusBadge } from '@/components/tasks/task-badges'
 import { requireAuthPage } from '@/lib/auth/context'
@@ -132,18 +132,17 @@ export default async function MyTasksPage({ params }: { params: { orgSlug: strin
 
   return (
     <>
-      <Topbar
-        orgSlug={params.orgSlug}
-        breadcrumb={[{ label: 'My tasks' }]}
-        meta={
-          overdue > 0 ? (
-            <Badge variant="destructive" shape="meta" className="ms-1">
-              {overdue} overdue
-            </Badge>
-          ) : null
-        }
-      />
-      <PageBody className="pt-2">
+      <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: 'My tasks' }]} />
+
+      <SectionHeader title="My tasks" count={`${rows.length} open`}>
+        {overdue > 0 ? (
+          <Badge variant="destructive" shape="id">
+            {overdue} overdue
+          </Badge>
+        ) : null}
+      </SectionHeader>
+
+      <PageBody className="p-0">
         <DataTable
           columns={columns}
           rows={rows}

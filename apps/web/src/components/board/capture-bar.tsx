@@ -1,7 +1,6 @@
 'use client'
 
-import { Button, Kbd, cn } from '@pm/ui'
-import { Plus } from 'lucide-react'
+import { cn } from '@pm/ui'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { createTask } from '@/app/(dashboard)/[orgSlug]/[workspaceSlug]/projects/[projectId]/actions'
@@ -80,15 +79,23 @@ export function CaptureBar({
   }
 
   return (
-    <div className="px-5">
+    /*
+     * The design gives capture its own strip under the section header: a panel
+     * ground, a card-coloured field inside it, and the parsed result on a second
+     * line beneath. The parse preview is part of the strip rather than crammed
+     * into the field, so a long title never pushes the chips out of view.
+     */
+    <div className="border-border bg-surface flex shrink-0 flex-col border-b px-5 py-3">
       <div
         className={cn(
-          'border-border-subtle bg-surface flex h-11 items-center gap-2.5 rounded-lg border px-3 transition-colors',
-          'focus-within:border-border',
+          'border-input bg-card flex items-center gap-2.5 rounded-[10px] border px-3 py-[9px] transition-colors',
+          'focus-within:border-ring',
           error && 'border-destructive/50',
         )}
       >
-        <Plus className="text-faint h-4 w-4 shrink-0" aria-hidden />
+        <span aria-hidden className="text-primary font-glyph shrink-0 text-base">
+          ＋
+        </span>
         <input
           ref={inputRef}
           value={value}
@@ -109,33 +116,38 @@ export function CaptureBar({
           disabled={pending}
           aria-label="Capture a task"
           placeholder="Capture anything — Ship read-only banner @jonas #infra !high ~3 fri"
-          className="placeholder:text-faint min-w-0 flex-1 bg-transparent text-base outline-none disabled:opacity-50"
+          className="placeholder:text-faint min-w-0 flex-1 bg-transparent text-task outline-none disabled:opacity-50"
         />
 
-        {hints.length > 0 ? (
-          <ul className="hidden shrink-0 items-center gap-1.5 lg:flex">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!parsed.title || pending}
+          className="border-input text-subtle hover:text-foreground shrink-0 rounded-[4px] border px-1.5 py-0.5 font-mono text-id uppercase transition-colors disabled:opacity-50"
+        >
+          ⏎ Create
+        </button>
+      </div>
+
+      {hints.length > 0 || error ? (
+        <div className="flex min-h-5 items-center gap-[7px] px-1 pt-[9px]">
+          <span className="label-meta-lg text-subtle shrink-0">Parsed</span>
+          <ul className="flex flex-wrap items-center gap-[7px]">
             {hints.map((hint) => (
-              <li key={hint.key} className={cn('label-meta rounded px-1.5 py-1', hint.className)}>
-                {hint.text}
+              <li
+                key={hint.key}
+                className="border-border bg-chip text-muted-foreground flex items-center gap-1.5 rounded-[6px] border px-2 py-[3px] text-micro"
+              >
+                <span className="text-subtle font-mono text-[8.5px] uppercase tracking-[0.1em]">
+                  {hint.kind}
+                </span>
+                <span className="text-foreground">{hint.text}</span>
               </li>
             ))}
           </ul>
-        ) : null}
-
-        <Button
-          type="button"
-          variant="subtle"
-          size="xs"
-          className="label-meta shrink-0 gap-1.5 px-2"
-          onClick={submit}
-          loading={pending}
-          disabled={!parsed.title}
-        >
-          {pending ? null : <Kbd className="h-4 min-w-0 border-0 bg-transparent px-0">⏎</Kbd>}
-          Create
-        </Button>
-      </div>
-      {error ? <p className="text-destructive pt-1.5 text-nav">{error}</p> : null}
+          {error ? <span className="text-destructive ms-auto text-micro">{error}</span> : null}
+        </div>
+      ) : null}
     </div>
   )
 }

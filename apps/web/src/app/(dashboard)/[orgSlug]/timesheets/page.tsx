@@ -1,10 +1,10 @@
 import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
 import { initials, todayIn } from '@pm/shared/utils'
-import { Avatar, AvatarFallback, Badge } from '@pm/ui'
+import { Avatar, AvatarFallback } from '@pm/ui'
 import { addDays, endOfWeek, format, startOfWeek, subDays } from 'date-fns'
 import type { Metadata } from 'next'
 import { Widget, WidgetEmpty } from '@/components/dashboard/widget'
-import { PageBody } from '@/components/layout/page-body'
+import { PageBody, SectionHeader } from '@/components/layout/page-body'
 import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
@@ -124,15 +124,12 @@ export default async function TimesheetsPage({
 
   return (
     <>
-      <Topbar
-        orgSlug={params.orgSlug}
-        breadcrumb={[{ label: 'Timesheets' }]}
-        meta={
-          isManager && (pending?.length ?? 0) > 0 ? (
-            <Badge variant="warning" shape="meta" className="ms-1">
-              {pending!.length} awaiting
-            </Badge>
-          ) : null
+      <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: 'Timesheet' }]} />
+
+      <SectionHeader
+        title="Timesheet"
+        count={
+          isManager && (pending?.length ?? 0) > 0 ? `${pending!.length} awaiting approval` : undefined
         }
       />
 
@@ -190,7 +187,7 @@ export default async function TimesheetsPage({
                   {pending.map((row) => {
                     const profile = one(row.profile)
                     return (
-                      <li key={row.id} className="flex items-center gap-3 px-4 py-2.5">
+                      <li key={row.id} className="flex items-center gap-2.5 py-2">
                         <Avatar className="h-6 w-6 shrink-0">
                           <AvatarFallback className="bg-surface-hover text-[9px] font-medium uppercase text-muted-foreground">
                             {initials(profile?.full_name ?? '?')}

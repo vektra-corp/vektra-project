@@ -1,7 +1,7 @@
 import { localeDirection } from '@pm/shared/constants'
 import { Toaster } from '@pm/ui'
 import type { Metadata, Viewport } from 'next'
-import { Montserrat, JetBrains_Mono } from 'next/font/google'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import type { ReactNode } from 'react'
@@ -10,12 +10,15 @@ import { ThemeScript } from '@/components/providers/theme-script'
 import './globals.css'
 
 /*
- * The design specifies Gotham, falling back to Montserrat. Gotham is licensed
- * and not redistributable, so Montserrat is what actually ships — it is the
- * fallback the design itself names, and the geometric sans the mark is drawn
- * against.
+ * Inter, at the four weights the design loads.
+ *
+ * This is the design's own stack — `font-family:'Inter',system-ui,sans-serif`
+ * on the root of every artboard — not a substitution. The app previously
+ * shipped Montserrat, whose wider, rounder letterforms changed the colour of
+ * every screen: Inter's tighter fit is what the design's 13px body and its
+ * -0.005em tracking are drawn for.
  */
-const sans = Montserrat({
+const sans = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-sans',

@@ -10,7 +10,7 @@ import {
 import { Badge } from '@pm/ui'
 import { SlidersHorizontal } from 'lucide-react'
 import type { Metadata } from 'next'
-import { PageBody } from '@/components/layout/page-body'
+import { SettingsPanel } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
 import { createClient } from '@/lib/supabase/server'
@@ -55,8 +55,8 @@ export default async function CustomFieldsPage({ params }: { params: { orgSlug: 
   }))
 
   return (
-    <PageBody>
-      <div className="max-w-3xl space-y-4">
+    <SettingsPanel>
+      <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-base text-muted-foreground">
             Extra fields on tasks, projects, contacts and commercial documents.
@@ -124,6 +124,6 @@ export default async function CustomFieldsPage({ params }: { params: { orgSlug: 
           })
         )}
       </div>
-    </PageBody>
+    </SettingsPanel>
   )
 }

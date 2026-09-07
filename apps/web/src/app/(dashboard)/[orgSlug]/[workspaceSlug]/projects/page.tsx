@@ -1,4 +1,5 @@
-import { initials, publicIdToString } from '@pm/shared/utils'
+import { can } from '@pm/auth/rbac'
+import { initials, publicIdToString, todayIn } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage, Button, Card, CardContent, cn } from '@pm/ui'
 import { FolderPlus } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -7,10 +8,17 @@ import { notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { PageBody } from '@/components/layout/page-body'
 import { Topbar } from '@/components/layout/topbar'
+import { ProjectListHeader } from '@/components/projects/project-list-header'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'Projects' }
+
+/**
+ * The design's six tracks, shared by the header and every row so the two can
+ * never drift out of alignment.
+ */
+const PROJECT_GRID = 'grid-cols-[1.9fr_0.8fr_0.7fr_1.1fr_0.8fr_0.6fr] gap-3.5'
 
 /**
  * Per-project identity colour.
@@ -72,8 +80,10 @@ function health(
 
 export default async function ProjectsPage({
   params,
+  searchParams,
 }: {
   params: { orgSlug: string; workspaceSlug: string }
+  searchParams?: { scope?: string }
 }) {
   const auth = await requireAuthPage(params.orgSlug)
   const t = await getTranslations('projects')
@@ -120,6 +130,18 @@ export default async function ProjectsPage({
     if (profile && !leads.has(row.project_id)) leads.set(row.project_id, profile)
   }
 
+  // Projects the viewer belongs to, for the "Mine" tab. Membership rather than
+  // leadership: a contributor's own list should not be empty because someone
+  // else owns every project they work on.
+  const { data: myRows } = ids.length
+    ? await supabase
+        .from('project_members')
+        .select('project_id')
+        .in('project_id', ids)
+        .eq('user_id', auth.userId)
+    : { data: [] }
+  const mine = new Set((myRows ?? []).map((row) => row.project_id))
+
   const stats = new Map<string, { total: number; done: number }>()
   for (const row of taskRows ?? []) {
     const entry = stats.get(row.project_id) ?? { total: 0, done: 0 }
@@ -129,7 +151,44 @@ export default async function ProjectsPage({
   }
 
   const base = `/${params.orgSlug}/${params.workspaceSlug}/projects`
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayIn(auth.orgTimezone)
+
+  // The design's three scope tabs. "Mine" is what you lead or contribute to;
+  // "At risk" is the derived health, so the tab and the column agree by
+  // construction rather than by two rules that could drift apart.
+  const scope = typeof searchParams?.scope === 'string' ? searchParams.scope : 'All'
+
+  const rows = (projects ?? [])
+    .map((project) => {
+      const stat = stats.get(project.id) ?? { total: 0, done: 0 }
+      const percent = stat.total === 0 ? 0 : Math.round((stat.done / stat.total) * 100)
+      const overdue = Boolean(project.end_date && project.end_date < today && percent < 100)
+      return {
+        id: project.id,
+        publicId: publicIdToString(project.public_id),
+        name: project.name,
+        client: project.description ?? 'Internal',
+        status: project.status,
+        percent,
+        overdue,
+        dot: dotFor(project.id),
+        lead: leads.get(project.id) ?? null,
+        isMine: mine.has(project.id),
+        health: health(percent, stat.total, project.end_date, today),
+        dueLabel: project.end_date
+          ? overdue
+            ? 'OVERDUE'
+            : new Date(project.end_date)
+                .toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+                .toUpperCase()
+          : '—',
+      }
+    })
+    .filter((row) => {
+      if (scope === 'Mine') return row.isMine
+      if (scope === 'At risk') return row.health.label === 'At risk' || row.health.label === 'Off track'
+      return true
+    })
 
   return (
     <>
@@ -137,139 +196,115 @@ export default async function ProjectsPage({
         orgSlug={params.orgSlug}
         breadcrumb={[{ label: workspace.name }, { label: t('title') }]}
       />
+      <ProjectListHeader
+        title={t('title')}
+        orgSlug={params.orgSlug}
+        workspaceSlug={params.workspaceSlug}
+        base={base}
+        canCreate={can(auth, 'projects', 'create')}
+      />
+
       <PageBody className="p-0">
-        <div className="flex items-center gap-3 px-5 py-3.5">
-          <h1 className="text-head font-semibold">{t('title')}</h1>
-          <span className="label-meta-lg text-subtle">{workspace.name}</span>
-          <Button asChild size="sm" className="ms-auto">
-            <Link href={`${base}/new`}>{t('create')}</Link>
-          </Button>
-        </div>
+        {rows.length > 0 ? (
+          <div>
+            {/* The design's six tracks. Repeated on the header and every row,
+                so they are declared once and shared. */}
+            <div className={cn(PROJECT_GRID, 'border-border label-meta-lg text-subtle grid border-b px-5 py-2.5')}>
+              <span>Project</span>
+              <span>Status</span>
+              <span>Lead</span>
+              <span>Progress</span>
+              <span>Due</span>
+              <span>Health</span>
+            </div>
 
-        {projects && projects.length > 0 ? (
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-border border-y">
-                <th className="label-meta text-subtle px-5 py-2 text-start font-normal">Project</th>
-                <th className="label-meta text-subtle py-2 pe-3 text-start font-normal">Status</th>
-                <th className="label-meta text-subtle py-2 pe-3 text-start font-normal">Lead</th>
-                <th className="label-meta text-subtle py-2 pe-3 text-start font-normal">
-                  Progress
-                </th>
-                <th className="label-meta text-subtle py-2 pe-3 text-start font-normal">Due</th>
-                <th className="label-meta text-subtle px-5 py-2 text-start font-normal">Health</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projects.map((project) => {
-                const stat = stats.get(project.id) ?? { total: 0, done: 0 }
-                const percent = stat.total === 0 ? 0 : Math.round((stat.done / stat.total) * 100)
-                const lead = leads.get(project.id)
-                const dot = dotFor(project.id)
-                const overdue = Boolean(
-                  project.end_date && project.end_date < today && percent < 100,
-                )
-                const state = health(percent, stat.total, project.end_date, today)
+            {rows.map((row) => (
+              <Link
+                key={row.id}
+                href={`${base}/${row.publicId}/overview`}
+                className={cn(
+                  PROJECT_GRID,
+                  'border-border hover:bg-surface-hover/40 grid items-center border-b px-5 py-3.5 transition-colors',
+                )}
+              >
+                <span className="flex items-center gap-2.5">
+                  <span
+                    aria-hidden
+                    className="h-[7px] w-[7px] shrink-0 rounded-sm"
+                    style={{ backgroundColor: row.dot }}
+                  />
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-foreground truncate text-task font-medium">
+                      {row.name}
+                    </span>
+                    <span className="text-faint truncate text-micro">{row.client}</span>
+                  </span>
+                </span>
 
-                return (
-                  <tr
-                    key={project.id}
-                    className="border-border hover:bg-surface-hover/40 border-b transition-colors"
+                <span
+                  className={cn(
+                    'bg-chip justify-self-start rounded-[5px] px-2 py-[3px] text-[11px] font-semibold uppercase',
+                    STATUS_TONE[row.status] ?? 'text-muted-foreground',
+                  )}
+                >
+                  {row.status.replace('_', ' ')}
+                </span>
+
+                {row.lead ? (
+                  <Avatar className="h-[22px] w-[22px]" title={row.lead.full_name}>
+                    {row.lead.avatar_url ? <AvatarImage src={row.lead.avatar_url} alt="" /> : null}
+                    <AvatarFallback className="bg-chip text-muted-foreground text-id font-semibold uppercase">
+                      {initials(row.lead.full_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <span className="text-subtle text-ui">—</span>
+                )}
+
+                <span className="flex items-center gap-[9px]">
+                  <span
+                    className="bg-chip block h-[5px] flex-1 overflow-hidden rounded-sm"
+                    role="progressbar"
+                    aria-valuenow={row.percent}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${row.name} progress`}
                   >
-                    <td className="px-5 py-3">
-                      <Link
-                        href={`${base}/${publicIdToString(project.public_id)}/board`}
-                        className="flex items-start gap-3"
-                      >
-                        <span
-                          aria-hidden
-                          className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-sm"
-                          style={{ backgroundColor: dot }}
-                        />
-                        <span className="min-w-0">
-                          <span className="text-foreground block truncate text-base font-semibold">
-                            {project.name}
-                          </span>
-                          {project.description ? (
-                            <span className="text-faint block truncate pt-0.5 text-ui">
-                              {project.description}
-                            </span>
-                          ) : null}
-                        </span>
-                      </Link>
-                    </td>
+                    <span
+                      className="block h-full rounded-sm"
+                      style={{ width: `${row.percent}%`, backgroundColor: row.dot }}
+                    />
+                  </span>
+                  <span className="text-faint font-mono text-col tabular-nums">{row.percent}%</span>
+                </span>
 
-                    <td className="py-3 pe-3">
-                      <span
-                        className={cn(
-                          'bg-chip inline-flex rounded-sm px-2 py-[3px] text-micro font-medium uppercase',
-                          STATUS_TONE[project.status] ?? 'text-muted-foreground',
-                        )}
-                      >
-                        {project.status.replace('_', ' ')}
-                      </span>
-                    </td>
+                <span
+                  className={cn(
+                    'font-mono text-[10.5px] uppercase tabular-nums',
+                    row.overdue ? 'text-destructive' : 'text-faint',
+                  )}
+                >
+                  {row.dueLabel}
+                </span>
 
-                    <td className="py-3 pe-3">
-                      {lead ? (
-                        <Avatar className="h-[22px] w-[22px]" title={lead.full_name}>
-                          {lead.avatar_url ? <AvatarImage src={lead.avatar_url} alt="" /> : null}
-                          <AvatarFallback className="bg-chip text-muted-foreground text-[9px] font-medium uppercase">
-                            {initials(lead.full_name)}
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <span className="text-subtle text-ui">—</span>
-                      )}
-                    </td>
-
-                    <td className="py-3 pe-3">
-                      <span className="flex items-center gap-2.5">
-                        <span
-                          className="bg-chip block h-1 w-[140px] overflow-hidden rounded-sm"
-                          role="progressbar"
-                          aria-valuenow={percent}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-label={`${project.name} progress`}
-                        >
-                          <span
-                            className="block h-full rounded-sm"
-                            style={{ width: `${percent}%`, backgroundColor: dot }}
-                          />
-                        </span>
-                        <span className="label-id text-faint">{percent}%</span>
-                      </span>
-                    </td>
-
-                    <td className="py-3 pe-3">
-                      <span
-                        className={cn('label-id', overdue ? 'text-destructive' : 'text-faint')}
-                      >
-                        {project.end_date
-                          ? overdue
-                            ? 'OVERDUE'
-                            : new Date(project.end_date)
-                                .toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-                                .toUpperCase()
-                          : '—'}
-                      </span>
-                    </td>
-
-                    <td className={cn('px-5 py-3 text-ui', state.tone)}>{state.label}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                <span className={cn('text-micro', row.health.tone)}>{row.health.label}</span>
+              </Link>
+            ))}
+          </div>
         ) : (
           <div className="px-5 pt-4">
             <Card>
               <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
                 <FolderPlus className="text-faint h-8 w-8" aria-hidden />
                 <div>
-                  <p className="font-medium">{t('empty_title')}</p>
-                  <p className="text-faint text-ui">{t('empty_body')}</p>
+                  <p className="font-medium">
+                    {(projects ?? []).length > 0 ? 'Nothing matches this filter' : t('empty_title')}
+                  </p>
+                  <p className="text-faint text-ui">
+                    {(projects ?? []).length > 0
+                      ? 'Switch back to All to see every project in this workspace.'
+                      : t('empty_body')}
+                  </p>
                 </div>
                 <Button asChild size="sm">
                   <Link href={`${base}/new`}>{t('create')}</Link>

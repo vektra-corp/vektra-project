@@ -1,7 +1,7 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@pm/ui'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { AuthCard } from '../auth-card'
 import { AcceptInviteForm } from './accept-invite-form'
 
 export const metadata: Metadata = { title: 'Accept your invitation' }
@@ -48,22 +48,15 @@ export default async function AcceptInvitePage({
     : membership?.organization
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-head">
-          {organization ? `Join ${organization.name}` : 'Accept your invitation'}
-        </CardTitle>
-        <CardDescription>
-          Choose a password so you can sign in again after today.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <AcceptInviteForm
-          orgSlug={orgSlug}
-          email={user.email ?? ''}
-          defaultName={profile?.full_name ?? ''}
-        />
-      </CardContent>
-    </Card>
+    <AuthCard
+      title={organization ? `Join ${organization.name}` : 'Accept your invitation'}
+      description="Choose a password so you can sign in again after today."
+    >
+      <AcceptInviteForm
+        orgSlug={orgSlug}
+        email={user.email ?? ''}
+        defaultName={profile?.full_name ?? ''}
+      />
+    </AuthCard>
   )
 }

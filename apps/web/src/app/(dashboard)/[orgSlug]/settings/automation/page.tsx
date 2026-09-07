@@ -2,7 +2,7 @@ import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
 import { Badge } from '@pm/ui'
 import { Workflow } from 'lucide-react'
 import type { Metadata } from 'next'
-import { PageBody } from '@/components/layout/page-body'
+import { SettingsPanel } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
 import { createClient } from '@/lib/supabase/server'
@@ -81,8 +81,8 @@ export default async function AutomationSettingsPage({
   })
 
   return (
-    <PageBody>
-      <div className="max-w-3xl space-y-4">
+    <SettingsPanel>
+      <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-base text-muted-foreground">
             Assign new tasks automatically. Rules run every couple of minutes against tasks created
@@ -174,6 +174,6 @@ export default async function AutomationSettingsPage({
           </ul>
         )}
       </div>
-    </PageBody>
+    </SettingsPanel>
   )
 }

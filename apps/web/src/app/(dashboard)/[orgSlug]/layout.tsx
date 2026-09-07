@@ -1,6 +1,7 @@
 import { publicIdToString } from '@pm/shared/utils'
 import { notFound } from 'next/navigation'
 import type { ReactNode } from 'react'
+import { CommandPalette } from '@/components/layout/command-palette'
 import { Sidebar } from '@/components/layout/sidebar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
@@ -99,6 +100,13 @@ export default async function OrgLayout({
         myTaskCount={myTaskCount ?? 0}
       />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+      {/* Mounted once for the whole shell, so ⌘K works on every screen. */}
+      <CommandPalette
+        orgSlug={params.orgSlug}
+        projectsPath={
+          workspaces?.[0] ? `/${params.orgSlug}/${workspaces[0].slug}/projects` : null
+        }
+      />
     </div>
   )
 }

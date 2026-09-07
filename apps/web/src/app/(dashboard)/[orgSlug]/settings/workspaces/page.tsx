@@ -1,6 +1,6 @@
 import { can } from '@pm/auth/rbac'
 import type { Metadata } from 'next'
-import { PageBody } from '@/components/layout/page-body'
+import { SettingsPanel } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
 import { WorkspaceManager, type WorkspaceRow } from './workspace-manager'
@@ -44,14 +44,12 @@ export default async function WorkspacesSettingsPage({
   }))
 
   return (
-    <PageBody>
-      <div className="max-w-2xl">
+    <SettingsPanel>
         <WorkspaceManager
           orgSlug={params.orgSlug}
           workspaces={rows}
           canManage={can(auth, 'projects', 'create')}
         />
-      </div>
-    </PageBody>
+    </SettingsPanel>
   )
 }

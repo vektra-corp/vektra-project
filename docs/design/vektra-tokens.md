@@ -30,8 +30,11 @@ Canvas behind artboards: `#08090C`. Links: teal, hover `#4FE0C9`.
 
 ## Type
 
-- Sans: `'Gotham','Gotham HTF','Montserrat',sans-serif` — Montserrat is the
-  shipping face (Gotham is licensed and absent).
+- Sans: `'Inter',system-ui,sans-serif`. These tokens were first written from
+  `Vektra Project v1 - static.dc.html`, which set Montserrat; the current
+  design — `Vektra Project.dc.html` — sets Inter, and that is what ships.
+  Montserrat's wider, rounder letterforms changed the colour of every screen:
+  the 13px body and its `-0.005em` tracking are drawn for Inter's tighter fit.
 - Mono: `'JetBrains Mono',monospace` — every id, count, status label and
   section heading.
 - Body 13px, tracking `-0.005em`.

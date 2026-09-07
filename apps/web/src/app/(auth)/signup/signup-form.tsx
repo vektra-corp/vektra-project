@@ -7,11 +7,12 @@ import { useTranslations } from 'next-intl'
 import { useEffect } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { signUp } from '../actions'
+import { authInputClass } from '../auth-card'
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" className="w-full" loading={pending}>
+    <Button type="submit" size="lg" className="w-full rounded-[9px]" loading={pending}>
       {label}
     </Button>
   )
@@ -51,7 +52,7 @@ export function SignupForm() {
       : null
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="flex flex-col gap-[18px]">
       {generalError ? (
         <Alert variant="destructive">
           <AlertCircle aria-hidden />
@@ -60,31 +61,34 @@ export function SignupForm() {
       ) : null}
 
       <div className="space-y-2">
-        <Label htmlFor="full_name">{t('full_name')}</Label>
-        <Input id="full_name" name="full_name" autoComplete="name" required />
+        <Label htmlFor="full_name" className="label-meta-lg text-subtle">{t('full_name')}</Label>
+        <Input id="full_name" name="full_name" autoComplete="name" required
+          className={authInputClass} />
         {fieldError('full_name') ? (
           <p className="text-nav text-destructive">{fieldError('full_name')}</p>
         ) : null}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="organization_name">{t('organization_name')}</Label>
-        <Input id="organization_name" name="organization_name" autoComplete="organization" required />
+        <Label htmlFor="organization_name" className="label-meta-lg text-subtle">{t('organization_name')}</Label>
+        <Input id="organization_name" name="organization_name" autoComplete="organization" required
+          className={authInputClass} />
         {fieldError('organization_name') ? (
           <p className="text-nav text-destructive">{fieldError('organization_name')}</p>
         ) : null}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email">{t('email')}</Label>
-        <Input id="email" name="email" type="email" autoComplete="email" required />
+        <Label htmlFor="email" className="label-meta-lg text-subtle">{t('email')}</Label>
+        <Input id="email" name="email" type="email" autoComplete="email" required
+          className={authInputClass} />
         {fieldError('email') ? (
           <p className="text-nav text-destructive">{fieldError('email')}</p>
         ) : null}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">{t('password')}</Label>
+        <Label htmlFor="password" className="label-meta-lg text-subtle">{t('password')}</Label>
         <PasswordInput
           id="password"
           name="password"
@@ -93,6 +97,7 @@ export function SignupForm() {
           required
           showLabel={t('show_password')}
           hideLabel={t('hide_password')}
+          className={authInputClass}
         />
         {fieldError('password') ? (
           <p className="text-nav text-destructive">{fieldError('password')}</p>
@@ -100,7 +105,7 @@ export function SignupForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="confirm_password">{t('confirm_password')}</Label>
+        <Label htmlFor="confirm_password" className="label-meta-lg text-subtle">{t('confirm_password')}</Label>
         <PasswordInput
           id="confirm_password"
           name="confirm_password"
@@ -108,6 +113,7 @@ export function SignupForm() {
           required
           showLabel={t('show_password')}
           hideLabel={t('hide_password')}
+          className={authInputClass}
         />
         {fieldError('confirm_password') ? (
           <p className="text-nav text-destructive">{fieldError('confirm_password')}</p>

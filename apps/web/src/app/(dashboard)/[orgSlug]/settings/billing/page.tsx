@@ -2,7 +2,7 @@ import { ORG_ADMIN_ROLES } from '@pm/auth/constants'
 import { featureEnabled, limitFor } from '@pm/shared/billing'
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@pm/ui'
 import type { Metadata } from 'next'
-import { PageBody } from '@/components/layout/page-body'
+import { SettingsPanel } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
 import { createClient } from '@/lib/supabase/server'
@@ -42,8 +42,8 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
   const seats = seatCount.count ?? 0
 
   return (
-    <PageBody>
-      <div className="max-w-3xl space-y-6">
+    <SettingsPanel>
+      <div className="space-y-6">
         <div>
           <h1 className="text-head font-semibold">Billing</h1>
           <p className="text-muted-foreground text-ui">
@@ -124,7 +124,7 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
           </Card>
         ) : null}
       </div>
-    </PageBody>
+    </SettingsPanel>
   )
 }
 

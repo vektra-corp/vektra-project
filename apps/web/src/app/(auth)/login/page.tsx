@@ -1,7 +1,7 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
+import { AuthCard } from '../auth-card'
 import { SocialAuth } from '../social-auth'
 import { LoginForm } from './login-form'
 
@@ -15,21 +15,15 @@ export default async function LoginPage({
   const t = await getTranslations('auth')
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-head">{t('login_title')}</CardTitle>
-        <CardDescription>{t('login_subtitle')}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <LoginForm next={searchParams.next} error={searchParams.error} />
-        <SocialAuth next={searchParams.next} />
-        <p className="mt-6 text-center text-ui text-muted-foreground">
-          {t('no_account')}{' '}
-          <Link href="/signup" className="font-medium text-primary hover:underline">
-            {t('sign_up')}
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
+    <AuthCard title={t('login_title')} description={t('login_subtitle')}>
+      <LoginForm next={searchParams.next} error={searchParams.error} />
+      <SocialAuth next={searchParams.next} />
+      <p className="text-faint text-center text-ui">
+        {t('no_account')}{' '}
+        <Link href="/signup" className="text-primary font-medium hover:underline">
+          {t('sign_up')}
+        </Link>
+      </p>
+    </AuthCard>
   )
 }

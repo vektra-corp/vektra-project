@@ -1,14 +1,14 @@
 import type { OrgRole } from '@pm/shared/constants'
-import { Kbd, Separator } from '@pm/ui'
-import { ChevronDown, Search } from 'lucide-react'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
-import { BrandMark } from './brand-mark'
+import { SidebarPaletteTrigger } from './palette-trigger'
 import { SidebarItem, SidebarProjectGroup, SidebarSection, type NavItem } from './sidebar-nav'
-import { UserMenu } from './user-menu'
+import { SidebarUser } from './sidebar-user'
+import { WorkspaceSwitcher, type SwitcherWorkspace } from './workspace-switcher'
 
 /** Project views with a route today; the rest render as "soon". */
 const ROUTED_PROJECT_VIEWS = [
+  'overview',
   'list',
   'board',
   'timeline',
@@ -16,6 +16,9 @@ const ROUTED_PROJECT_VIEWS = [
   'documents',
   'settings',
 ]
+
+/** The design lists five projects, then "Show all". */
+const SIDEBAR_PROJECT_LIMIT = 5
 
 export interface SidebarWorkspace {
   id: string
@@ -34,6 +37,11 @@ export interface SidebarProjectSummary {
 
 /**
  * Primary navigation.
+ *
+ * The structure is the design's: an identity row that switches workspace, the
+ * jump-to field, three top-level destinations, then WORK · GENERAL, COMMERCIAL,
+ * PEOPLE and INSIGHTS as mono-captioned groups, with settings and the signed-in
+ * user pinned to the bottom.
  *
  * Items are filtered by role here for a tidy UI, but that is presentation only —
  * every destination re-checks permission server-side, because hiding a link is
@@ -62,154 +70,153 @@ export async function Sidebar({
   const rank: Record<OrgRole, number> = { owner: 4, admin: 3, manager: 2, member: 1 }
   const atLeast = (role: OrgRole) => rank[orgRole] >= rank[role]
 
-  const primary: NavItem[] = [
-    {
-      key: 'dashboard',
-      label: t('dashboard'),
-      icon: 'LayoutDashboard',
-      href: `/${orgSlug}/dashboard`,
-    },
-    {
-      key: 'inbox',
-      label: t('inbox'),
-      icon: 'Inbox',
-      href: `/${orgSlug}/notifications`,
-      count: inboxCount,
-    },
-    {
-      key: 'my-tasks',
-      label: t('myTasks'),
-      icon: 'CircleDot',
-      href: `/${orgSlug}/my-tasks`,
-      count: myTaskCount,
-    },
-  ]
+  const primaryWorkspace = workspaces[0] ?? null
 
-  // Views the project layout actually serves; anything not listed in
-  // ROUTED_PROJECT_VIEWS renders as unavailable rather than as a link into a 404.
-  // The design's sidebar order, which differs from the toolbar's: Documents and
-  // Settings belong to the project, not to its task views, so they sit here.
-  const projectViews = (): NavItem[] => [
-    { key: 'list', label: t('list'), icon: 'Table2' },
-    { key: 'board', label: t('board'), icon: 'Columns3' },
-    { key: 'timeline', label: t('timeline'), icon: 'CalendarRange' },
-    { key: 'workload', label: t('workload'), icon: 'Gauge' },
-    { key: 'documents', label: t('documents'), icon: 'FileText' },
-    { key: 'settings', label: t('settings'), icon: 'Settings' },
-  ]
-
-  // Commercial lives inside a workspace, so its links need one. The first
-  // workspace is the sensible default; a member with none sees them inert.
-  const commercialBase = workspaces[0]
-    ? `/${orgSlug}/${workspaces[0].slug}/commercial`
-    : null
-  const commercialHref = (segment: string) =>
-    commercialBase && atLeast('manager') ? `${commercialBase}/${segment}` : undefined
-
-  const commercial: NavItem[] = [
-    { key: 'quotations', label: t('quotations'), icon: 'FileSignature', href: commercialHref('quotations') },
-    { key: 'contacts', label: t('contacts'), icon: 'Contact', href: commercialHref('contacts') },
-    { key: 'templates', label: t('pdfTemplates'), icon: 'FileText', href: commercialHref('templates') },
-  ]
-
-  const projectsByWorkspace = workspaces.map((workspace) => ({
-    workspace,
-    projects: projects.filter((project) => project.workspace_slug === workspace.slug),
+  const switcherWorkspaces: SwitcherWorkspace[] = workspaces.map((workspace, index) => ({
+    id: workspace.id,
+    name: workspace.name,
+    slug: workspace.slug,
+    sub: `${workspace.name.toUpperCase()} · WORKSPACE`,
+    meta: `${orgName} · ${orgRole}`,
+    color: workspace.color,
+    current: index === 0,
   }))
 
+  // Commercial lives inside a workspace, so its links need one. A member with
+  // no workspace sees the rows inert rather than pointing at a 404.
+  const commercialHref = (segment: string) =>
+    primaryWorkspace && atLeast('manager')
+      ? `/${orgSlug}/${primaryWorkspace.slug}/commercial/${segment}`
+      : undefined
+
+  const commercial: NavItem[] = [
+    { key: 'quotations', label: t('quotations'), icon: 'quotation', href: commercialHref('quotations') },
+    { key: 'contacts', label: t('contacts'), icon: 'salesOrder', href: commercialHref('contacts') },
+    { key: 'templates', label: t('pdfTemplates'), icon: 'purchaseOrder', href: commercialHref('templates') },
+  ]
+
+  // The design's project views, in its sidebar order: Documents and Settings
+  // belong to the project rather than to its task views, so they sit here.
+  const projectViews: NavItem[] = [
+    { key: 'overview', label: t('overview'), icon: 'projects' },
+    { key: 'list', label: t('list'), icon: 'list' },
+    { key: 'board', label: t('board'), icon: 'board' },
+    { key: 'timeline', label: t('timeline'), icon: 'timeline' },
+    { key: 'workload', label: t('workload'), icon: 'workload' },
+    { key: 'documents', label: t('documents'), icon: 'documents' },
+    { key: 'settings', label: t('settings'), icon: 'settings' },
+  ]
+
+  const visibleProjects = projects.slice(0, SIDEBAR_PROJECT_LIMIT)
+  const hiddenProjectCount = projects.length - visibleProjects.length
+
   return (
-    <aside className="border-border bg-surface hidden w-[242px] shrink-0 flex-col border-e px-3 py-3.5 md:flex">
-      {/* The product names itself here, not the tenant. Someone in three
-          organizations was seeing three different sidebars and no way to tell
-          at a glance which app they were in; the org name is what the caption
-          is for, and it is still the link into org settings. */}
-      <Link
-        href={`/${orgSlug}/settings/general`}
-        className="hover:bg-surface-hover/60 flex items-center gap-[9px] rounded-lg px-1.5 py-1 transition-colors"
-      >
-        <BrandMark />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-semibold tracking-[0.02em] leading-tight">
-            Vektra Project
-          </p>
-          <p className="label-meta text-faint truncate pt-1 tracking-[0.08em]">{orgName}</p>
-        </div>
-        <span
-          className="border-input text-faint grid h-[18px] w-[18px] shrink-0 place-items-center rounded-[5px] border text-[9px]"
-          aria-hidden
-        >
-          <ChevronDown className="h-2.5 w-2.5" />
-        </span>
-      </Link>
+    <aside className="border-border bg-surface scrollbar-slim hidden w-[242px] shrink-0 flex-col gap-[15px] overflow-y-auto border-e px-3 py-3.5 md:flex">
+      <WorkspaceSwitcher
+        orgSlug={orgSlug}
+        workspaces={switcherWorkspaces}
+        current={{
+          name: primaryWorkspace?.name ?? orgName,
+          sub: primaryWorkspace ? `${orgName.toUpperCase()} · WORKSPACE` : 'ORGANIZATION',
+        }}
+      />
 
-      <div className="pt-[15px]">
-        <Link
-          href={`/${orgSlug}/search`}
-          className="border-border bg-sunk text-faint hover:border-input hover:text-muted-foreground flex items-center gap-2 rounded-lg border px-2.5 py-[7px] text-nav transition-colors"
-        >
-          <Search className="h-3 w-3 shrink-0" aria-hidden />
-          <span className="flex-1 text-start">{t('jumpTo')}</span>
-          <Kbd>⌘K</Kbd>
-        </Link>
-      </div>
+      <SidebarPaletteTrigger label={t('jumpTo')} />
 
-      <nav className="scrollbar-slim -mx-1 flex-1 overflow-y-auto px-1 pb-4" aria-label="Primary">
-        <ul className="space-y-0.5 pt-[15px]">
-          {primary.map((item) => (
-            <SidebarItem key={item.key} item={item} />
-          ))}
+      <nav className="flex flex-col gap-[15px]" aria-label="Primary">
+        <ul className="flex flex-col gap-0.5">
+          <SidebarItem
+            item={{
+              key: 'dashboard',
+              label: t('dashboard'),
+              icon: 'dashboard',
+              href: `/${orgSlug}/dashboard`,
+            }}
+          />
+          <SidebarItem
+            item={{
+              key: 'inbox',
+              label: t('inbox'),
+              icon: 'inbox',
+              href: `/${orgSlug}/notifications`,
+              count: inboxCount,
+              countTone: 'accent',
+            }}
+          />
+          <SidebarItem
+            item={{
+              key: 'my-tasks',
+              label: t('myTasks'),
+              icon: 'myTasks',
+              href: `/${orgSlug}/my-tasks`,
+              count: myTaskCount,
+            }}
+          />
         </ul>
 
-        {projectsByWorkspace.map(({ workspace, projects: wsProjects }) => (
-          <SidebarSection key={workspace.id} title={`${t('work')} · ${workspace.name}`} collapsible>
-            <SidebarItem
-              item={{
-                key: `${workspace.id}-projects`,
-                label: t('projects'),
-                icon: 'Columns3',
-                href: `/${orgSlug}/${workspace.slug}/projects`,
-                count: wsProjects.length,
-                exact: true,
-              }}
-            />
-            {wsProjects.map((project) => (
-              <SidebarProjectGroup
-                key={project.id}
-                orgSlug={orgSlug}
-                project={{
-                  id: project.id,
-                  name: project.name,
-                  workspaceSlug: project.workspace_slug,
-                  color: project.color,
-                }}
-                views={projectViews().map((view) =>
-                  ROUTED_PROJECT_VIEWS.includes(view.key)
-                    ? {
-                        ...view,
-                        href: `/${orgSlug}/${project.workspace_slug}/projects/${project.id}/${view.key}`,
-                      }
-                    : view,
-                )}
-              />
-            ))}
-            <SidebarItem
-              item={{
-                key: `${workspace.id}-workflows`,
-                label: t('workflows'),
-                icon: 'Split',
-                href: atLeast('manager')
-                  ? `/${orgSlug}/${workspace.slug}/workflows`
-                  : undefined,
-              }}
-            />
-          </SidebarSection>
-        ))}
+        <SidebarSection
+          title={`${t('work')} · ${(primaryWorkspace?.name ?? t('general')).toUpperCase()}`}
+          collapsible
+        >
+          <SidebarItem
+            item={{
+              key: 'projects',
+              label: t('projects'),
+              icon: 'projects',
+              href: primaryWorkspace ? `/${orgSlug}/${primaryWorkspace.slug}/projects` : undefined,
+              count: projects.length,
+              exact: true,
+            }}
+          />
 
-        {workspaces.length === 0 ? (
-          <SidebarSection title={t('work')}>
+          {visibleProjects.map((project) => (
+            <SidebarProjectGroup
+              key={project.id}
+              orgSlug={orgSlug}
+              project={{
+                id: project.id,
+                name: project.name,
+                workspaceSlug: project.workspace_slug,
+                color: project.color,
+              }}
+              views={projectViews.map((view) =>
+                ROUTED_PROJECT_VIEWS.includes(view.key)
+                  ? {
+                      ...view,
+                      href: `/${orgSlug}/${project.workspace_slug}/projects/${project.id}/${view.key}`,
+                    }
+                  : view,
+              )}
+            />
+          ))}
+
+          {hiddenProjectCount > 0 && primaryWorkspace ? (
+            <li>
+              <Link
+                href={`/${orgSlug}/${primaryWorkspace.slug}/projects`}
+                className="text-primary hover:bg-surface-hover block rounded-md py-[5px] pe-2.5 ps-[11px] text-micro transition-colors"
+              >
+                Show all {projects.length} projects
+              </Link>
+            </li>
+          ) : null}
+
+          {workspaces.length === 0 ? (
             <li className="text-faint px-2.5 py-2 text-base">{t('noWorkspaces')}</li>
-          </SidebarSection>
-        ) : null}
+          ) : null}
+
+          <SidebarItem
+            item={{
+              key: 'workflows',
+              label: t('workflows'),
+              icon: 'workflows',
+              href:
+                primaryWorkspace && atLeast('manager')
+                  ? `/${orgSlug}/${primaryWorkspace.slug}/workflows`
+                  : undefined,
+            }}
+          />
+        </SidebarSection>
 
         <SidebarSection title={t('commercial')}>
           {commercial.map((item) => (
@@ -222,68 +229,53 @@ export async function Sidebar({
             item={{
               key: 'team',
               label: t('team'),
-              icon: 'Users',
+              icon: 'team',
               href: `/${orgSlug}/team`,
               exact: true,
             }}
           />
+          {atLeast('manager') ? (
+            <SidebarItem
+              item={{ key: 'members', label: t('members'), icon: 'members', href: `/${orgSlug}/members` }}
+            />
+          ) : null}
           <SidebarItem
-            item={{ key: 'leave', label: t('leave'), icon: 'CalendarRange', href: `/${orgSlug}/team/leave` }}
+            item={{ key: 'leave', label: t('leave'), icon: 'leave', href: `/${orgSlug}/team/leave` }}
           />
           <SidebarItem
             item={{
               key: 'timesheets',
               label: t('timesheets'),
-              icon: 'Timer',
+              icon: 'timesheet',
               href: `/${orgSlug}/timesheets`,
             }}
           />
-          {atLeast('manager') ? (
-            <SidebarItem
-              item={{ key: 'members', label: t('members'), icon: 'Users', href: `/${orgSlug}/members` }}
-            />
-          ) : null}
         </SidebarSection>
 
         {atLeast('manager') ? (
           <SidebarSection title={t('insights')}>
             <SidebarItem
-              item={{
-                key: 'reports',
-                label: t('reports'),
-                icon: 'ListTodo',
-                href: `/${orgSlug}/reports`,
-              }}
+              item={{ key: 'reports', label: t('reports'), icon: 'reports', href: `/${orgSlug}/reports` }}
             />
             <SidebarItem
-              item={{
-                key: 'revenue',
-                label: t('revenue'),
-                icon: 'TrendingUp',
-                href: `/${orgSlug}/revenue`,
-              }}
+              item={{ key: 'revenue', label: t('revenue'), icon: 'revenue', href: `/${orgSlug}/revenue` }}
             />
-            <SidebarItem item={{ key: 'docs', label: t('documents'), icon: 'Files' }} />
           </SidebarSection>
         ) : null}
       </nav>
 
-      <div className="mt-auto pt-2">
-        <Separator className="mb-2" />
-        {atLeast('admin') ? (
-          <ul className="space-y-px pb-1">
-            <SidebarItem
-              item={{
-                key: 'settings',
-                label: t('settings'),
-                icon: 'Settings',
-                href: `/${orgSlug}/settings`,
-              }}
-            />
-          </ul>
-        ) : null}
-
-        <UserMenu orgSlug={orgSlug} orgRole={orgRole} profile={profile} />
+      <div className="border-border mt-auto flex flex-col gap-0.5 border-t pt-2">
+        <ul className="flex flex-col gap-0.5">
+          <SidebarItem
+            item={{
+              key: 'settings',
+              label: t('settings'),
+              icon: 'settings',
+              href: `/${orgSlug}/settings`,
+            }}
+          />
+        </ul>
+        <SidebarUser orgSlug={orgSlug} orgRole={orgRole} profile={profile} />
       </div>
     </aside>
   )

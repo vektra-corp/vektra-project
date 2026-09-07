@@ -40,6 +40,7 @@ const ROUTES: { path: string; expect: RegExp }[] = [
   { path: `/${ORG_SLUG}/${WORKSPACE_SLUG}/commercial/contacts`, expect: /contact/i },
   { path: `/${ORG_SLUG}/${WORKSPACE_SLUG}/commercial/quotations`, expect: /quotation/i },
   { path: `/${ORG_SLUG}/${WORKSPACE_SLUG}/commercial/templates`, expect: /template/i },
+  { path: projectPath('overview'), expect: /brief|progress|overview/i },
   { path: projectPath('board'), expect: /board|to do/i },
   { path: projectPath('list'), expect: /list|title/i },
   { path: projectPath('timeline'), expect: /timeline|plan/i },

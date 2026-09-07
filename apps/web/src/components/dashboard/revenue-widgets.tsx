@@ -94,7 +94,7 @@ export function RevenueTrend({
 
   return (
     <Widget title={`Accepted quotations · ${currency}`} category="revenue" className="h-full">
-      <ul className="space-y-2 overflow-y-auto px-4 py-3">
+      <ul className="scrollbar-slim min-h-0 flex-1 space-y-2 overflow-y-auto">
         {inCurrency.map((month) => {
           const pct = Math.round((month.acceptedQuotations / peak) * 100)
           const label = new Date(`${month.month}T00:00:00`).toLocaleDateString(locale, {

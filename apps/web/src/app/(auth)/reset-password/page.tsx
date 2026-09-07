@@ -1,7 +1,7 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@pm/ui'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { AuthCard } from '../auth-card'
 import { ResetPasswordForm } from './reset-password-form'
 
 export const metadata: Metadata = { title: 'Set a new password' }
@@ -17,16 +17,11 @@ export default async function ResetPasswordPage() {
   if (!user) redirect('/forgot-password')
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-head">Set a new password</CardTitle>
-        <CardDescription>
-          Signing in elsewhere will be ended once you save.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ResetPasswordForm />
-      </CardContent>
-    </Card>
+    <AuthCard
+      title="Set a new password"
+      description="Signing in elsewhere will be ended once you save."
+    >
+      <ResetPasswordForm />
+    </AuthCard>
   )
 }

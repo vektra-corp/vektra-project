@@ -147,17 +147,20 @@ export function parseCapture(
 
 export interface CaptureHint {
   key: string
+  /** What was recognised — the design prints this in mono before the value. */
+  kind: string
   text: string
   className: string
 }
 
-/** Chips shown to the right of the capture input, confirming what was understood. */
+/** Chips under the capture input, confirming what was understood. */
 export function describeCapture(parsed: CaptureResult): CaptureHint[] {
   const hints: CaptureHint[] = []
 
   if (parsed.assigneeName) {
     hints.push({
       key: 'assignee',
+      kind: 'WHO',
       text: parsed.assigneeName.split(' ')[0] ?? parsed.assigneeName,
       className: 'bg-surface-hover text-muted-foreground',
     })
@@ -165,13 +168,15 @@ export function describeCapture(parsed: CaptureResult): CaptureHint[] {
   for (const name of parsed.labelNames) {
     hints.push({
       key: `label-${name}`,
-      text: `#${name}`,
+      kind: 'LABEL',
+      text: name,
       className: 'bg-surface-hover text-muted-foreground',
     })
   }
   if (parsed.priority) {
     hints.push({
       key: 'priority',
+      kind: 'PRI',
       text: parsed.priority === 'critical' ? 'urgent' : parsed.priority,
       className:
         parsed.priority === 'critical'
@@ -184,6 +189,7 @@ export function describeCapture(parsed: CaptureResult): CaptureHint[] {
   if (parsed.estimatedHours !== null) {
     hints.push({
       key: 'points',
+      kind: 'PTS',
       text: `${parsed.estimatedHours}h`,
       className: 'bg-surface-hover text-muted-foreground',
     })
@@ -191,6 +197,7 @@ export function describeCapture(parsed: CaptureResult): CaptureHint[] {
   if (parsed.dueDate) {
     hints.push({
       key: 'due',
+      kind: 'DUE',
       text: parsed.dueDate.slice(5),
       className: 'bg-surface-hover text-muted-foreground',
     })

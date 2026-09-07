@@ -6,7 +6,7 @@ import { Split } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getLocale } from 'next-intl/server'
-import { PageBody } from '@/components/layout/page-body'
+import { PageBody, SectionHeader } from '@/components/layout/page-body'
 import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
@@ -47,14 +47,12 @@ export default async function WorkflowsPage({
     <>
       <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: 'Workflows' }]} />
 
-      <div className="flex items-center gap-3 px-5 py-3">
-        <p className="text-base text-muted-foreground">
-          Run actions automatically when something happens.
-        </p>
-        <div className="ms-auto">
-          <NewWorkflowDialog scope={params} />
-        </div>
-      </div>
+      <SectionHeader
+        title="Workflows"
+        count={`${workflows?.length ?? 0} ${(workflows?.length ?? 0) === 1 ? 'workflow' : 'workflows'}`}
+      >
+        <NewWorkflowDialog scope={params} />
+      </SectionHeader>
 
       <PageBody>
         {!workflows?.length ? (

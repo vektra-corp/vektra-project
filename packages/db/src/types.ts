@@ -3897,6 +3897,10 @@ export interface Database {
         }
         Returns: Json
       }
+      org_member_emails: {
+        Args: Record<PropertyKey, never>
+        Returns: { user_id: string; email: string }[]
+      }
       mentionable_members: {
         Args: {
           p_task_id: string

@@ -8,7 +8,6 @@ import {
 import { formatRelativeTime, initials, publicIdToString, todayIn } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage } from '@pm/ui'
 import { addDays, format } from 'date-fns'
-import { AlertTriangle, CalendarClock, FolderKanban } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getLocale, getTranslations } from 'next-intl/server'
@@ -17,7 +16,6 @@ import { DashboardGrid } from '@/components/dashboard/dashboard-grid'
 import { ProjectProgressList, type ProjectProgressRow } from '@/components/dashboard/project-progress'
 import { StatTile } from '@/components/dashboard/stat-tile'
 import { Widget, WidgetEmpty } from '@/components/dashboard/widget'
-import { PageBody } from '@/components/layout/page-body'
 import { Topbar } from '@/components/layout/topbar'
 import { DueDate, TaskPriorityIcon } from '@/components/tasks/task-badges'
 import { requireAuthPage } from '@/lib/auth/context'
@@ -233,7 +231,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
       <StatTile
         label="Due this week"
         value={dueThisWeek.length}
-        icon={CalendarClock}
+        category="pm"
         tone="warning"
         caption={`Through ${weekEnd}`}
       />
@@ -242,12 +240,14 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
       <StatTile
         label="Overdue"
         value={overdue.length}
-        icon={AlertTriangle}
+        category="pm"
         tone="critical"
         caption={overdue.length > 0 ? 'Needs attention' : 'Nothing overdue'}
       />
     ),
-    active_projects: <StatTile label="Active projects" value={activeProjects ?? 0} icon={FolderKanban} />,
+    active_projects: (
+      <StatTile label="Active projects" value={activeProjects ?? 0} category="pm" />
+    ),
     my_open_tasks: (
       <Widget
         title="My open tasks"
@@ -258,7 +258,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
         {mine.length === 0 ? (
           <WidgetEmpty>Nothing assigned to you right now.</WidgetEmpty>
         ) : (
-          <ul className="divide-y divide-border overflow-y-auto">
+          <ul className="divide-y divide-border scrollbar-slim min-h-0 flex-1 overflow-y-auto">
             {mine.slice(0, 12).map((task) => {
               const link = projectLinks.get(task.project_id)
               const href = link
@@ -266,7 +266,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
                 : null
 
               return (
-                <li key={task.id} className="flex items-center gap-3 px-4 py-2.5">
+                <li key={task.id} className="flex items-center gap-2.5 py-2">
                   <TaskPriorityIcon priority={task.priority as never} />
                   {href ? (
                     <Link
@@ -302,7 +302,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
         {activity.length === 0 ? (
           <WidgetEmpty>Nothing has changed yet.</WidgetEmpty>
         ) : (
-          <ul className="divide-y divide-border overflow-y-auto">
+          <ul className="divide-y divide-border scrollbar-slim min-h-0 flex-1 overflow-y-auto">
             {activity.map((task) => {
               const link = projectLinks.get(task.project_id)
               const href = link
@@ -310,7 +310,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
                 : null
 
               return (
-                <li key={task.id} className="flex items-center gap-3 px-4 py-2.5">
+                <li key={task.id} className="flex items-center gap-2.5 py-2">
                   <Avatar className="h-5 w-5 shrink-0">
                     {task.assignee?.avatar_url ? (
                       <AvatarImage src={task.assignee.avatar_url} alt="" />
@@ -349,13 +349,13 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
         {!leaveBalances.data?.length ? (
           <WidgetEmpty>{me ? 'No leave allocated yet.' : 'No employee record.'}</WidgetEmpty>
         ) : (
-          <ul className="divide-y divide-border overflow-y-auto">
+          <ul className="divide-y divide-border scrollbar-slim min-h-0 flex-1 overflow-y-auto">
             {leaveBalances.data.map((balance) => {
               const type = Array.isArray(balance.leave_type)
                 ? balance.leave_type[0]
                 : balance.leave_type
               return (
-                <li key={balance.id} className="flex items-center gap-3 px-4 py-2.5">
+                <li key={balance.id} className="flex items-center gap-2.5 py-2">
                   <span className="min-w-0 flex-1 truncate text-base">
                     {type?.name ?? 'Leave'}
                   </span>
@@ -380,7 +380,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
         {!pendingApprovals.data?.length ? (
           <WidgetEmpty>Nothing to approve.</WidgetEmpty>
         ) : (
-          <ul className="divide-y divide-border overflow-y-auto">
+          <ul className="divide-y divide-border scrollbar-slim min-h-0 flex-1 overflow-y-auto">
             {pendingApprovals.data.map((request) => {
               const employee = Array.isArray(request.employee)
                 ? request.employee[0]
@@ -392,7 +392,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
                 : null
 
               return (
-                <li key={request.id} className="flex items-center gap-3 px-4 py-2.5">
+                <li key={request.id} className="flex items-center gap-2.5 py-2">
                   <span className="min-w-0 flex-1 truncate text-base">
                     {profile?.full_name ?? 'Unknown'}
                   </span>
@@ -417,15 +417,18 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
     <>
       <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: t('nav.dashboard') }]} />
 
-      <PageBody className="pt-1">
-        <DashboardGrid
-          orgSlug={params.orgSlug}
-          initialLayout={layout}
-          widgets={widgets}
-          availableTypes={availableTypes}
-          canPublishDefault={(ORG_ADMIN_ROLES as readonly string[]).includes(auth.orgRole)}
-        />
-      </PageBody>
+      <DashboardGrid
+        orgSlug={params.orgSlug}
+        name={t('nav.dashboard')}
+        // Where the layout in front of you came from: your own saved
+        // arrangement, the org's published default, or the built-in starting
+        // point — which is shared in the sense that everyone begins there.
+        tag={saved.length > 0 ? 'PERSONAL' : orgDefault.length > 0 ? 'ORG DEFAULT' : 'SHARED'}
+        initialLayout={layout}
+        widgets={widgets}
+        availableTypes={availableTypes}
+        canPublishDefault={(ORG_ADMIN_ROLES as readonly string[]).includes(auth.orgRole)}
+      />
     </>
   )
 }

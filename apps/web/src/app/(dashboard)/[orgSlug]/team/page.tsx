@@ -3,7 +3,7 @@ import { formatDate, initials } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage, Badge } from '@pm/ui'
 import { Users } from 'lucide-react'
 import type { Metadata } from 'next'
-import { PageBody } from '@/components/layout/page-body'
+import { PageBody, SectionHeader } from '@/components/layout/page-body'
 import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
@@ -78,27 +78,23 @@ export default async function TeamPage({ params }: { params: { orgSlug: string }
 
   return (
     <>
-      <Topbar
-        orgSlug={params.orgSlug}
-        breadcrumb={[{ label: 'Team' }]}
-        meta={
-          <Badge variant="secondary" shape="meta" className="ms-1">
-            {rows.length} employees
-          </Badge>
-        }
-      />
+      <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: 'Team' }]} />
 
-      <div className="flex flex-wrap items-center gap-3 px-5 py-3">
-        <TeamNav orgSlug={params.orgSlug} />
+      <SectionHeader
+        title="Team"
+        count={`${rows.length} ${rows.length === 1 ? 'employee' : 'employees'}`}
+      >
         {canManage ? (
-          <div className="ms-auto">
-            <EmployeeDialog
-              orgSlug={params.orgSlug}
-              candidates={candidates}
-              managers={managerOptions}
-            />
-          </div>
+          <EmployeeDialog
+            orgSlug={params.orgSlug}
+            candidates={candidates}
+            managers={managerOptions}
+          />
         ) : null}
+      </SectionHeader>
+
+      <div className="border-border flex shrink-0 flex-wrap items-center gap-4 border-b px-5 py-2.5">
+        <TeamNav orgSlug={params.orgSlug} />
       </div>
 
       <PageBody>

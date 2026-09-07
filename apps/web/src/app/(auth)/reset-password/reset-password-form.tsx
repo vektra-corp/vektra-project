@@ -4,11 +4,12 @@ import { Alert, AlertDescription, Button, Label, PasswordInput } from '@pm/ui'
 import { AlertCircle } from 'lucide-react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { resetPassword } from '../actions'
+import { authInputClass } from '../auth-card'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" className="w-full" loading={pending}>
+    <Button type="submit" size="lg" className="w-full rounded-[9px]" loading={pending}>
       Set new password
     </Button>
   )
@@ -29,7 +30,7 @@ export function ResetPasswordForm() {
     state && !state.ok ? state.fieldErrors?.[field]?.[0] : undefined
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="flex flex-col gap-[18px]">
       {state && !state.ok && state.code !== 'VALIDATION_ERROR' ? (
         <Alert variant="destructive">
           <AlertCircle aria-hidden />
@@ -42,7 +43,7 @@ export function ResetPasswordForm() {
       ) : null}
 
       <div className="space-y-1.5">
-        <Label htmlFor="password">New password</Label>
+        <Label htmlFor="password" className="label-meta-lg text-subtle">New password</Label>
         <PasswordInput
           id="password"
           name="password"
@@ -51,6 +52,7 @@ export function ResetPasswordForm() {
           minLength={8}
           autoFocus
           aria-invalid={Boolean(fieldError('password'))}
+          className={authInputClass}
         />
         {fieldError('password') ? (
           <p className="text-nav text-destructive">{fieldError('password')}</p>
@@ -60,13 +62,14 @@ export function ResetPasswordForm() {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="confirm_password">Confirm password</Label>
+        <Label htmlFor="confirm_password" className="label-meta-lg text-subtle">Confirm password</Label>
         <PasswordInput
           id="confirm_password"
           name="confirm_password"
           autoComplete="new-password"
           required
           aria-invalid={Boolean(fieldError('confirm_password'))}
+          className={authInputClass}
         />
         {fieldError('confirm_password') ? (
           <p className="text-nav text-destructive">{fieldError('confirm_password')}</p>

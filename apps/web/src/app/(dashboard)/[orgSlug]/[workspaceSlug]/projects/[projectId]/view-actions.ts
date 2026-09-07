@@ -7,7 +7,11 @@ import {
   KANBAN_COLOR_BY,
   KANBAN_GROUP_BY,
   KANBAN_SORT_BY,
+  KANBAN_SWIMLANE_BY,
   type KanbanCardField,
+  type KanbanColorBy,
+  type KanbanGroupBy,
+  type KanbanSwimlaneBy,
 } from '@pm/shared/constants'
 import type { ActionResult } from '@pm/shared/types'
 import { revalidatePath } from 'next/cache'
@@ -105,6 +109,103 @@ export async function saveKanbanView(
 
     if (error) throw error
 
+    revalidatePath(projectPath(scope))
+    return { ok: true, data: { id: data.id } }
+  } catch (error) {
+    return toActionError(error)
+  }
+}
+
+/**
+ * Patch one facet of a view in place.
+ *
+ * The design's board controls — the grouping tabs, the card-field and colour
+ * pickers, the swimlane radio — take effect the moment you press them rather
+ * than on a Save. This is that path: a narrow patch of presentation-only
+ * fields, against the same permission the rest of the view actions use.
+ *
+ * Pressing one of those controls while the board is still on its built-in
+ * default has nothing to update, so the first patch materialises the default
+ * as a real saved view for that person and writes into it.
+ */
+export interface KanbanViewPatch {
+  group_by?: KanbanGroupBy
+  card_fields?: KanbanCardField[]
+  card_color_by?: KanbanColorBy
+  swimlane_by?: KanbanSwimlaneBy
+  compact_mode?: boolean
+  show_empty_columns?: boolean
+  show_column_count?: boolean
+}
+
+export async function updateKanbanView(
+  scope: Scope,
+  boardId: string,
+  viewId: string,
+  patch: KanbanViewPatch,
+): Promise<ActionResult<{ id: string }>> {
+  const auth = await requireAuth(scope.orgSlug)
+  assertCan(auth, 'tasks', 'read')
+
+  // Every field is re-validated against its allowed set: these arrive from a
+  // client component, and an unknown value would otherwise reach a CHECK
+  // constraint as a 500 rather than as a rejected input.
+  const clean: Record<string, unknown> = {}
+  if (patch.group_by !== undefined) {
+    clean.group_by = oneOf(KANBAN_GROUP_BY, patch.group_by, 'status')
+  }
+  if (patch.card_color_by !== undefined) {
+    clean.card_color_by = oneOf(KANBAN_COLOR_BY, patch.card_color_by, 'priority')
+  }
+  if (patch.swimlane_by !== undefined) {
+    clean.swimlane_by = oneOf(KANBAN_SWIMLANE_BY, patch.swimlane_by, 'none')
+  }
+  if (patch.card_fields !== undefined) {
+    const fields = KANBAN_CARD_FIELDS.filter((field) => patch.card_fields!.includes(field))
+    clean.card_fields = (fields.length > 0 ? fields : DEFAULT_CARD_FIELDS) as never
+  }
+  if (patch.compact_mode !== undefined) clean.compact_mode = Boolean(patch.compact_mode)
+  if (patch.show_empty_columns !== undefined) {
+    clean.show_empty_columns = Boolean(patch.show_empty_columns)
+  }
+  if (patch.show_column_count !== undefined) {
+    clean.show_column_count = Boolean(patch.show_column_count)
+  }
+
+  if (Object.keys(clean).length === 0) return { ok: true, data: { id: viewId } }
+
+  const supabase = createClient()
+
+  try {
+    if (viewId && viewId !== 'default') {
+      const { data, error } = await supabase
+        .from('kanban_view_configs')
+        .update({ ...clean, updated_at: new Date().toISOString() })
+        .eq('id', viewId)
+        .eq('organization_id', auth.orgId)
+        .select('id')
+        .single()
+
+      if (error) throw error
+      revalidatePath(projectPath(scope))
+      return { ok: true, data: { id: data.id } }
+    }
+
+    const { data, error } = await supabase
+      .from('kanban_view_configs')
+      .insert({
+        name: 'My view',
+        board_id: boardId,
+        organization_id: auth.orgId,
+        created_by: auth.userId,
+        is_default: true,
+        is_shared: false,
+        ...clean,
+      })
+      .select('id')
+      .single()
+
+    if (error) throw error
     revalidatePath(projectPath(scope))
     return { ok: true, data: { id: data.id } }
   } catch (error) {

@@ -87,7 +87,7 @@ export default async function SearchPage({
                           : null
 
                       return (
-                        <li key={task.id} className="flex items-center gap-3 px-4 py-2.5">
+                        <li key={task.id} className="flex items-center gap-2.5 py-2">
                           <span className="label-meta shrink-0 text-faint">
                             {project?.key ?? 'TSK'}-{task.task_number}
                           </span>
@@ -124,7 +124,7 @@ export default async function SearchPage({
                         : null
 
                       return (
-                        <li key={project.id} className="flex items-center gap-3 px-4 py-2.5">
+                        <li key={project.id} className="flex items-center gap-2.5 py-2">
                           {href ? (
                             <Link
                               href={href}

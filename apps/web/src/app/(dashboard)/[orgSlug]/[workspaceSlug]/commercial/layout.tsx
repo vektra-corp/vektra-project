@@ -27,7 +27,9 @@ export default async function CommercialLayout({
   return (
     <>
       <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: 'Commercial' }]} />
-      <div className="px-5 py-3">
+      {/* The design rules the section's tab row off from the table under it,
+          the same strip the project views use. */}
+      <div className="border-border flex shrink-0 flex-wrap items-center gap-4 border-b px-5 py-2.5">
         <CommercialNav base={base} />
       </div>
       {children}

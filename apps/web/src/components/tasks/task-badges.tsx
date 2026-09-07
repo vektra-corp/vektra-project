@@ -1,23 +1,26 @@
 import type { Priority, TaskStatus } from '@pm/shared/constants'
 import { cn } from '@pm/ui'
-import { ChevronDown, ChevronsUp, ChevronUp, Minus } from 'lucide-react'
 
 /**
  * Priority indicator. Colour alone never carries the meaning — each level has a
  * distinct glyph and a text label, so it survives greyscale and colour blindness.
+ *
+ * The glyphs are the design's own: a doubled triangle for urgent, a single one
+ * for high, an em dash for medium and an outlined triangle pointing down for
+ * low. They are set as text rather than as drawn icons so the whole marker is
+ * one monospace run and lines up with the id across from it.
  */
-const PRIORITY_STYLES: Record<
-  Priority,
-  { icon: typeof ChevronUp; className: string; label: string }
-> = {
-  critical: {
-    icon: ChevronsUp,
-    className: 'text-[hsl(var(--priority-critical))]',
-    label: 'Urgent',
-  },
-  high: { icon: ChevronUp, className: 'text-[hsl(var(--priority-high))]', label: 'High' },
-  medium: { icon: Minus, className: 'text-muted-foreground', label: 'Med' },
-  low: { icon: ChevronDown, className: 'text-faint', label: 'Low' },
+const PRIORITY_STYLES: Record<Priority, { glyph: string; className: string; label: string }> = {
+  critical: { glyph: '▲▲', className: 'text-[hsl(var(--priority-critical))]', label: 'URGENT' },
+  high: { glyph: '▲', className: 'text-[hsl(var(--priority-high))]', label: 'HIGH' },
+  medium: { glyph: '—', className: 'text-faint', label: 'MED' },
+  low: { glyph: '▽', className: 'text-subtle', label: 'LOW' },
+}
+
+/** `▲▲ URGENT` — the marker as the design's card meta row prints it. */
+export function priorityLabel(priority: Priority): string {
+  const style = PRIORITY_STYLES[priority]
+  return `${style.glyph} ${style.label}`
 }
 
 export function TaskPriorityIcon({
@@ -28,11 +31,12 @@ export function TaskPriorityIcon({
   showLabel?: boolean
 }) {
   const style = PRIORITY_STYLES[priority]
-  const Icon = style.icon
 
   return (
-    <span className={cn('label-id inline-flex items-center gap-1 uppercase', style.className)}>
-      <Icon className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+    <span className={cn('label-id inline-flex items-center gap-1', style.className)}>
+      <span aria-hidden className="font-glyph">
+        {style.glyph}
+      </span>
       <span className={showLabel ? '' : 'sr-only'}>
         {style.label}
         {showLabel ? '' : ' priority'}

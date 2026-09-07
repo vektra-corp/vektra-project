@@ -1,7 +1,7 @@
 import { DEFAULT_FORMAT_OPTIONS } from '@pm/shared/constants'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { PageBody } from '@/components/layout/page-body'
+import { SettingsPanel } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
 import { ProfileForm } from './profile-form'
@@ -34,8 +34,7 @@ export default async function ProfileSettingsPage({ params }: { params: { orgSlu
   }
 
   return (
-    <PageBody>
-      <div className="max-w-2xl">
+    <SettingsPanel>
         <ProfileForm
           orgSlug={params.orgSlug}
           values={{
@@ -51,7 +50,6 @@ export default async function ProfileSettingsPage({ params }: { params: { orgSlu
             orgDefaults,
           }}
         />
-      </div>
-    </PageBody>
+    </SettingsPanel>
   )
 }

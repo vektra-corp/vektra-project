@@ -14,9 +14,29 @@ export const DASHBOARD_WIDGETS = [
 
 export type DashboardWidgetType = (typeof DASHBOARD_WIDGETS)[number]
 
+/**
+ * Which part of the product a widget reports on.
+ *
+ * The design tags every widget with its module in the meta face, and groups the
+ * catalogue by the same key, so a mixed dashboard stays legible: you can tell at
+ * a glance which panels are delivery, which are money and which are people,
+ * without reading the titles.
+ */
+export const WIDGET_CATEGORIES = ['pm', 'revenue', 'timesheet', 'hr', 'workflow'] as const
+export type WidgetCategory = (typeof WIDGET_CATEGORIES)[number]
+
+export const WIDGET_CATEGORY_LABELS: Record<WidgetCategory, string> = {
+  pm: 'PM',
+  revenue: 'REVENUE',
+  timesheet: 'TIMESHEET',
+  hr: 'HR',
+  workflow: 'WORKFLOW',
+}
+
 export interface WidgetSpec {
   label: string
   description: string
+  category: WidgetCategory
   /** Default grid footprint, in columns and rows. */
   w: number
   h: number
@@ -30,6 +50,7 @@ export const WIDGET_SPECS: Record<DashboardWidgetType, WidgetSpec> = {
   my_open_tasks: {
     label: 'My open tasks',
     description: 'Everything assigned to you that is not done.',
+    category: 'pm',
     w: 6,
     h: 5,
     minW: 3,
@@ -38,6 +59,7 @@ export const WIDGET_SPECS: Record<DashboardWidgetType, WidgetSpec> = {
   tasks_due_soon: {
     label: 'Due this week',
     description: 'Your tasks due in the next seven days.',
+    category: 'pm',
     w: 3,
     h: 2,
     minW: 2,
@@ -46,6 +68,7 @@ export const WIDGET_SPECS: Record<DashboardWidgetType, WidgetSpec> = {
   overdue_tasks: {
     label: 'Overdue',
     description: 'Your tasks past their due date.',
+    category: 'pm',
     w: 3,
     h: 2,
     minW: 2,
@@ -54,6 +77,7 @@ export const WIDGET_SPECS: Record<DashboardWidgetType, WidgetSpec> = {
   active_projects: {
     label: 'Active projects',
     description: 'Count of projects currently in flight.',
+    category: 'pm',
     w: 3,
     h: 2,
     minW: 2,
@@ -62,6 +86,7 @@ export const WIDGET_SPECS: Record<DashboardWidgetType, WidgetSpec> = {
   project_progress: {
     label: 'Project progress',
     description: 'Completion per active project.',
+    category: 'pm',
     w: 6,
     h: 5,
     minW: 3,
@@ -70,6 +95,7 @@ export const WIDGET_SPECS: Record<DashboardWidgetType, WidgetSpec> = {
   recent_activity: {
     label: 'Recent activity',
     description: 'What changed most recently across the organization.',
+    category: 'pm',
     w: 12,
     h: 4,
     minW: 4,
@@ -78,6 +104,7 @@ export const WIDGET_SPECS: Record<DashboardWidgetType, WidgetSpec> = {
   team_workload: {
     label: 'Team workload',
     description: 'Open tasks per person.',
+    category: 'pm',
     w: 6,
     h: 5,
     minW: 3,
@@ -87,6 +114,7 @@ export const WIDGET_SPECS: Record<DashboardWidgetType, WidgetSpec> = {
   my_leave: {
     label: 'My leave',
     description: 'Your remaining balance per leave type.',
+    category: 'hr',
     w: 6,
     h: 4,
     minW: 3,
@@ -95,6 +123,7 @@ export const WIDGET_SPECS: Record<DashboardWidgetType, WidgetSpec> = {
   pending_approvals: {
     label: 'Leave approvals',
     description: 'Requests waiting on your decision.',
+    category: 'timesheet',
     w: 6,
     h: 4,
     minW: 3,

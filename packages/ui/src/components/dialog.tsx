@@ -17,7 +17,9 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      'bg-background/80 fixed inset-0 z-50 backdrop-blur-sm',
+      /* The design's scrim: a wash that mutes the shell without hiding it,
+         and without the blur, which on a dark UI reads as a rendering fault. */
+      'bg-scrim fixed inset-0 z-50',
       'data-[state=open]:animate-fade-in',
       className,
     )}
@@ -39,7 +41,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         'fixed start-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rtl:translate-x-1/2',
-        'border-border bg-surface-overlay shadow-overlay rounded-lg border p-5',
+        'border-input bg-popover shadow-overlay rounded-[13px] border p-5',
         'data-[state=open]:animate-overlay-in',
         className,
       )}

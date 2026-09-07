@@ -8,7 +8,7 @@ import { ACTIONS, MODULES, ORG_ROLES } from '@pm/shared/constants'
 import { Badge, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@pm/ui'
 import { Check, Minus } from 'lucide-react'
 import type { Metadata } from 'next'
-import { PageBody } from '@/components/layout/page-body'
+import { SettingsPanel } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
 
@@ -26,8 +26,8 @@ export default async function RolesSettingsPage({ params }: { params: { orgSlug:
   if (!(ORG_ADMIN_ROLES as readonly string[]).includes(auth.orgRole)) forbidden()
 
   return (
-    <PageBody>
-      <div className="max-w-4xl space-y-5">
+    <SettingsPanel>
+      <div className="space-y-5">
         <div className="grid gap-3 sm:grid-cols-2">
           {ORG_ROLES.map((role) => (
             <div key={role} className="rounded-lg border border-border bg-surface p-4 shadow-card">
@@ -104,6 +104,6 @@ export default async function RolesSettingsPage({ params }: { params: { orgSlug:
           </Table>
         </div>
       </div>
-    </PageBody>
+    </SettingsPanel>
   )
 }

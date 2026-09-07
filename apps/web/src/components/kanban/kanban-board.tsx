@@ -71,6 +71,9 @@ export function KanbanBoard({
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Collapsed columns live here rather than in each column, because the board's
+  // grid template has to know which tracks are 46px and which share the rest.
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [, startTransition] = useTransition()
   const router = useRouter()
 
@@ -243,8 +246,20 @@ export function KanbanBoard({
           * line-coloured ground, with each column painting its own background
           * back over the cell. A border on the column itself could not do it —
           * it would stop at the last card rather than reaching the floor.
+          *
+          * Columns SHARE the width rather than each taking a fixed one: an open
+          * column is `minmax(0,1fr)`, a collapsed one the design's 46px rail.
+          * `minmax(0,...)` rather than plain `1fr` so a long task title wraps
+          * instead of forcing the track wider than its share.
           */}
-        <div className="scrollbar-slim bg-border grid flex-1 grid-flow-col justify-start gap-px overflow-x-auto">
+        <div
+          className="bg-border grid min-h-0 flex-1 gap-px"
+          style={{
+            gridTemplateColumns: columns
+              .map((column) => (collapsed[column.id] ? '46px' : 'minmax(0,1fr)'))
+              .join(' '),
+          }}
+        >
           {columns.map((column) => (
             <KanbanColumn
               key={column.id}
@@ -255,6 +270,10 @@ export function KanbanBoard({
               view={view}
               canCreate={canCreate}
               canQuickAdd={isStatusGrouped}
+              collapsed={Boolean(collapsed[column.id])}
+              onToggleCollapse={(next) =>
+                setCollapsed((current) => ({ ...current, [column.id]: next }))
+              }
             />
           ))}
         </div>
@@ -262,7 +281,7 @@ export function KanbanBoard({
         {/* Follows the cursor so the card stays legible over other columns. */}
         <DragOverlay>
           {activeCard ? (
-            <ul className="w-[272px]">
+            <ul className="w-[268px]">
               <KanbanCard card={activeCard} href="#" today={today} view={view} isOverlay />
             </ul>
           ) : null}

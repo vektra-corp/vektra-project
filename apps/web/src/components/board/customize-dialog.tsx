@@ -1,211 +1,487 @@
 'use client'
 
 import {
-  KANBAN_CARD_FIELDS,
-  KANBAN_CARD_FIELD_LABELS,
-  KANBAN_GROUP_BY,
-  KANBAN_GROUP_BY_LABELS,
-  KANBAN_SORT_BY,
+  KANBAN_SWIMLANE_BY,
+  type KanbanCardField,
+  type KanbanColorBy,
+  type KanbanSwimlaneBy,
   type KanbanViewConfig,
 } from '@pm/shared/constants'
-import {
-  Button,
-  Checkbox,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  Label,
-  toast,
-} from '@pm/ui'
-import { SlidersHorizontal } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { cn, toast } from '@pm/ui'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { saveKanbanView } from '@/app/(dashboard)/[orgSlug]/[workspaceSlug]/projects/[projectId]/view-actions'
+import { updateKanbanColumn } from '@/app/(dashboard)/[orgSlug]/[workspaceSlug]/projects/[projectId]/actions'
+import { updateKanbanView } from '@/app/(dashboard)/[orgSlug]/[workspaceSlug]/projects/[projectId]/view-actions'
 import type { KanbanScope } from '@/components/kanban/types'
-
-const SORT_LABELS: Record<string, string> = {
-  position: 'Manual order',
-  priority: 'Priority',
-  due_date: 'Due date',
-  created_at: 'Created',
-  title: 'Title',
-}
+import { SaveViewDialog } from './save-view-dialog'
 
 /**
- * Board customization (§19.8).
+ * The three card presets the design offers, and what each one means in terms of
+ * the fields a card actually shows (§19.8 `card_fields`).
+ *
+ * The panel presents a mode rather than eight checkboxes because that is what
+ * the design presents; the underlying field list is still the stored truth, so
+ * a view saved from the fuller form elsewhere keeps working.
+ */
+const CARD_MODES = {
+  minimal: {
+    label: 'Minimal',
+    note: 'Title and assignee only.',
+    compact: true,
+    fields: ['assignee'] as KanbanCardField[],
+  },
+  standard: {
+    label: 'Standard',
+    note: 'Key, priority, assignee, points.',
+    compact: false,
+    fields: ['task_number', 'priority', 'assignee', 'estimated_hours'] as KanbanCardField[],
+  },
+  full: {
+    label: 'Full',
+    note: 'Adds labels, subtask progress, logged time and due date.',
+    compact: false,
+    fields: [
+      'task_number',
+      'priority',
+      'assignee',
+      'estimated_hours',
+      'labels',
+      'subtask_progress',
+      'time_logged',
+      'due_date',
+    ] as KanbanCardField[],
+  },
+} as const
+
+type CardMode = keyof typeof CARD_MODES
+
+/** Which preset the stored field list most closely is. */
+function modeOf(view: KanbanViewConfig): CardMode {
+  if (view.compact_mode) return 'minimal'
+  return view.card_fields.includes('time_logged') || view.card_fields.includes('labels')
+    ? 'full'
+    : 'standard'
+}
+
+const COLOR_MODES: { value: KanbanColorBy; label: string }[] = [
+  { value: 'none', label: 'None' },
+  { value: 'priority', label: 'Priority' },
+  { value: 'label', label: 'Label' },
+]
+
+const SWIM_LABELS: Record<KanbanSwimlaneBy, string> = {
+  none: 'No swimlanes',
+  priority: 'Lanes by priority',
+  assignee: 'Lanes by assignee',
+  label: 'Lanes by label',
+  custom_field: 'Lanes by custom field',
+}
+
+/** A segmented button inside the panel: equal width, 7px radius, 12px. */
+function ModeButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex-1 rounded-[7px] border py-1.5 text-center text-nav transition-colors',
+        active
+          ? 'border-primary bg-primary/10 text-primary'
+          : 'border-input text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+/** A filter chip in the panel's FILTER · sections. */
+function FilterPill({
+  active,
+  onClick,
+  color,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  color?: string
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-1.5 rounded-[7px] border px-2 py-1 text-micro transition-colors',
+        active
+          ? 'border-primary bg-primary/10 text-primary'
+          : 'border-input text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {color ? (
+        <span
+          aria-hidden
+          className="h-1.5 w-1.5 shrink-0 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+      ) : null}
+      {children}
+    </button>
+  )
+}
+
+const PRIORITY_FILTERS = [
+  { value: 'critical', label: 'Urgent', color: 'hsl(var(--priority-critical))' },
+  { value: 'high', label: 'High', color: 'hsl(var(--priority-high))' },
+  { value: 'medium', label: 'Med', color: 'hsl(var(--priority-medium))' },
+  { value: 'low', label: 'Low', color: 'hsl(var(--priority-low))' },
+]
+
+/**
+ * Board settings (§19.8).
+ *
+ * The design opens this as a 274px panel down the right of the board, not as a
+ * modal — you are meant to see the board rearrange as you press things, which a
+ * dialog covering it would defeat. Every control therefore applies immediately;
+ * "Save as view" is the separate, deliberate act of naming the arrangement.
  *
  * Saving always writes a view rather than mutating the board, so one person's
- * grouping never changes what a teammate sees — unless they deliberately share it.
+ * grouping never changes what a teammate sees — unless they deliberately share
+ * it. Column names and WIP limits are the exception, and are marked as such:
+ * they belong to the project's workflow, so they change it for everyone.
  */
 export function CustomizeDialog({
   scope,
   boardId,
   view,
   canShare,
+  columns,
+  assignees,
+  labels,
 }: {
   scope: KanbanScope
   boardId: string
   view: KanbanViewConfig
   canShare: boolean
+  columns: { id: string; name: string; status: string; wip_limit?: number | null }[]
+  assignees: { id: string; full_name: string }[]
+  labels: { id: string; name: string; color: string }[]
 }) {
   const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
 
-  // A brand-new view is named for what it does, so the default is not "My view".
-  const isNew = view.id === 'default'
+  const mode = modeOf(view)
 
-  function submit(formData: FormData) {
+  function patchView(patch: Parameters<typeof updateKanbanView>[3]) {
     startTransition(async () => {
-      const result = await saveKanbanView(scope, boardId, isNew ? null : view.id, formData)
-      if (result.ok) {
-        setOpen(false)
-        toast({ title: isNew ? 'View saved' : 'View updated' })
-        router.replace(`?view=${result.data.id}`, { scroll: false })
-        router.refresh()
-      } else {
-        toast({ variant: 'destructive', title: 'Could not save', description: result.message })
+      const result = await updateKanbanView(scope, boardId, view.id, patch)
+      if (!result.ok) {
+        toast({ variant: 'destructive', title: 'Could not apply', description: result.message })
+        return
       }
+      // A first patch materialises the default view, so follow it by id.
+      if (view.id === 'default') router.replace(`?view=${result.data.id}`, { scroll: false })
+      router.refresh()
     })
+  }
+
+  function toggleFilter(param: string, value: string) {
+    const params = new URLSearchParams(searchParams.toString())
+    const current = params.getAll(param)
+    const next = current.includes(value)
+      ? current.filter((entry) => entry !== value)
+      : [...current, value]
+    params.delete(param)
+    for (const entry of next) params.append(param, entry)
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }
+
+  const selectedAssignees = searchParams.getAll('assignee')
+  const selectedPriorities = searchParams.getAll('priority')
+  const selectedLabels = searchParams.getAll('label')
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="border-input text-muted-foreground hover:text-foreground flex items-center gap-1.5 rounded-[6px] border px-2.5 py-1 text-nav transition-colors"
+      >
+        <span aria-hidden className="font-glyph">
+          ⚙
+        </span>
+        Customize
+      </button>
+    )
   }
 
   return (
     <>
-      <Button variant="subtle" size="sm" className="gap-1.5" onClick={() => setOpen(true)}>
-        <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        aria-expanded
+        className="border-primary text-primary flex items-center gap-1.5 rounded-[6px] border px-2.5 py-1 text-nav transition-colors"
+      >
+        <span aria-hidden className="font-glyph">
+          ⚙
+        </span>
         Customize
-      </Button>
+      </button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{isNew ? 'Save a board view' : `Edit “${view.name}”`}</DialogTitle>
-            <DialogDescription>
-              Grouping, card fields and sorting are saved per view. Nothing here changes the tasks
-              themselves.
-            </DialogDescription>
-          </DialogHeader>
+      {/*
+        * Fixed rather than in flow: the toolbar this button lives in is above
+        * the board, and the panel has to sit beside the board itself. It is
+        * pinned under the two header rows and runs to the floor.
+        */}
+      <aside
+        aria-label="Board settings"
+        data-pending={pending ? '' : undefined}
+        className="border-border bg-surface scrollbar-slim fixed bottom-0 end-0 top-[105px] z-20 flex w-[274px] flex-col gap-[18px] overflow-y-auto border-s p-4 data-[pending]:opacity-70"
+      >
+        <div className="flex items-center gap-2">
+          <h2 className="text-task font-semibold">Board settings</h2>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Close board settings"
+            className="text-subtle hover:text-foreground ms-auto text-nav transition-colors"
+          >
+            <span aria-hidden>✕</span>
+          </button>
+        </div>
 
-          <form action={submit} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="view-name">View name</Label>
-              <Input
-                id="view-name"
-                name="name"
-                defaultValue={isNew ? 'My view' : view.name}
-                required
-                maxLength={100}
-              />
-            </div>
+        <section className="flex flex-col gap-2">
+          <h3 className="label-meta-lg text-subtle">Card fields</h3>
+          <div className="flex gap-[5px]">
+            {(Object.keys(CARD_MODES) as CardMode[]).map((key) => (
+              <ModeButton
+                key={key}
+                active={mode === key}
+                onClick={() =>
+                  patchView({
+                    compact_mode: CARD_MODES[key].compact,
+                    card_fields: [...CARD_MODES[key].fields],
+                  })
+                }
+              >
+                {CARD_MODES[key].label}
+              </ModeButton>
+            ))}
+          </div>
+          <p className="text-faint text-micro leading-normal">{CARD_MODES[mode].note}</p>
+        </section>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="group-by">Group columns by</Label>
-                <select
-                  id="group-by"
-                  name="group_by"
-                  defaultValue={view.group_by}
-                  className="flex h-9 w-full rounded-md border border-input bg-card px-3 text-ui focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+        <section className="flex flex-col gap-2">
+          <h3 className="label-meta-lg text-subtle">Color code by</h3>
+          <div className="flex gap-[5px]">
+            {COLOR_MODES.map((option) => (
+              <ModeButton
+                key={option.value}
+                active={view.card_color_by === option.value}
+                onClick={() => patchView({ card_color_by: option.value })}
+              >
+                {option.label}
+              </ModeButton>
+            ))}
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-2">
+          <h3 className="label-meta-lg text-subtle">Swimlanes</h3>
+          <div className="flex flex-col gap-[3px]">
+            {KANBAN_SWIMLANE_BY.filter((option) => option !== 'custom_field').map((option) => {
+              const active = view.swimlane_by === option
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => patchView({ swimlane_by: option })}
+                  className={cn(
+                    'flex items-center gap-2 rounded-[7px] px-2.5 py-[7px] text-start text-ui transition-colors',
+                    active ? 'bg-surface-hover' : 'hover:bg-surface-hover/60',
+                  )}
                 >
-                  {KANBAN_GROUP_BY.filter(
-                    // These two need the custom-fields module; offering them now
-                    // would silently fall back to status grouping.
-                    (option) => option !== 'custom_field' && option !== 'due_date_range',
-                  ).map((option) => (
-                    <option key={option} value={option}>
-                      {KANBAN_GROUP_BY_LABELS[option]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="sort-by">Sort cards by</Label>
-                <div className="flex gap-2">
-                  <select
-                    id="sort-by"
-                    name="sort_by"
-                    defaultValue={view.sort_by}
-                    className="flex h-9 min-w-0 flex-1 rounded-md border border-input bg-card px-3 text-ui focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'grid h-3 w-3 shrink-0 place-items-center rounded-full border-[1.5px]',
+                      active ? 'border-primary' : 'border-input',
+                    )}
                   >
-                    {KANBAN_SORT_BY.map((option) => (
-                      <option key={option} value={option}>
-                        {SORT_LABELS[option] ?? option}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    name="sort_order"
-                    defaultValue={view.sort_order}
-                    aria-label="Sort direction"
-                    className="flex h-9 rounded-md border border-input bg-card px-2 text-ui focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-                  >
-                    <option value="asc">Asc</option>
-                    <option value="desc">Desc</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <fieldset className="space-y-2">
-              <legend className="pb-1 text-ui font-medium">Show on cards</legend>
-              <div className="grid grid-cols-2 gap-1.5">
-                {KANBAN_CARD_FIELDS.map((field) => (
-                  <label
-                    key={field}
-                    className="flex cursor-pointer items-center gap-2.5 text-base"
-                  >
-                    <Checkbox
-                      name="card_fields"
-                      value={field}
-                      size="sm"
-                      defaultChecked={view.card_fields.includes(field)}
+                    <span
+                      className={cn(
+                        'h-1.5 w-1.5 rounded-full',
+                        active ? 'bg-primary' : 'bg-transparent',
+                      )}
                     />
-                    {KANBAN_CARD_FIELD_LABELS[field]}
-                  </label>
+                  </span>
+                  {SWIM_LABELS[option]}
+                </button>
+              )
+            })}
+          </div>
+        </section>
+
+        {view.group_by === 'status' && columns.length > 0 ? (
+          <section className="flex flex-col gap-[9px]">
+            <h3 className="label-meta-lg text-subtle">Columns</h3>
+            {columns.map((column) => (
+              <ColumnConfigCard key={column.id} scope={scope} column={column} />
+            ))}
+          </section>
+        ) : null}
+
+        <section className="flex flex-col gap-2">
+          <h3 className="label-meta-lg text-subtle">Filter · assignee</h3>
+          <div className="flex flex-wrap gap-[5px]">
+            {assignees.length === 0 ? (
+              <p className="text-subtle text-micro">Nobody is assigned yet.</p>
+            ) : (
+              assignees.map((person) => (
+                <FilterPill
+                  key={person.id}
+                  active={selectedAssignees.includes(person.id)}
+                  onClick={() => toggleFilter('assignee', person.id)}
+                >
+                  {person.full_name.split(' ')[0]}
+                </FilterPill>
+              ))
+            )}
+          </div>
+
+          <h3 className="label-meta-lg text-subtle pt-1">Filter · priority</h3>
+          <div className="flex flex-wrap gap-[5px]">
+            {PRIORITY_FILTERS.map((priority) => (
+              <FilterPill
+                key={priority.value}
+                active={selectedPriorities.includes(priority.value)}
+                onClick={() => toggleFilter('priority', priority.value)}
+                color={priority.color}
+              >
+                {priority.label}
+              </FilterPill>
+            ))}
+          </div>
+
+          {labels.length > 0 ? (
+            <>
+              <h3 className="label-meta-lg text-subtle pt-1">Filter · label</h3>
+              <div className="flex flex-wrap gap-[5px]">
+                {labels.map((label) => (
+                  <FilterPill
+                    key={label.id}
+                    active={selectedLabels.includes(label.id)}
+                    onClick={() => toggleFilter('label', label.id)}
+                    color={label.color}
+                  >
+                    {label.name}
+                  </FilterPill>
                 ))}
               </div>
-            </fieldset>
+            </>
+          ) : null}
+        </section>
 
-            <input type="hidden" name="card_color_by" value={view.card_color_by} />
-
-            <fieldset className="space-y-1.5">
-              <legend className="pb-1 text-ui font-medium">Display</legend>
-              <label className="flex cursor-pointer items-center gap-2.5 text-base">
-                <Checkbox
-                  name="show_empty_columns"
-                  size="sm"
-                  defaultChecked={view.show_empty_columns}
-                />
-                Show empty columns
-              </label>
-              <label className="flex cursor-pointer items-center gap-2.5 text-base">
-                <Checkbox name="compact_mode" size="sm" defaultChecked={view.compact_mode} />
-                Compact cards
-              </label>
-              {canShare ? (
-                <label className="flex cursor-pointer items-center gap-2.5 text-base">
-                  <Checkbox name="is_shared" size="sm" defaultChecked={view.is_shared} />
-                  Share with everyone on this project
-                </label>
-              ) : null}
-            </fieldset>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" loading={pending}>
-                {isNew ? 'Save view' : 'Update view'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+        <SaveViewDialog scope={scope} boardId={boardId} view={view} canShare={canShare} />
+      </aside>
     </>
+  )
+}
+
+/**
+ * One column's card in the panel: its name, and its WIP limit on a stepper.
+ *
+ * The name commits on blur rather than on every keystroke — it is a shared
+ * setting, and a write per character would be a write per character for
+ * everyone watching the board.
+ */
+function ColumnConfigCard({
+  scope,
+  column,
+}: {
+  scope: KanbanScope
+  column: { id: string; name: string; wip_limit?: number | null }
+}) {
+  const [name, setName] = useState(column.name)
+  const [limit, setLimit] = useState(column.wip_limit ?? 0)
+  const [pending, startTransition] = useTransition()
+  const router = useRouter()
+
+  function commit(patch: { name?: string; wip_limit?: number | null }) {
+    startTransition(async () => {
+      const result = await updateKanbanColumn(scope, column.id, patch)
+      if (!result.ok) {
+        toast({ variant: 'destructive', title: 'Could not update', description: result.message })
+        return
+      }
+      router.refresh()
+    })
+  }
+
+  function step(delta: number) {
+    const next = Math.max(0, limit + delta)
+    setLimit(next)
+    commit({ wip_limit: next })
+  }
+
+  return (
+    <div
+      className={cn(
+        'border-border bg-card flex flex-col gap-[7px] rounded-[9px] border px-[11px] py-2.5',
+        pending && 'opacity-70',
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className="bg-muted-foreground h-[5px] w-[5px] shrink-0 rounded-full"
+        />
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          onBlur={() => name.trim() && name !== column.name && commit({ name })}
+          aria-label={`Rename ${column.name}`}
+          className="text-foreground min-w-0 flex-1 bg-transparent text-ui outline-none"
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-faint text-micro">WIP limit</span>
+        <button
+          type="button"
+          onClick={() => step(-1)}
+          aria-label={`Lower the limit on ${column.name}`}
+          className="border-input text-muted-foreground hover:text-foreground grid h-[19px] w-[19px] place-items-center rounded-[6px] border text-micro transition-colors"
+        >
+          <span aria-hidden>−</span>
+        </button>
+        <span className="min-w-4 text-center font-mono text-micro tabular-nums">
+          {limit > 0 ? limit : '—'}
+        </span>
+        <button
+          type="button"
+          onClick={() => step(1)}
+          aria-label={`Raise the limit on ${column.name}`}
+          className="border-input text-muted-foreground hover:text-foreground grid h-[19px] w-[19px] place-items-center rounded-[6px] border text-micro transition-colors"
+        >
+          <span aria-hidden>+</span>
+        </button>
+        <span className="text-subtle ms-auto font-mono text-meta uppercase">
+          {limit > 0 ? 'OK' : 'No limit'}
+        </span>
+      </div>
+    </div>
   )
 }

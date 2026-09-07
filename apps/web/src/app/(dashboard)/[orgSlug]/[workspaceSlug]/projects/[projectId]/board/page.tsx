@@ -6,6 +6,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { BoardToolbar } from '@/components/board/board-toolbar'
 import { CaptureBar } from '@/components/board/capture-bar'
+import { BoardFilterBar } from '@/components/board/filter-bar'
 import { KanbanBoard } from '@/components/kanban/kanban-board'
 import type { KanbanCardData, KanbanColumnData } from '@/components/kanban/types'
 import { requireAuthPage } from '@/lib/auth/context'
@@ -202,6 +203,37 @@ export default async function BoardPage({
     ).values(),
   ).sort((a, b) => a.full_name.localeCompare(b.full_name))
 
+  // The chips the design shows under the toolbar, in the order the filters are
+  // offered. Each carries the param it clears, so the strip needs no lookup.
+  const priorityNames: Record<string, string> = {
+    critical: 'Urgent',
+    high: 'High',
+    medium: 'Med',
+    low: 'Low',
+  }
+  const activeFilters = [
+    ...statusFilter.map((value) => ({
+      param: 'status',
+      value,
+      label: `Status: ${(columns ?? []).find((column) => column.status === value)?.name ?? value}`,
+    })),
+    ...assigneeFilter.map((value) => ({
+      param: 'assignee',
+      value,
+      label: `Assignee: ${assignees.find((person) => person.id === value)?.full_name.split(' ')[0] ?? 'Unassigned'}`,
+    })),
+    ...priorityFilter.map((value) => ({
+      param: 'priority',
+      value,
+      label: `Priority: ${priorityNames[value] ?? value}`,
+    })),
+    ...labelFilter.map((value) => ({
+      param: 'label',
+      value,
+      label: `Label: ${(labels ?? []).find((label) => label.id === value)?.name ?? value}`,
+    })),
+  ]
+
   const totalPoints = allCards.reduce((sum, card) => sum + (card.estimated_hours ?? 0), 0)
   const donePoints = allCards
     .filter((card) => card.status === 'done')
@@ -220,6 +252,13 @@ export default async function BoardPage({
     // under status grouping, where it is the real column's status.
     status: (column.status ?? 'todo') as KanbanColumnData['status'],
     value: column.value,
+    // Grouped by assignee, the column head is the person rather than a status
+    // dot, so it needs a name to take initials from. `value` is the user id;
+    // the display name comes from the assignee list already built above.
+    avatarLabel:
+      view.group_by === 'assignee'
+        ? (assignees.find((person) => person.id === column.value)?.full_name ?? column.name)
+        : null,
   })) satisfies KanbanColumnData[]
 
   const base = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}`
@@ -252,11 +291,17 @@ export default async function BoardPage({
           id: column.id,
           name: column.name,
           status: column.status,
+          wip_limit: column.wip_limit,
         }))}
         assignees={assignees}
         labels={labels ?? []}
         donePoints={donePoints}
         totalPoints={totalPoints}
+      />
+
+      <BoardFilterBar
+        filters={activeFilters}
+        hiddenCount={allCards.length - cards.length}
       />
 
       <KanbanBoard

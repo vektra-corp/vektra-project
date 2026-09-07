@@ -1,6 +1,5 @@
 import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
 import { formatCurrency } from '@pm/shared/utils'
-import { Badge } from '@pm/ui'
 import { CircleSlash, FileSignature, Send, TrendingUp } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -12,7 +11,7 @@ import {
   type RevenueMonth,
 } from '@/components/dashboard/revenue-widgets'
 import { Widget, WidgetEmpty } from '@/components/dashboard/widget'
-import { PageBody } from '@/components/layout/page-body'
+import { PageBody, SectionHeader } from '@/components/layout/page-body'
 import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
@@ -102,15 +101,9 @@ export default async function RevenuePage({ params }: { params: { orgSlug: strin
 
   return (
     <>
-      <Topbar
-        orgSlug={params.orgSlug}
-        breadcrumb={[{ label: 'Pipeline' }]}
-        meta={
-          <Badge variant="secondary" shape="meta" className="ms-1">
-            Last 12 months
-          </Badge>
-        }
-      />
+      <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: 'Revenue' }]} />
+
+      <SectionHeader title="Revenue" count="Last 12 months" />
 
       <PageBody className="pt-1">
         <div className="space-y-4">
@@ -177,7 +170,7 @@ export default async function RevenuePage({ params }: { params: { orgSlug: strin
                   {ranked.map((entry) => (
                     <li
                       key={`${entry.name}-${entry.currency}`}
-                      className="flex items-center gap-3 px-4 py-2.5"
+                      className="flex items-center gap-2.5 py-2"
                     >
                       <span className="min-w-0 flex-1 truncate text-base">{entry.name}</span>
                       <span className="text-base tabular-nums text-muted-foreground">
@@ -196,7 +189,7 @@ export default async function RevenuePage({ params }: { params: { orgSlug: strin
                 {currencies
                   .filter((code) => code !== primary)
                   .map((code) => (
-                    <li key={code} className="flex items-center gap-3 px-4 py-2.5">
+                    <li key={code} className="flex items-center gap-2.5 py-2">
                       <span className="label-meta w-12 text-faint">{code}</span>
                       <span className="flex-1 text-base text-muted-foreground">Accepted</span>
                       <span className="text-base tabular-nums">

@@ -5,7 +5,7 @@ import { Alert, AlertDescription, Badge } from '@pm/ui'
 import { AlertCircle, Check } from 'lucide-react'
 import type { Metadata } from 'next'
 import { getLocale } from 'next-intl/server'
-import { PageBody } from '@/components/layout/page-body'
+import { SettingsPanel } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
 import { createClient } from '@/lib/supabase/server'
@@ -71,8 +71,8 @@ export default async function IntegrationsPage({
   const configured = Boolean(process.env.SLACK_CLIENT_ID)
 
   return (
-    <PageBody className="pt-4">
-      <div className="max-w-3xl space-y-5 pb-10">
+    <SettingsPanel>
+      <div className="space-y-5 pb-10">
         <div>
           <h1 className="text-base font-semibold tracking-tight">Integrations</h1>
           <p className="pt-1 text-base text-muted-foreground">
@@ -134,6 +134,6 @@ export default async function IntegrationsPage({
           </section>
         ) : null}
       </div>
-    </PageBody>
+    </SettingsPanel>
   )
 }

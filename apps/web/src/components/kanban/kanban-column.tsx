@@ -3,11 +3,11 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { KanbanViewConfig } from '@pm/shared/constants'
+import { initials } from '@pm/shared/utils'
 import { cn } from '@pm/ui'
-import { ChevronsLeftRight } from 'lucide-react'
-import { useState } from 'react'
 import { KanbanCard } from './kanban-card'
 import { KanbanQuickAdd } from './kanban-quick-add'
+import { swimlanesFor } from './swimlanes'
 import {
   STATUS_ACCENT,
   type KanbanCardData,
@@ -23,18 +23,23 @@ export function KanbanColumn({
   view,
   canCreate,
   canQuickAdd,
+  collapsed,
+  onToggleCollapse,
 }: {
   column: KanbanColumnData
   cards: KanbanCardData[]
   scope: KanbanScope
   today: string
-  view: Pick<KanbanViewConfig, 'card_fields' | 'compact_mode' | 'show_column_count'>
+  view: Pick<
+    KanbanViewConfig,
+    'card_fields' | 'compact_mode' | 'card_color_by' | 'show_column_count' | 'swimlane_by'
+  >
   canCreate: boolean
   /** Quick-add only makes sense for a column a new task can actually land in. */
   canQuickAdd: boolean
+  collapsed: boolean
+  onToggleCollapse: (collapsed: boolean) => void
 }) {
-  const [collapsed, setCollapsed] = useState(false)
-
   // The column itself is a drop target so an empty column can still receive a card.
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -45,94 +50,115 @@ export function KanbanColumn({
   const overLimit = column.wip_limit !== null && cards.length > column.wip_limit
   const points = cards.reduce((sum, card) => sum + (card.estimated_hours ?? 0), 0)
   const accent = column.color ?? STATUS_ACCENT[column.status]
+  const lanes = swimlanesFor(cards, view.swimlane_by)
 
   if (collapsed) {
     return (
       <section
-        className="bg-background flex w-11 shrink-0 flex-col items-center gap-3 py-3.5"
+        className="bg-background flex min-h-0 flex-col"
         aria-label={`${column.name} column, collapsed`}
       >
         <button
           type="button"
-          onClick={() => setCollapsed(false)}
-          className="text-faint hover:text-foreground transition-colors"
+          onClick={() => onToggleCollapse(false)}
+          className="text-muted-foreground hover:text-foreground flex flex-1 flex-col items-center gap-2.5 py-3.5 transition-colors"
           aria-label={`Expand ${column.name}`}
         >
-          <ChevronsLeftRight className="h-3.5 w-3.5" aria-hidden />
+          <span className="text-subtle font-mono text-col tabular-nums">{cards.length}</span>
+          {/* Vertical label keeps a collapsed column readable without a tooltip. */}
+          <span className="label-meta-lg [writing-mode:vertical-rl]">{column.name}</span>
         </button>
-        <span
-          className="h-1.5 w-1.5 rounded-full"
-          style={{ backgroundColor: accent }}
-          aria-hidden
-        />
-        {/* Vertical label keeps a collapsed column readable without a tooltip. */}
-        <span className="label-meta-lg text-muted-foreground [writing-mode:vertical-rl]">
-          {column.name}
-        </span>
-        <span className="text-subtle font-mono text-col tabular-nums">{cards.length}</span>
       </section>
     )
   }
 
   return (
     <section
-      className="bg-background flex min-h-0 w-[272px] shrink-0 flex-col"
+      className={cn(
+        'flex min-h-0 min-w-0 flex-col transition-[background,box-shadow]',
+        isOver ? 'bg-surface-raised ring-primary ring-[1.5px] ring-inset' : 'bg-background',
+        !isOver && overLimit && 'ring-destructive ring-1 ring-inset',
+      )}
       aria-label={`${column.name} column`}
     >
       <header className="flex items-center gap-2 px-3 pb-2.5 pt-3">
-        <span
-          className="h-[5px] w-[5px] shrink-0 rounded-full"
-          style={{ backgroundColor: accent }}
-          aria-hidden
-        />
+        {/* Grouping by assignee heads the column with the person, not a dot. */}
+        {column.avatarLabel ? (
+          <span className="bg-chip text-muted-foreground grid h-5 w-5 shrink-0 place-items-center rounded-full text-meta font-semibold uppercase">
+            {initials(column.avatarLabel)}
+          </span>
+        ) : (
+          <span
+            className="h-[5px] w-[5px] shrink-0 rounded-full"
+            style={{ backgroundColor: accent }}
+            aria-hidden
+          />
+        )}
         <h2 className="label-meta-lg text-muted-foreground truncate">{column.name}</h2>
-        <span className="text-subtle font-mono text-col tabular-nums">{cards.length}</span>
+        {view.show_column_count ? (
+          <span className="text-subtle font-mono text-col tabular-nums">{cards.length}</span>
+        ) : null}
 
-        <span className="ms-auto flex items-center gap-2">
-          {column.wip_limit !== null ? (
-            <span
-              className={cn(
-                'font-mono text-meta tabular-nums',
-                overLimit ? 'text-destructive' : atLimit ? 'text-warning' : 'text-subtle',
-              )}
-              title={`Work-in-progress limit: ${column.wip_limit}`}
-            >
-              WIP {cards.length}/{column.wip_limit}
-            </span>
-          ) : (
-            <span className="text-subtle font-mono text-meta tabular-nums">{points} PTS</span>
+        <span
+          className={cn(
+            'ms-auto whitespace-nowrap font-mono text-meta tabular-nums',
+            overLimit ? 'text-destructive' : atLimit ? 'text-warning' : 'text-subtle',
           )}
-          <button
-            type="button"
-            onClick={() => setCollapsed(true)}
-            className="text-subtle hover:text-foreground transition-colors"
-            aria-label={`Collapse ${column.name}`}
-          >
-            <ChevronsLeftRight className="h-3 w-3" aria-hidden />
-          </button>
+          title={
+            column.wip_limit !== null
+              ? `Work-in-progress limit: ${column.wip_limit}`
+              : 'Estimated points in this column'
+          }
+        >
+          {column.wip_limit !== null
+            ? `WIP ${cards.length}/${column.wip_limit}`
+            : `${points} PTS`}
         </span>
+        <button
+          type="button"
+          onClick={() => onToggleCollapse(true)}
+          className="text-subtle hover:text-foreground font-glyph shrink-0 text-col leading-none transition-colors"
+          aria-label={`Collapse ${column.name}`}
+        >
+          <span aria-hidden>‹›</span>
+        </button>
       </header>
 
       <div
         ref={setNodeRef}
-        className={cn(
-          'scrollbar-slim flex min-h-0 flex-1 flex-col gap-[9px] overflow-y-auto px-2.5 pb-3 transition-colors',
-          isOver && 'bg-primary/5 ring-primary/25 ring-1 ring-inset',
-        )}
+        className="scrollbar-slim flex min-h-0 flex-1 flex-col gap-[9px] overflow-y-auto px-2.5 pb-3"
       >
         <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-          <ul className="flex flex-col gap-[9px]">
-            {cards.map((card) => (
-              <KanbanCard
-                key={card.id}
-                card={card}
-                scope={scope}
-                today={today}
-                view={view}
-                href={`/${scope.orgSlug}/${scope.workspaceSlug}/projects/${scope.projectId}/tasks/${card.publicId}`}
-              />
-            ))}
-          </ul>
+          {lanes.map((lane) => (
+            <div key={lane.key} className="flex flex-col gap-[7px]">
+              {lane.label ? (
+                <div className="flex items-center gap-[7px] px-0.5 pb-px pt-0.5">
+                  <span
+                    aria-hidden
+                    className="h-1 w-1 shrink-0 rounded-full"
+                    style={{ backgroundColor: lane.color }}
+                  />
+                  <span className="text-subtle font-mono text-[8.5px] uppercase leading-none tracking-[0.12em]">
+                    {lane.label}
+                  </span>
+                  <span aria-hidden className="bg-border block h-px flex-1" />
+                </div>
+              ) : null}
+
+              <ul className="flex flex-col gap-[9px]">
+                {lane.cards.map((card) => (
+                  <KanbanCard
+                    key={card.id}
+                    card={card}
+                    scope={scope}
+                    today={today}
+                    view={view}
+                    href={`/${scope.orgSlug}/${scope.workspaceSlug}/projects/${scope.projectId}/tasks/${card.publicId}`}
+                  />
+                ))}
+              </ul>
+            </div>
+          ))}
         </SortableContext>
 
         {canCreate && canQuickAdd ? (

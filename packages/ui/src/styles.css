@@ -87,6 +87,9 @@
 
     --track: 218 10% 12%;
 
+    /* The wash behind a modal. Dark enough to mute the shell without hiding it. */
+    --scrim: 220 43% 3% / 0.62;
+
     /* Cards are 9px; md → 7px (buttons, tabs), sm → 5px (chips). */
     --radius: 0.5625rem;
   }
@@ -152,6 +155,7 @@
     --danger: 0 50% 53%;
 
     --track: 225 12% 94%;
+    --scrim: 222 29% 11% / 0.28;
   }
 }
 

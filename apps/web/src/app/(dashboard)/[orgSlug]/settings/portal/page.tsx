@@ -1,7 +1,7 @@
 import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
 import { limitFor } from '@pm/shared/billing'
 import type { Metadata } from 'next'
-import { PageBody } from '@/components/layout/page-body'
+import { SettingsPanel } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
 import { createClient } from '@/lib/supabase/server'
@@ -55,15 +55,13 @@ export default async function PortalSettingsPage({ params }: { params: { orgSlug
   const seatLimit = limitFor(auth.entitlements, 'portal_users')
 
   return (
-    <PageBody>
-      <div className="max-w-2xl">
+    <SettingsPanel>
         <PortalManager
           orgSlug={params.orgSlug}
           portalUsers={rows}
           projects={options}
           seatLimit={seatLimit}
         />
-      </div>
-    </PageBody>
+    </SettingsPanel>
   )
 }

@@ -1,29 +1,31 @@
-import { initials, publicIdToString, todayIn } from '@pm/shared/utils'
-import { Avatar, AvatarFallback, AvatarImage, DataTable, type DataTableColumn } from '@pm/ui'
+import { can } from '@pm/auth/rbac'
+import type { Priority, TaskStatus } from '@pm/shared/constants'
+import { publicIdToString, todayIn } from '@pm/shared/utils'
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { PageBody } from '@/components/layout/page-body'
-import { ProjectViewTabs } from '@/components/projects/project-tabs'
-import { DueDate, TaskPriorityIcon, TaskStatusBadge } from '@/components/tasks/task-badges'
+import { ProjectViewBar } from '@/components/projects/project-tabs'
+import type { ListTask } from '@/components/tasks/task-list-grid'
+import { TaskListView } from '@/components/tasks/task-list-view'
 import { requireAuthPage } from '@/lib/auth/context'
 import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = { title: 'List' }
 
-interface Row {
-  /** 16-digit public id — this row exists to be linked to. */
-  id: string
-  title: string
-  status: string
-  priority: string
-  due_date: string | null
-  task_number: number
-  assignee: { id: string; full_name: string; avatar_url: string | null } | null
+/** One embed can come back as an object or a one-element array; normalise it. */
+function one<T>(value: T | T[] | null | undefined): T | null {
+  if (!value) return null
+  return Array.isArray(value) ? (value[0] ?? null) : value
 }
 
-/** Flat table view of a project's tasks — the same data as the board, sorted. */
+/**
+ * The project's tasks as an editable table (§19.7).
+ *
+ * Every column the design makes editable is editable here — status, priority,
+ * assignee and due date write straight from the row — and each group carries an
+ * add row. Subtasks come down with their parents so expanding a row costs no
+ * round trip.
+ */
 export default async function ListPage({
   params,
 }: {
@@ -36,121 +38,88 @@ export default async function ListPage({
 
   const supabase = createClient()
 
-  const [{ data: tasks }] = await Promise.all([
+  const [{ data: tasks }, { data: members }, { data: columns }] = await Promise.all([
     supabase
       .from('tasks')
       .select(
-        `public_id, title, status, priority, due_date, task_number, updated_at,
-         assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url)`,
+        `id, public_id, title, status, priority, due_date, task_number,
+         assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url),
+         assigner:profiles!tasks_assigner_id_fkey(id, full_name),
+         subtasks(id, title, status, priority, due_date, position,
+                  assignee:profiles!subtasks_assignee_id_fkey(id, full_name))`,
       )
       .eq('project_id', project.id)
       .order('status')
+      .order('position'),
+    supabase
+      .from('project_members')
+      .select('user_id, profile:profiles!project_members_user_id_fkey(id, full_name)')
+      .eq('project_id', project.id),
+    supabase
+      .from('kanban_columns')
+      .select('id, status, position, board:kanban_boards!kanban_columns_board_id_fkey(project_id)')
+      .eq('board.project_id', project.id)
       .order('position'),
   ])
 
   const today = todayIn(auth.orgTimezone)
   const base = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}`
-  const prefix = project.key
 
-  const rows: Row[] = (tasks ?? []).map((task) => ({
-    id: publicIdToString(task.public_id),
+  const rows: ListTask[] = (tasks ?? []).map((task) => ({
+    id: task.id,
+    publicId: publicIdToString(task.public_id),
     title: task.title,
-    status: task.status,
-    priority: task.priority,
+    taskNumber: task.task_number,
+    status: task.status as TaskStatus,
+    priority: task.priority as Priority,
     due_date: task.due_date,
-    task_number: task.task_number,
-    // PostgREST returns a to-one embed as an object; the generated types allow
-    // an array, so normalise rather than casting blindly.
-    assignee: (Array.isArray(task.assignee) ? task.assignee[0] : task.assignee) ?? null,
+    assignee: one(task.assignee),
+    assigner: one(task.assigner),
+    subtasks: [...(task.subtasks ?? [])]
+      .sort((a, b) => a.position - b.position)
+      .map((subtask) => ({
+        id: subtask.id,
+        title: subtask.title,
+        status: subtask.status as TaskStatus,
+        priority: subtask.priority as Priority,
+        due_date: subtask.due_date,
+        assignee: one(subtask.assignee),
+      })),
   }))
 
-  const columns: DataTableColumn<Row>[] = [
-    {
-      key: 'id',
-      header: 'ID',
-      headClassName: 'w-24',
-      cell: (row) => (
-        <span className="label-meta text-faint">
-          {prefix}-{row.task_number}
-        </span>
-      ),
-    },
-    {
-      key: 'title',
-      header: 'Task',
-      cell: (row) => (
-        <Link
-          href={`${base}/tasks/${row.id}`}
-          className="text-foreground hover:text-primary text-base transition-colors"
-        >
-          {row.title}
-        </Link>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      headClassName: 'w-32',
-      cell: (row) => <TaskStatusBadge status={row.status as never} />,
-    },
-    {
-      key: 'priority',
-      header: 'Priority',
-      headClassName: 'w-24',
-      cell: (row) => <TaskPriorityIcon priority={row.priority as never} showLabel />,
-    },
-    {
-      key: 'assignee',
-      header: 'Assignee',
-      headClassName: 'w-40',
-      cell: (row) =>
-        row.assignee ? (
-          <span className="flex items-center gap-2">
-            <Avatar className="h-5 w-5">
-              {row.assignee.avatar_url ? (
-                <AvatarImage src={row.assignee.avatar_url} alt="" />
-              ) : null}
-              <AvatarFallback className="bg-surface-hover text-muted-foreground text-[9px] font-medium uppercase">
-                {initials(row.assignee.full_name)}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-muted-foreground truncate text-base">
-              {row.assignee.full_name}
-            </span>
-          </span>
-        ) : (
-          <span className="label-meta text-faint">Unassigned</span>
-        ),
-    },
-    {
-      key: 'due',
-      header: 'Due',
-      headClassName: 'w-24',
-      cell: (row) => (
-        <DueDate
-          dueDate={row.due_date}
-          today={today}
-          isClosed={row.status === 'done' || row.status === 'cancelled'}
-        />
-      ),
-    },
-  ]
+  // Everyone on the project, plus anyone already assigned — a task assigned
+  // before someone left the project must still show their name in the picker.
+  const people = new Map<string, { id: string; full_name: string }>()
+  for (const member of members ?? []) {
+    const profile = one(member.profile)
+    if (profile) people.set(profile.id, { id: profile.id, full_name: profile.full_name })
+  }
+  for (const row of rows) {
+    if (row.assignee) people.set(row.assignee.id, row.assignee)
+    if (row.assigner) people.set(row.assigner.id, row.assigner)
+  }
+
+  // The first column carrying each status is where an add-row task lands.
+  const statusColumns: Record<string, string> = {}
+  for (const column of columns ?? []) {
+    if (column.status && !statusColumns[column.status]) statusColumns[column.status] = column.id
+  }
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 px-5 py-3">
-        <ProjectViewTabs base={base} />
-        <p className="label-meta text-faint ms-auto">{rows.length} tasks</p>
-      </div>
+      <ProjectViewBar base={base} />
 
-      <PageBody>
-        <DataTable
-          columns={columns}
-          rows={rows}
-          rowKey={(row) => row.id}
-          empty="No tasks in this project yet."
-        />
-      </PageBody>
+      <TaskListView
+        scope={params}
+        projectKey={project.key}
+        tasks={rows}
+        people={[...people.values()].sort((a, b) => a.full_name.localeCompare(b.full_name))}
+        statusColumns={statusColumns}
+        today={today}
+        base={base}
+        canEdit={can(auth, 'tasks', 'update')}
+        canDelete={can(auth, 'tasks', 'delete')}
+      />
     </>
   )
 }

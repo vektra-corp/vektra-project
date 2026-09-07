@@ -144,24 +144,37 @@ export default async function CommercialListPage({
     },
   ]
 
+  // The design opens the section with four figures over the table. They are
+  // derived from the rows already loaded rather than counted again server-side:
+  // the list is capped at 200, and a tile that disagreed with the table under it
+  // would be worse than one that is explicitly "of what is shown".
+  const accepted = rows
+    .filter((row) => row.status === 'accepted')
+    .reduce((sum, row) => sum + row.grandTotal, 0)
+  const decided = rows.filter((row) => row.status === 'accepted' || row.status === 'rejected')
+  const winRate = decided.length
+    ? Math.round(
+        (decided.filter((row) => row.status === 'accepted').length / decided.length) * 100,
+      )
+    : null
+
+  const tiles = [
+    { label: 'Open pipeline', value: formatCurrency(pipeline, auth.orgCurrency, locale), tone: 'text-foreground' },
+    { label: 'Accepted', value: formatCurrency(accepted, auth.orgCurrency, locale), tone: 'text-primary' },
+    { label: 'Win rate', value: winRate === null ? '—' : `${winRate}%`, tone: 'text-status-review' },
+    { label: labels.plural, value: String(rows.length), tone: 'text-foreground' },
+  ]
+
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 px-5 pb-3">
-        <p className="text-base text-muted-foreground">
-          {rows.length} {rows.length === 1 ? labels.singular.toLowerCase() : labels.plural.toLowerCase()}
-        </p>
-
-        {pipeline > 0 ? (
-          <p className="label-meta text-muted-foreground">
-            {formatCurrency(pipeline, auth.orgCurrency, locale)} awaiting a decision
-          </p>
-        ) : null}
-
-        <nav className="flex flex-wrap items-center gap-1" aria-label="Filter by status">
+      <div className="border-border flex shrink-0 flex-wrap items-center gap-4 border-b px-5 py-2.5">
+        <nav className="flex flex-wrap items-center gap-0.5" aria-label="Filter by status">
           <Link
             href={base}
-            className={`label-meta rounded px-1.5 py-1 transition-colors ${
-              searchParams.status ? 'text-faint hover:text-muted-foreground' : 'bg-surface-hover text-foreground'
+            className={`rounded-[6px] px-[9px] py-1 text-nav transition-colors ${
+              searchParams.status
+                ? 'text-faint hover:text-foreground'
+                : 'bg-surface-hover text-foreground font-medium'
             }`}
           >
             All
@@ -170,10 +183,10 @@ export default async function CommercialListPage({
             <Link
               key={status}
               href={`${base}?status=${status}`}
-              className={`label-meta rounded px-1.5 py-1 transition-colors ${
+              className={`rounded-[6px] px-[9px] py-1 text-nav capitalize transition-colors ${
                 searchParams.status === status
-                  ? 'bg-surface-hover text-foreground'
-                  : 'text-faint hover:text-muted-foreground'
+                  ? 'bg-surface-hover text-foreground font-medium'
+                  : 'text-faint hover:text-foreground'
               }`}
             >
               {status.replace('_', ' ')}
@@ -189,9 +202,25 @@ export default async function CommercialListPage({
         </Button>
       </div>
 
-      <PageBody>
+      <PageBody className="p-0">
+        <div className="grid grid-cols-2 gap-3 px-5 py-4 lg:grid-cols-4">
+          {tiles.map((tile) => (
+            <div
+              key={tile.label}
+              className="border-border bg-card flex flex-col gap-1.5 rounded-[11px] border px-[15px] py-[13px]"
+            >
+              <span className="label-meta-lg text-subtle">{tile.label}</span>
+              <span
+                className={`text-[20px] font-semibold leading-none tracking-[-0.02em] tabular-nums ${tile.tone}`}
+              >
+                {tile.value}
+              </span>
+            </div>
+          ))}
+        </div>
+
         {rows.length === 0 ? (
-          <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">
+          <div className="border-border mx-5 flex flex-col items-center rounded-lg border border-dashed py-16 text-center">
             <FileText className="h-6 w-6 text-faint" aria-hidden />
             <p className="pt-3 text-base text-muted-foreground">
               {searchParams.status

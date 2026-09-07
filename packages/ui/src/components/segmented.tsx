@@ -49,11 +49,19 @@ function segmentedItemClass({
   active?: boolean
   size?: 'sm' | 'default'
 }) {
+  /*
+   * The design's own metrics: a 6px radius, 5px/10px padding at 12.5px for a
+   * view tab, 4px/9px at 12px for the tighter group-by row. A selected segment
+   * takes the hover fill and steps up to medium weight — not a filled chip,
+   * which would read as a button.
+   */
   return cn(
-    'inline-flex select-none items-center gap-1.5 rounded-md transition-colors',
+    'inline-flex select-none items-center gap-1.5 rounded-[6px] transition-colors',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
-    size === 'sm' ? 'h-6 px-2 text-nav' : 'h-7 px-2.5 text-ui',
-    active ? 'bg-chip text-foreground font-semibold' : 'text-faint hover:text-foreground',
+    size === 'sm' ? 'px-[9px] py-1 text-nav' : 'px-2.5 py-[5px] text-ui',
+    active
+      ? 'bg-surface-hover text-foreground font-medium'
+      : 'text-faint hover:text-foreground',
   )
 }
 

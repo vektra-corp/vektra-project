@@ -12,7 +12,7 @@ import {
 import type { Metadata } from 'next'
 import { revalidatePath } from 'next/cache'
 import { getLocale } from 'next-intl/server'
-import { PageBody } from '@/components/layout/page-body'
+import { PageBody, SectionHeader } from '@/components/layout/page-body'
 import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
@@ -85,20 +85,17 @@ export default async function NotificationsPage({ params }: { params: { orgSlug:
   return (
     <>
       <Topbar orgSlug={params.orgSlug} breadcrumb={[{ label: 'Inbox' }]} />
+      <SectionHeader title="Inbox" count={unread > 0 ? `${unread} unread` : 'all read'}>
+        {unread > 0 ? (
+          <form action={markAllRead}>
+            <Button type="submit" variant="subtle" size="sm">
+              Mark all read
+            </Button>
+          </form>
+        ) : null}
+      </SectionHeader>
+
       <PageBody className="p-0">
-        <div className="border-border flex items-center gap-2.5 border-b px-5 py-3.5">
-          <h1 className="text-head font-semibold">Inbox</h1>
-          <span className="label-meta-lg text-subtle">
-            {unread > 0 ? `${unread} unread` : 'all read'}
-          </span>
-          {unread > 0 ? (
-            <form action={markAllRead} className="ms-auto">
-              <Button type="submit" variant="subtle" size="sm">
-                Mark all read
-              </Button>
-            </form>
-          ) : null}
-        </div>
 
         <ul>
           {rows.map((notification) => {

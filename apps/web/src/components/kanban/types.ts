@@ -38,6 +38,12 @@ export interface KanbanColumnData {
    * (§19.8); null is the "unassigned" / "no label" column.
    */
   value?: string | null
+  /**
+   * Set only when the board is grouped by assignee: the design heads such a
+   * column with the person's avatar in place of the status dot, so the column
+   * needs the name to take initials from.
+   */
+  avatarLabel?: string | null
 }
 
 export interface KanbanScope {

@@ -1,16 +1,17 @@
 'use client'
 
-import { Alert, AlertDescription, Button, Input, Label, PasswordInput } from '@pm/ui'
+import { Alert, AlertDescription, Button, Input, PasswordInput } from '@pm/ui'
 import { AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { useFormState, useFormStatus } from 'react-dom'
 import { signIn } from '../actions'
+import { AuthField, authInputClass } from '../auth-card'
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" className="w-full" loading={pending}>
+    <Button type="submit" size="lg" className="w-full rounded-[9px]" loading={pending}>
       {label}
     </Button>
   )
@@ -56,7 +57,7 @@ export function LoginForm({ next, error }: { next?: string; error?: string }) {
     state && !state.ok ? state.fieldErrors?.[field]?.[0] : undefined
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="flex flex-col gap-[22px]">
       {next ? <input type="hidden" name="next" value={next} /> : null}
 
       {errorMessage ? (
@@ -66,47 +67,43 @@ export function LoginForm({ next, error }: { next?: string; error?: string }) {
         </Alert>
       ) : null}
 
-      <div className="space-y-2">
-        <Label htmlFor="email">{t('email')}</Label>
+      <AuthField htmlFor="email" label={t('email')} error={fieldError('email')}>
         <Input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
           required
+          className={authInputClass}
           aria-invalid={Boolean(fieldError('email'))}
           aria-describedby={fieldError('email') ? 'email-error' : undefined}
         />
-        {fieldError('email') ? (
-          <p id="email-error" className="text-nav text-destructive">
-            {fieldError('email')}
-          </p>
-        ) : null}
-      </div>
+      </AuthField>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="password">{t('password')}</Label>
+      <AuthField
+        htmlFor="password"
+        label={t('password')}
+        error={fieldError('password')}
+        aside={
           <Link
             href="/forgot-password"
-            className="text-nav text-muted-foreground hover:text-foreground hover:underline"
+            className="text-primary text-micro hover:underline"
           >
             {t('forgot_password')}
           </Link>
-        </div>
+        }
+      >
         <PasswordInput
           id="password"
           name="password"
           autoComplete="current-password"
           required
+          className={authInputClass}
           aria-invalid={Boolean(fieldError('password'))}
           showLabel={t('show_password')}
           hideLabel={t('hide_password')}
         />
-        {fieldError('password') ? (
-          <p className="text-nav text-destructive">{fieldError('password')}</p>
-        ) : null}
-      </div>
+      </AuthField>
 
       <SubmitButton label={t('sign_in')} />
     </form>

@@ -1,8 +1,8 @@
 import { TRIAL_DAYS } from '@pm/shared/constants'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
+import { AuthCard } from '../auth-card'
 import { SocialAuth } from '../social-auth'
 import { SignupForm } from './signup-form'
 
@@ -12,21 +12,18 @@ export default async function SignupPage() {
   const t = await getTranslations('auth')
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-head">{t('signup_title')}</CardTitle>
-        <CardDescription>{t('signup_subtitle', { days: TRIAL_DAYS })}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <SignupForm />
-        <SocialAuth />
-        <p className="mt-6 text-center text-ui text-muted-foreground">
-          {t('have_account')}{' '}
-          <Link href="/login" className="font-medium text-primary hover:underline">
-            {t('sign_in')}
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
+    <AuthCard
+      title={t('signup_title')}
+      description={t('signup_subtitle', { days: TRIAL_DAYS })}
+    >
+      <SignupForm />
+      <SocialAuth />
+      <p className="text-faint text-center text-ui">
+        {t('have_account')}{' '}
+        <Link href="/login" className="text-primary font-medium hover:underline">
+          {t('sign_in')}
+        </Link>
+      </p>
+    </AuthCard>
   )
 }

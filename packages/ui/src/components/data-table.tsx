@@ -37,7 +37,13 @@ export function DataTable<T>({
   className,
 }: DataTableProps<T>) {
   return (
-    <div className={cn('border-border bg-card overflow-hidden rounded-lg border', className)}>
+    /*
+     * Full-bleed rather than a card: the design runs its tables edge to edge
+     * with hairlines between rows, so the section header, the column strip and
+     * the rows all share one left margin. A boxed table would inset the rows
+     * from the header above it and read as a second surface on the page.
+     */
+    <div className={cn('border-border border-b', className)}>
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">

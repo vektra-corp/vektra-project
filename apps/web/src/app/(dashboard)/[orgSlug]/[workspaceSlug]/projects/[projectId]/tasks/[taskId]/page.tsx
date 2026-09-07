@@ -14,10 +14,7 @@ import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
 import { AttachmentList, type AttachmentRow } from '@/components/attachments/attachment-list'
 import { CommentThread, type CommentRow } from '@/components/comments/comment-thread'
-import {
-  CustomFieldInputs,
-  type CustomValue,
-} from '@/components/custom-fields/custom-field-inputs'
+import { CustomFieldInputs, type CustomValue } from '@/components/custom-fields/custom-field-inputs'
 import { SubtaskList, type SubtaskRow } from '@/components/tasks/subtask-list'
 import { DueDate, TaskStatusBadge } from '@/components/tasks/task-badges'
 import { TaskDescription } from '@/components/tasks/task-description'
@@ -76,40 +73,40 @@ export default async function TaskDetailPage({
     { data: customFields },
     { data: customValues },
   ] = await Promise.all([
-      supabase
-        .from('subtasks')
-        .select(
-          'id, title, status, position, assignee:profiles!subtasks_assignee_id_fkey(id, full_name, avatar_url)',
-        )
-        .eq('task_id', taskRef.id)
-        .order('position'),
-      supabase
-        .from('comments')
-        .select(
-          'id, body, is_internal, is_edited, created_at, author:profiles!comments_author_id_fkey(id, full_name, avatar_url)',
-        )
-        .eq('task_id', taskRef.id)
-        .order('created_at'),
-      supabase
-        .from('org_members')
-        .select('profile:profiles!inner(id, full_name, avatar_url)')
-        .eq('organization_id', auth.orgId),
-      supabase
-        .from('attachments')
-        .select('id, file_name, file_size, mime_type, created_at, uploaded_by')
-        .eq('task_id', taskRef.id)
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('custom_fields')
-        .select('id, entity_type, name, field_type, options, is_required, position')
-        .eq('organization_id', auth.orgId)
-        .eq('entity_type', 'task')
-        .order('position'),
-      supabase
-        .from('custom_field_values')
-        .select('custom_field_id, value')
-        .eq('entity_id', taskRef.id),
-    ])
+    supabase
+      .from('subtasks')
+      .select(
+        'id, title, status, position, assignee:profiles!subtasks_assignee_id_fkey(id, full_name, avatar_url)',
+      )
+      .eq('task_id', taskRef.id)
+      .order('position'),
+    supabase
+      .from('comments')
+      .select(
+        'id, body, is_internal, is_edited, created_at, author:profiles!comments_author_id_fkey(id, full_name, avatar_url)',
+      )
+      .eq('task_id', taskRef.id)
+      .order('created_at'),
+    supabase
+      .from('org_members')
+      .select('profile:profiles!inner(id, full_name, avatar_url)')
+      .eq('organization_id', auth.orgId),
+    supabase
+      .from('attachments')
+      .select('id, file_name, file_size, mime_type, created_at, uploaded_by')
+      .eq('task_id', taskRef.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('custom_fields')
+      .select('id, entity_type, name, field_type, options, is_required, position')
+      .eq('organization_id', auth.orgId)
+      .eq('entity_type', 'task')
+      .order('position'),
+    supabase
+      .from('custom_field_values')
+      .select('custom_field_id, value')
+      .eq('entity_id', taskRef.id),
+  ])
 
   // PostgREST returns to-one embeds as objects; the generated types permit an
   // array, so normalise before use.
@@ -151,201 +148,207 @@ export default async function TaskDetailPage({
   const closed = task.status === 'done' || task.status === 'cancelled'
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {/*
-       * The design presents a task as a modal over the board. Here it is a
-       * page, because the app gives every task its own URL and a modal cannot
-       * be linked to, refreshed or opened in a tab. The modal's *layout* is
-       * what carries over: an identity bar, then a two-pane split with the
-       * work on the left and the properties on the right.
-       */}
-      <div className="border-border bg-surface flex shrink-0 flex-wrap items-center gap-2.5 border-b px-4 py-3">
-        <span className="label-id text-faint tracking-[0.06em]">
-          {prefix}-{task.task_number}
-        </span>
-        <span className="bg-input h-3 w-px" aria-hidden />
-        <Link
-          href={`${projectBase}/board`}
-          className="text-faint hover:text-foreground text-nav transition-colors"
-        >
-          {projectName}
-        </Link>
-        <TaskStatusBadge status={task.status as never} />
+    /*
+     * The design presents a task as a modal over the board, and this is that
+     * modal — its scrim, its 1000×824 card, its two-pane split — while staying
+     * a real route. A task has its own URL in this app, so it must survive a
+     * refresh, a bookmark and "open in new tab", none of which a modal held in
+     * client state can do. Rendering the route inside the modal's frame gives
+     * the design's presentation without giving up the address.
+     *
+     * The scrim is inert: the board behind it is a different route, so there is
+     * nothing to click through to. Closing is the explicit control in the bar.
+     */
+    <div className="bg-scrim flex min-h-0 flex-1 items-center justify-center overflow-hidden p-7">
+      <div className="border-input bg-card shadow-overlay flex h-full max-h-[824px] w-[1000px] max-w-full flex-col overflow-hidden rounded-[14px] border">
+        <div className="border-border bg-surface flex shrink-0 flex-wrap items-center gap-2.5 border-b px-4 py-3">
+          <span className="label-id text-faint tracking-[0.06em]">
+            {prefix}-{task.task_number}
+          </span>
+          <span className="bg-input h-3 w-px" aria-hidden />
+          <Link
+            href={`${projectBase}/board`}
+            className="text-faint hover:text-foreground text-nav transition-colors"
+          >
+            {projectName}
+          </Link>
+          <TaskStatusBadge status={task.status as never} />
 
-        <span className="ms-auto flex items-center gap-1.5">
-          <Button asChild variant="subtle" size="sm">
-            <Link href={`${projectBase}/tasks/${taskRef.publicId}/board`}>
-              <Columns3 className="h-3.5 w-3.5" aria-hidden />
-              Subtask board
-            </Link>
-          </Button>
-          <Button asChild variant="subtle" size="icon-sm" aria-label="Back to board">
-            <Link href={`${projectBase}/board`}>
-              <X className="h-3.5 w-3.5" aria-hidden />
-            </Link>
-          </Button>
-        </span>
-      </div>
+          <span className="ms-auto flex items-center gap-1.5">
+            <Button asChild variant="subtle" size="sm">
+              <Link href={`${projectBase}/tasks/${taskRef.publicId}/board`}>
+                <Columns3 className="h-3.5 w-3.5" aria-hidden />
+                Subtask board
+              </Link>
+            </Button>
+            <Button asChild variant="subtle" size="icon-sm" aria-label="Back to board">
+              <Link href={`${projectBase}/board`}>
+                <X className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            </Button>
+          </span>
+        </div>
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="scrollbar-slim flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
-          <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.02em]">
-            {task.title}
-          </h1>
+        <div className="flex min-h-0 flex-1">
+          <div className="scrollbar-slim flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-[22px] pb-[26px] pt-5">
+            <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.02em]">
+              {task.title}
+            </h1>
 
-          <section className="flex flex-col gap-2">
-            <h2 className="label-meta text-subtle">Description</h2>
-            <TaskDescription
-              scope={params}
-              taskId={task.id}
-              description={task.description}
-              canEdit={canEdit}
-            />
-          </section>
-
-          {fieldDefinitions.length > 0 ? (
             <section className="flex flex-col gap-2">
-              <h2 className="label-meta text-subtle">Custom fields</h2>
-              <CustomFieldInputs
-                orgSlug={params.orgSlug}
-                entityType="task"
-                entityId={task.id}
-                fields={fieldDefinitions}
-                values={fieldValues}
+              <h2 className="label-meta text-subtle">Description</h2>
+              <TaskDescription
+                scope={params}
+                taskId={task.id}
+                description={task.description}
                 canEdit={canEdit}
               />
             </section>
-          ) : null}
 
-          <section className="flex flex-col gap-2">
-            <SubtaskList
-              scope={params}
-              taskId={task.id}
-              canEdit={canEdit}
-              subtasks={
-                (subtasks ?? []).map((subtask) => ({
-                  id: subtask.id,
-                  title: subtask.title,
-                  status: subtask.status,
-                  assignee: one(subtask.assignee),
-                })) as SubtaskRow[]
-              }
-            />
-          </section>
-
-          <section className="flex flex-col gap-2">
-            <AttachmentList
-              scope={params}
-              taskId={task.id}
-              locale={locale}
-              canEdit={canEdit}
-              currentUserId={auth.userId}
-              attachments={(attachments ?? []) as AttachmentRow[]}
-            />
-          </section>
-
-          <section className="flex flex-col gap-2">
-            <h2 className="label-meta text-subtle">Activity</h2>
-            <CommentThread
-              scope={params}
-              taskId={task.id}
-              locale={locale}
-              canComment
-              comments={
-                (comments ?? []).map((comment) => ({
-                  id: comment.id,
-                  body: comment.body,
-                  is_internal: comment.is_internal,
-                  is_edited: comment.is_edited,
-                  created_at: comment.created_at,
-                  author: one(comment.author),
-                })) as CommentRow[]
-              }
-            />
-          </section>
-        </div>
-
-        <aside className="border-border scrollbar-slim w-full shrink-0 overflow-y-auto border-s px-5 py-5 lg:w-[340px]">
-          <TaskFields
-            scope={params}
-            taskId={task.id}
-            canEdit={canEdit}
-            statuses={TASK_STATUSES}
-            priorities={PRIORITIES}
-            members={assignableMembers}
-            value={{
-              status: task.status,
-              priority: task.priority,
-              assignee_id: assignee?.id ?? '',
-              due_date: task.due_date ?? '',
-              start_date: task.start_date ?? '',
-              estimated_hours: task.estimated_hours,
-            }}
-          />
-
-          <dl className="border-border mt-5 space-y-3 border-t pt-5 text-ui">
-            <div className="flex items-center justify-between gap-2">
-              <dt className="label-meta text-subtle">Assigned by</dt>
-              <dd className="flex items-center gap-2">
-                {assigner ? (
-                  <>
-                    <Avatar className="h-5 w-5">
-                      {assigner.avatar_url ? (
-                        <AvatarImage src={assigner.avatar_url} alt="" />
-                      ) : null}
-                      <AvatarFallback className="bg-chip text-[9px]">
-                        {initials(assigner.full_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>{assigner.full_name}</span>
-                  </>
-                ) : (
-                  <span className="text-faint">—</span>
-                )}
-              </dd>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <dt className="label-meta text-subtle">Estimate</dt>
-              <dd>
-                {task.estimated_hours ? (
-                  <span className="bg-chip label-id text-muted-foreground rounded-sm px-2 py-1">
-                    {task.estimated_hours} PTS
-                  </span>
-                ) : (
-                  <span className="text-faint">—</span>
-                )}
-              </dd>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <dt className="label-meta text-subtle">Due</dt>
-              <dd>
-                <DueDate
-                  dueDate={task.due_date}
-                  today={todayIn(auth.orgTimezone)}
-                  isClosed={closed}
+            {fieldDefinitions.length > 0 ? (
+              <section className="flex flex-col gap-2">
+                <h2 className="label-meta text-subtle">Custom fields</h2>
+                <CustomFieldInputs
+                  orgSlug={params.orgSlug}
+                  entityType="task"
+                  entityId={task.id}
+                  fields={fieldDefinitions}
+                  values={fieldValues}
+                  canEdit={canEdit}
                 />
-                {!task.due_date ? <span className="text-faint">—</span> : null}
-              </dd>
-            </div>
+              </section>
+            ) : null}
 
-            {/* started_at and completed_at are written by a database trigger
+            <section className="flex flex-col gap-2">
+              <SubtaskList
+                scope={params}
+                taskId={task.id}
+                canEdit={canEdit}
+                subtasks={
+                  (subtasks ?? []).map((subtask) => ({
+                    id: subtask.id,
+                    title: subtask.title,
+                    status: subtask.status,
+                    assignee: one(subtask.assignee),
+                  })) as SubtaskRow[]
+                }
+              />
+            </section>
+
+            <section className="flex flex-col gap-2">
+              <AttachmentList
+                scope={params}
+                taskId={task.id}
+                locale={locale}
+                canEdit={canEdit}
+                currentUserId={auth.userId}
+                attachments={(attachments ?? []) as AttachmentRow[]}
+              />
+            </section>
+
+            <section className="flex flex-col gap-2">
+              <h2 className="label-meta text-subtle">Activity</h2>
+              <CommentThread
+                scope={params}
+                taskId={task.id}
+                locale={locale}
+                canComment
+                comments={
+                  (comments ?? []).map((comment) => ({
+                    id: comment.id,
+                    body: comment.body,
+                    is_internal: comment.is_internal,
+                    is_edited: comment.is_edited,
+                    created_at: comment.created_at,
+                    author: one(comment.author),
+                  })) as CommentRow[]
+                }
+              />
+            </section>
+          </div>
+
+          <aside className="border-border bg-surface scrollbar-slim hidden w-[298px] shrink-0 overflow-y-auto border-s px-4 pb-6 pt-[18px] md:block">
+            <TaskFields
+              scope={params}
+              taskId={task.id}
+              canEdit={canEdit}
+              statuses={TASK_STATUSES}
+              priorities={PRIORITIES}
+              members={assignableMembers}
+              value={{
+                status: task.status,
+                priority: task.priority,
+                assignee_id: assignee?.id ?? '',
+                due_date: task.due_date ?? '',
+                start_date: task.start_date ?? '',
+                estimated_hours: task.estimated_hours,
+              }}
+            />
+
+            <dl className="border-border text-ui mt-5 space-y-3 border-t pt-5">
+              <div className="flex items-center justify-between gap-2">
+                <dt className="label-meta text-subtle">Assigned by</dt>
+                <dd className="flex items-center gap-2">
+                  {assigner ? (
+                    <>
+                      <Avatar className="h-5 w-5">
+                        {assigner.avatar_url ? (
+                          <AvatarImage src={assigner.avatar_url} alt="" />
+                        ) : null}
+                        <AvatarFallback className="bg-chip text-[9px]">
+                          {initials(assigner.full_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{assigner.full_name}</span>
+                    </>
+                  ) : (
+                    <span className="text-faint">—</span>
+                  )}
+                </dd>
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <dt className="label-meta text-subtle">Estimate</dt>
+                <dd>
+                  {task.estimated_hours ? (
+                    <span className="bg-chip label-id text-muted-foreground rounded-sm px-2 py-1">
+                      {task.estimated_hours} PTS
+                    </span>
+                  ) : (
+                    <span className="text-faint">—</span>
+                  )}
+                </dd>
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+                <dt className="label-meta text-subtle">Due</dt>
+                <dd>
+                  <DueDate
+                    dueDate={task.due_date}
+                    today={todayIn(auth.orgTimezone)}
+                    isClosed={closed}
+                  />
+                  {!task.due_date ? <span className="text-faint">—</span> : null}
+                </dd>
+              </div>
+
+              {/* started_at and completed_at are written by a database trigger
               when the status changes, never by the client (§19.7). */}
-            <div className="flex items-center justify-between gap-2">
-              <dt className="label-meta text-subtle">Started</dt>
-              <dd className="tabular-nums">
-                {task.started_at ? formatRelativeTime(task.started_at, locale) : '—'}
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <dt className="label-meta text-subtle">Completed</dt>
-              <dd className="tabular-nums">
-                {task.completed_at ? formatRelativeTime(task.completed_at, locale) : '—'}
-              </dd>
-            </div>
-          </dl>
-        </aside>
+              <div className="flex items-center justify-between gap-2">
+                <dt className="label-meta text-subtle">Started</dt>
+                <dd className="tabular-nums">
+                  {task.started_at ? formatRelativeTime(task.started_at, locale) : '—'}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <dt className="label-meta text-subtle">Completed</dt>
+                <dd className="tabular-nums">
+                  {task.completed_at ? formatRelativeTime(task.completed_at, locale) : '—'}
+                </dd>
+              </div>
+            </dl>
+          </aside>
+        </div>
       </div>
     </div>
   )

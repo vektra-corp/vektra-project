@@ -1,87 +1,23 @@
 'use client'
 
 import { cn } from '@pm/ui'
-import {
-  ChevronDown,
-  ChevronRight,
-  CalendarRange,
-  CircleDot,
-  Columns3,
-  Contact,
-  FileSignature,
-  FileText,
-  Files,
-  Gauge,
-  Inbox,
-  Layers,
-  LayoutDashboard,
-  ListTodo,
-  Loader2,
-  Receipt,
-  ScrollText,
-  Settings,
-  ShoppingCart,
-  Split,
-  Table2,
-  Timer,
-  TrendingUp,
-  Users,
-  Wallet,
-} from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { usePendingNav } from '@/hooks/use-pending-nav'
+import { NavGlyphIcon, type NavGlyph } from './nav-glyph'
 
-/**
- * Icons are addressed by NAME, not by component.
- *
- * The sidebar is a server component and these rows cross into a client one. A
- * Lucide icon is a function, and functions cannot be serialized across that
- * boundary — passing one throws "Functions cannot be passed directly to Client
- * Components" at request time, which no type check catches. A string crosses
- * fine and is resolved here.
- *
- * The design draws these as geometric unicode glyphs (◍ ◈ ⋔). Those have patchy
- * font coverage and fall back to tofu boxes on Windows, so we keep Lucide and
- * match the design's weight instead: a 14px box, 3.5 icon, third ink tier.
- */
-const ICONS = {
-  CalendarRange,
-  CircleDot,
-  Columns3,
-  Contact,
-  FileSignature,
-  FileText,
-  Files,
-  Gauge,
-  Inbox,
-  Layers,
-  LayoutDashboard,
-  ListTodo,
-  Receipt,
-  ScrollText,
-  Settings,
-  ShoppingCart,
-  Split,
-  Table2,
-  Timer,
-  TrendingUp,
-  Users,
-  Wallet,
-} as const
-
-export type IconName = keyof typeof ICONS
+export type IconName = NavGlyph
 
 export interface NavItem {
   key: string
   label: string
-  icon: IconName
+  icon: NavGlyph
   /** Absent for a destination that is not built yet — see `SidebarItem`. */
   href?: string
   count?: number | null
   /** Amber count, for a total that wants attention (overdue, unapproved). */
-  countTone?: 'neutral' | 'attention'
+  countTone?: 'neutral' | 'attention' | 'accent'
   /** Exact match only. Without it a parent stays lit on every child route. */
   exact?: boolean
 }
@@ -92,9 +28,19 @@ function useIsActive() {
     exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)
 }
 
-/** 13px row, 10px gutter between icon and label — the design's nav rhythm. */
+/**
+ * The design's nav row: 6px/10px padding, a 7px radius, a 10px gutter between
+ * the glyph and its label, and second-tier ink that goes full strength when the
+ * row is the one you are on.
+ */
 const rowClass =
-  'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-base transition-colors'
+  'group flex w-full items-center gap-2.5 rounded-[7px] px-2.5 py-1.5 text-base transition-colors'
+
+const countClass = {
+  neutral: 'text-subtle',
+  attention: 'text-warning',
+  accent: 'text-primary',
+} as const
 
 /**
  * One navigation row.
@@ -106,31 +52,22 @@ const rowClass =
 export function SidebarItem({ item, indent = false }: { item: NavItem; indent?: boolean }) {
   const isActive = useIsActive()
   const active = item.href ? isActive(item.href, item.exact) : false
-  const Icon = ICONS[item.icon]
   const { pending, onNavigate } = usePendingNav()
 
   const body = (
     <>
-      <span className="flex w-3.5 shrink-0 justify-center" aria-hidden>
-        {pending ? (
-          <Loader2 className="text-muted-foreground h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Icon
-            className={cn(
-              'h-3.5 w-3.5 transition-colors',
-              active ? 'text-foreground' : 'text-faint group-hover:text-muted-foreground',
-            )}
-          />
+      <NavGlyphIcon
+        glyph={item.icon}
+        size={indent ? 'sm' : 'md'}
+        className={cn(
+          'transition-colors',
+          active ? 'text-foreground' : 'text-faint group-hover:text-muted-foreground',
+          pending && 'animate-pulse',
         )}
-      </span>
+      />
       <span className="min-w-0 flex-1 truncate text-start">{item.label}</span>
       {item.count ? (
-        <span
-          className={cn(
-            'label-id',
-            item.countTone === 'attention' ? 'text-warning' : 'text-faint',
-          )}
-        >
+        <span className={cn('font-mono text-col tabular-nums', countClass[item.countTone ?? 'neutral'])}>
           {item.count}
         </span>
       ) : null}
@@ -146,7 +83,7 @@ export function SidebarItem({ item, indent = false }: { item: NavItem; indent?: 
         <span
           aria-disabled
           title={`${item.label} arrives in a later phase`}
-          className={cn(rowClass, indent && 'ps-8', 'text-subtle cursor-default')}
+          className={cn(rowClass, indent && 'py-[5px] ps-[25px] text-nav', 'text-subtle cursor-default')}
         >
           {body}
         </span>
@@ -165,10 +102,14 @@ export function SidebarItem({ item, indent = false }: { item: NavItem; indent?: 
         data-pending={pending ? '' : undefined}
         className={cn(
           rowClass,
-          indent && 'ps-8 text-nav',
+          // A nested project view sits at 25px so its glyph lines up under the
+          // project dot's label, and drops a step in ink.
+          indent && 'gap-[9px] rounded-md py-[5px] pe-2 ps-[25px] text-nav',
           active || pending
             ? 'bg-surface-hover text-foreground'
-            : 'text-muted-foreground hover:bg-surface-hover/60 hover:text-foreground',
+            : indent
+              ? 'text-faint hover:bg-surface-hover/60 hover:text-muted-foreground'
+              : 'text-muted-foreground hover:bg-surface-hover/60 hover:text-foreground',
         )}
       >
         {body}
@@ -177,7 +118,13 @@ export function SidebarItem({ item, indent = false }: { item: NavItem; indent?: 
   )
 }
 
-/** A collapsible titled group, e.g. "WORK · DELIVERY" or "COMMERCIAL". */
+/**
+ * A titled group.
+ *
+ * The design gives section headings 9px mono at 0.14em on the fourth ink tier,
+ * with 10px of side padding and 5px beneath — the same rhythm whether or not
+ * the group can be folded.
+ */
 export function SidebarSection({
   title,
   collapsible = false,
@@ -190,24 +137,23 @@ export function SidebarSection({
   const [open, setOpen] = useState(true)
 
   return (
-    <div className="pt-4">
+    <div className="flex flex-col gap-0.5">
       {collapsible ? (
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
-          className="label-meta text-subtle hover:text-faint flex w-full items-center gap-1.5 px-2.5 pb-2 transition-colors"
+          className="label-meta text-subtle hover:text-faint flex w-full items-center px-2.5 pb-[5px] transition-colors"
         >
           <span className="flex-1 text-start">{title}</span>
-          <ChevronDown
-            className={cn('h-2.5 w-2.5 transition-transform', !open && 'rtl-flip -rotate-90')}
-            aria-hidden
-          />
+          <span aria-hidden className="font-glyph text-[9px] leading-none">
+            {open ? '⌄' : '›'}
+          </span>
         </button>
       ) : (
-        <h2 className="label-meta text-subtle px-2.5 pb-2">{title}</h2>
+        <h2 className="label-meta text-subtle flex items-center px-2.5 pb-[5px]">{title}</h2>
       )}
-      {open ? <ul className="space-y-0.5">{children}</ul> : null}
+      {open ? <ul className="flex flex-col gap-0.5">{children}</ul> : null}
     </div>
   )
 }
@@ -224,8 +170,8 @@ export interface SidebarProject {
  *
  * Expansion follows the route rather than local state, so arriving at a board
  * by any means — a link, a refresh, the back button — shows the same open
- * project, and only one project is ever expanded. A collapsed project shows a
- * right chevron, an open one a down chevron, matching the design.
+ * project, and only one project is ever expanded. A collapsed project shows the
+ * design's `›`, an open one its `⌄`.
  */
 export function SidebarProjectGroup({
   orgSlug,
@@ -240,40 +186,41 @@ export function SidebarProjectGroup({
   const { pending, onNavigate } = usePendingNav()
   const base = `/${orgSlug}/${project.workspaceSlug}/projects/${project.id}`
   const inProject = isActive(base)
-  const Chevron = inProject ? ChevronDown : ChevronRight
+  // Clicking the project itself lands on its overview, the design's home for a
+  // project; the views under it are the other ways in.
+  const home = `${base}/overview`
 
   return (
     <>
       <li>
         <Link
-          href={`${base}/board`}
-          onClick={onNavigate(`${base}/board`)}
+          href={home}
+          onClick={onNavigate(home)}
           className={cn(
-            'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-ui transition-colors',
+            'group flex w-full items-center gap-[9px] rounded-[7px] py-1.5 pe-2 ps-[11px] text-ui transition-colors',
             inProject || pending
               ? 'bg-surface-hover text-foreground'
               : 'text-muted-foreground hover:bg-surface-hover/60 hover:text-foreground',
           )}
         >
-          <span className="flex w-3.5 shrink-0 justify-center" aria-hidden>
-            {pending ? (
-              <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />
-            ) : (
-              <span
-                className="h-[7px] w-[7px] rounded-full"
-                style={{ backgroundColor: project.color ?? 'hsl(var(--status-progress))' }}
-              />
-            )}
-          </span>
+          <span
+            aria-hidden
+            className={cn('h-[7px] w-[7px] shrink-0 rounded-full', pending && 'animate-pulse')}
+            style={{ backgroundColor: project.color ?? 'hsl(var(--status-progress))' }}
+          />
           <span className="min-w-0 flex-1 truncate text-start">{project.name}</span>
-          <Chevron className="text-subtle rtl-flip h-2.5 w-2.5 shrink-0" aria-hidden />
+          <span
+            aria-hidden
+            className="font-glyph text-subtle grid h-4 w-4 shrink-0 place-items-center rounded-[5px] text-[9px] leading-none"
+          >
+            {inProject ? '⌄' : '›'}
+          </span>
         </Link>
       </li>
 
       {inProject ? (
         <li>
-          {/* The rule aligns with the project dot above, tying the views to it. */}
-          <ul className="before:bg-border-subtle relative space-y-0.5 before:absolute before:inset-y-1 before:start-[17px] before:w-px">
+          <ul className="flex flex-col gap-px pb-1 pt-px">
             {views.map((view) => (
               <SidebarItem key={view.key} item={view} indent />
             ))}

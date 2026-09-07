@@ -6,11 +6,12 @@ import { useTranslations } from 'next-intl'
 import { useEffect } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
 import { requestPasswordReset } from '../actions'
+import { authInputClass } from '../auth-card'
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" className="w-full" loading={pending}>
+    <Button type="submit" size="lg" className="w-full rounded-[9px]" loading={pending}>
       {label}
     </Button>
   )
@@ -37,9 +38,9 @@ export function ForgotPasswordForm() {
   const emailError = state && !state.ok ? state.fieldErrors?.email?.[0] : undefined
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="flex flex-col gap-[18px]">
       <div className="space-y-2">
-        <Label htmlFor="email">{t('email')}</Label>
+        <Label htmlFor="email" className="label-meta-lg text-subtle">{t('email')}</Label>
         <Input
           id="email"
           name="email"
@@ -47,6 +48,7 @@ export function ForgotPasswordForm() {
           autoComplete="email"
           required
           aria-invalid={Boolean(emailError)}
+          className={authInputClass}
         />
         {emailError ? <p className="text-nav text-destructive">{emailError}</p> : null}
       </div>

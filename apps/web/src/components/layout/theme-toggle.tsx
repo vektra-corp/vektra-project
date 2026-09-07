@@ -1,12 +1,16 @@
 'use client'
 
-import { Button } from '@pm/ui'
-import { Contrast } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 type Theme = 'dark' | 'light'
 
-/** Sidebar footer control. Mirrors what ThemeScript reads on the next load. */
+/**
+ * Sidebar footer control. Mirrors what ThemeScript reads on the next load.
+ *
+ * Drawn as the design draws it: a 26px square with an 8px radius, a hairline
+ * border and the half-filled circle ◐ — not an icon button, so it reads as a
+ * state switch rather than as an action.
+ */
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>('dark')
 
@@ -27,14 +31,14 @@ export function ThemeToggle() {
   }
 
   return (
-    <Button
+    <button
       type="button"
-      variant="subtle"
-      size="icon-sm"
       onClick={toggle}
+      title="Toggle theme"
       aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+      className="border-input text-muted-foreground hover:text-foreground hover:border-subtle focus-visible:ring-ring/60 grid h-[26px] w-[26px] shrink-0 place-items-center rounded-lg border font-glyph text-nav leading-none transition-colors focus-visible:outline-none focus-visible:ring-2"
     >
-      <Contrast className="h-3.5 w-3.5" aria-hidden />
-    </Button>
+      <span aria-hidden>◐</span>
+    </button>
   )
 }

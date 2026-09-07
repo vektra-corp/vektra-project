@@ -10,7 +10,7 @@ import { resendEmailCode, verifyEmailCode } from '../actions'
 function SubmitButton() {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" className="w-full" loading={pending}>
+    <Button type="submit" size="lg" className="w-full rounded-[9px]" loading={pending}>
       Verify
     </Button>
   )
@@ -59,11 +59,11 @@ export function VerifyForm({
 
   return (
     <div className="space-y-4">
-      <form action={formAction} className="space-y-4">
+      <form action={formAction} className="flex flex-col gap-[18px]">
         <input type="hidden" name="email" value={email} />
 
         <div className="space-y-1.5">
-          <Label htmlFor="code">Verification code</Label>
+          <Label htmlFor="code" className="label-meta-lg text-subtle">Verification code</Label>
           <Input
             ref={inputRef}
             id="code"

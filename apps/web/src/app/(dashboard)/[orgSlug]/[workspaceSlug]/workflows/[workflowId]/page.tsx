@@ -1,11 +1,11 @@
 import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
 import { can } from '@pm/auth/rbac'
-import { describeSchedule, parseSchedule } from '@pm/shared/constants'
+import { describeSchedule, parseGraph, parseSchedule } from '@pm/shared/constants'
 import { Badge } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { PageBody } from '@/components/layout/page-body'
+import { PageBody, SectionHeader } from '@/components/layout/page-body'
 import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
@@ -63,23 +63,22 @@ export default async function WorkflowPage({
         }
       />
 
-      <PageBody className="pt-2">
+      {/* The design puts the workflow's identity and its controls on one bar
+          over the canvas, rather than stacking a heading above them. */}
+      <SectionHeader
+        title={workflow.name}
+        count={`${parseGraph(workflow.graph).nodes.length} nodes`}
+      >
+        {canEdit ? (
+          <DeleteWorkflowButton scope={params} workflowId={workflow.id} name={workflow.name} />
+        ) : null}
+      </SectionHeader>
+
+      <PageBody className="pt-4">
         <div className="space-y-4">
-          <div className="flex flex-wrap items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-base font-semibold tracking-tight">{workflow.name}</h1>
-              {workflow.description ? (
-                <p className="pt-1 text-base text-muted-foreground">{workflow.description}</p>
-              ) : null}
-            </div>
-            {canEdit ? (
-              <DeleteWorkflowButton
-                scope={params}
-                workflowId={workflow.id}
-                name={workflow.name}
-              />
-            ) : null}
-          </div>
+          {workflow.description ? (
+            <p className="text-muted-foreground text-base">{workflow.description}</p>
+          ) : null}
 
           {workflow.trigger_type === 'webhook' ? (
             <WebhookTrigger

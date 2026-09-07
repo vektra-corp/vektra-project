@@ -3,7 +3,7 @@ import { Alert, AlertDescription } from '@pm/ui'
 import { ShieldCheck } from 'lucide-react'
 import type { Metadata } from 'next'
 import { getLocale } from 'next-intl/server'
-import { PageBody } from '@/components/layout/page-body'
+import { SettingsPanel } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
 import { MfaPanel } from './mfa-panel'
@@ -72,8 +72,8 @@ export default async function SecurityPage({ params }: { params: { orgSlug: stri
   )
 
   return (
-    <PageBody className="pt-4">
-      <div className="max-w-3xl space-y-5 pb-10">
+    <SettingsPanel>
+      <div className="space-y-5 pb-10">
         <div>
           <h1 className="text-base font-semibold tracking-tight">Security</h1>
           <p className="pt-1 text-base text-muted-foreground">
@@ -102,6 +102,6 @@ export default async function SecurityPage({ params }: { params: { orgSlug: stri
           </AlertDescription>
         </Alert>
       </div>
-    </PageBody>
+    </SettingsPanel>
   )
 }

@@ -75,6 +75,8 @@ const config: Omit<Config, 'content'> = {
           from: 'hsl(var(--brand-from))',
           to: 'hsl(var(--brand-to))',
         },
+        /* The wash behind a modal or the command palette. */
+        scrim: 'hsl(var(--scrim))',
         success: 'hsl(var(--success))',
         warning: 'hsl(var(--warning))',
         danger: 'hsl(var(--danger))',
@@ -124,6 +126,19 @@ const config: Omit<Config, 'content'> = {
       fontFamily: {
         sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        /*
+         * The nav's geometric glyphs (◍ ⋔ ⬔ ▦). Inter covers Geometric Shapes
+         * but not all of Miscellaneous Symbols and Arrows, and an uncovered
+         * glyph renders as tofu rather than falling back, so the faces that do
+         * carry the block are put ahead of it.
+         */
+        glyph: [
+          'Segoe UI Symbol',
+          'Apple Symbols',
+          'Noto Sans Symbols 2',
+          'var(--font-sans)',
+          'sans-serif',
+        ],
       },
       boxShadow: {
         // The design keeps resting surfaces flat and separates them with a

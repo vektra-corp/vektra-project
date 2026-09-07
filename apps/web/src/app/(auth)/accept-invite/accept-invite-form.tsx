@@ -3,12 +3,13 @@
 import { Alert, AlertDescription, Button, Input, Label, PasswordInput } from '@pm/ui'
 import { AlertCircle } from 'lucide-react'
 import { useFormState, useFormStatus } from 'react-dom'
+import { authInputClass } from '../auth-card'
 import { acceptInvite } from './actions'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" className="w-full" loading={pending}>
+    <Button type="submit" size="lg" className="w-full rounded-[9px]" loading={pending}>
       Set password and continue
     </Button>
   )
@@ -36,7 +37,7 @@ export function AcceptInviteForm({
     state && !state.ok ? state.fieldErrors?.[field]?.[0] : undefined
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} className="flex flex-col gap-[18px]">
       {state && !state.ok && state.code !== 'VALIDATION_ERROR' ? (
         <Alert variant="destructive">
           <AlertCircle aria-hidden />
@@ -45,12 +46,13 @@ export function AcceptInviteForm({
       ) : null}
 
       <div className="space-y-1.5">
-        <Label htmlFor="invite-email">Email</Label>
-        <Input id="invite-email" value={email} readOnly disabled autoComplete="username" />
+        <Label htmlFor="invite-email" className="label-meta-lg text-subtle">Email</Label>
+        <Input id="invite-email" value={email} readOnly disabled autoComplete="username"
+          className={authInputClass} />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="full_name">Your name</Label>
+        <Label htmlFor="full_name" className="label-meta-lg text-subtle">Your name</Label>
         <Input
           id="full_name"
           name="full_name"
@@ -59,11 +61,12 @@ export function AcceptInviteForm({
           maxLength={150}
           autoFocus
           autoComplete="name"
+          className={authInputClass}
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password" className="label-meta-lg text-subtle">Password</Label>
         <PasswordInput
           id="password"
           name="password"
@@ -71,6 +74,7 @@ export function AcceptInviteForm({
           required
           minLength={8}
           aria-invalid={Boolean(fieldError('password'))}
+          className={authInputClass}
         />
         {fieldError('password') ? (
           <p className="text-nav text-destructive">{fieldError('password')}</p>
@@ -80,13 +84,14 @@ export function AcceptInviteForm({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="confirm_password">Confirm password</Label>
+        <Label htmlFor="confirm_password" className="label-meta-lg text-subtle">Confirm password</Label>
         <PasswordInput
           id="confirm_password"
           name="confirm_password"
           autoComplete="new-password"
           required
           aria-invalid={Boolean(fieldError('confirm_password'))}
+          className={authInputClass}
         />
         {fieldError('confirm_password') ? (
           <p className="text-nav text-destructive">{fieldError('confirm_password')}</p>

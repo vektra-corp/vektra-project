@@ -1,20 +1,19 @@
-import { PRIORITIES, type KanbanViewConfig } from '@pm/shared/constants'
-import { Progress, SegmentedGroup } from '@pm/ui'
+import type { KanbanViewConfig } from '@pm/shared/constants'
+import { Progress } from '@pm/ui'
 import type { KanbanScope } from '@/components/kanban/types'
 import { ProjectViewTabs } from '@/components/projects/project-tabs'
 import { CustomizeDialog } from './customize-dialog'
-import { FilterChip, type FilterOption } from './filter-chip'
+import { GroupByTabs } from './group-by-tabs'
 import { SavedViewMenu, type SavedView } from './saved-view-menu'
 
-const PRIORITY_COLORS: Record<string, string> = {
-  critical: 'hsl(var(--priority-critical))',
-  high: 'hsl(var(--priority-high))',
-  medium: 'hsl(var(--priority-medium))',
-  low: 'hsl(var(--priority-low))',
-}
-
 /**
- * The board's control strip: view switcher, saved view, filters, and progress.
+ * The board's control strip.
+ *
+ * The design's order, left to right: the view switcher, a hairline rule, the
+ * saved-view chip, the grouping tabs, then — pushed to the end — the sprint
+ * points meter and the Customize button. Filters are not here; they live in the
+ * Customize panel and surface as the strip of chips beneath this bar, which is
+ * where the design puts them.
  *
  * A server component so the filter option lists come straight from the data the
  * page already loaded; only the individual controls hydrate.
@@ -44,33 +43,11 @@ export function BoardToolbar({
   donePoints: number
   totalPoints: number
 }) {
-  const statusOptions: FilterOption[] = columns.map((column) => ({
-    value: column.status,
-    label: column.name,
-  }))
-
-  const assigneeOptions: FilterOption[] = assignees.map((person) => ({
-    value: person.id,
-    label: person.full_name,
-  }))
-
-  const priorityOptions: FilterOption[] = PRIORITIES.map((priority) => ({
-    value: priority,
-    label: priority === 'critical' ? 'Urgent' : priority[0]!.toUpperCase() + priority.slice(1),
-    color: PRIORITY_COLORS[priority],
-  }))
-
-  const labelOptions: FilterOption[] = labels.map((label) => ({
-    value: label.id,
-    label: label.name,
-    color: label.color,
-  }))
-
   return (
     <div className="border-border flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-5 py-2.5">
       <ProjectViewTabs base={base} />
 
-      {/* The design rules off the view switcher from the view/filter controls. */}
+      {/* The design rules off the view switcher from the view/grouping controls. */}
       <span className="bg-input hidden h-[18px] w-px sm:block" aria-hidden />
 
       <SavedViewMenu
@@ -81,16 +58,11 @@ export function BoardToolbar({
         activeIsShared={view.is_shared}
       />
 
-      <SegmentedGroup>
-        <FilterChip param="status" label="Status" options={statusOptions} />
-        <FilterChip param="assignee" label="Assignee" options={assigneeOptions} />
-        <FilterChip param="priority" label="Priority" options={priorityOptions} />
-        <FilterChip param="label" label="Label" options={labelOptions} />
-      </SegmentedGroup>
+      <GroupByTabs scope={scope} boardId={boardId} viewId={view.id} active={view.group_by} />
 
       <div className="ms-auto flex items-center gap-3">
-        <div className="hidden items-center gap-2.5 sm:flex">
-          <p className="text-faint whitespace-nowrap font-mono text-col tracking-[0.06em]">
+        <div className="hidden items-center gap-3 sm:flex">
+          <p className="text-faint whitespace-nowrap font-mono text-col tabular-nums tracking-[0.06em]">
             <span className="text-muted-foreground">{donePoints}</span>
             <span className="px-1">/</span>
             {totalPoints} PTS
@@ -98,12 +70,20 @@ export function BoardToolbar({
           <Progress
             value={donePoints}
             max={totalPoints || 1}
-            className="w-[100px]"
+            className="h-1 w-[100px] rounded-sm"
             aria-label="Points completed"
           />
         </div>
 
-        <CustomizeDialog scope={scope} boardId={boardId} view={view} canShare={canShare} />
+        <CustomizeDialog
+          scope={scope}
+          boardId={boardId}
+          view={view}
+          canShare={canShare}
+          columns={columns}
+          assignees={assignees}
+          labels={labels}
+        />
       </div>
     </div>
   )

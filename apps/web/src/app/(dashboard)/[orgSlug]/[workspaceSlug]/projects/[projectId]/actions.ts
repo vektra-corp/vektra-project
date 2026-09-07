@@ -465,3 +465,138 @@ export async function createComment(
   revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
   return { ok: true, data: null }
 }
+
+/**
+ * Rename a board column, or change its work-in-progress limit (§19.8).
+ *
+ * The design edits both from the board's own settings panel, so this is the
+ * write behind that panel. Because a column name IS the status label the board
+ * groups on (§18 rule 5), renaming is shaping the project's workflow rather
+ * than a personal preference — hence `tasks.update` rather than the `tasks.read`
+ * that the saved-view actions are content with.
+ *
+ * A limit of 0 means "no limit" in the panel's stepper; it is stored as NULL so
+ * the WIP check treats it the way the schema intends.
+ */
+export async function updateKanbanColumn(
+  scope: Scope,
+  columnId: string,
+  patch: { name?: string; wip_limit?: number | null },
+): Promise<ActionResult<null>> {
+  const auth = await requireAuth(scope.orgSlug)
+  assertCan(auth, 'tasks', 'update')
+
+  const project = await projectUuid(scope)
+  if (!project.ok) return project.error
+
+  const update: { name?: string; wip_limit?: number | null } = {}
+  if (patch.name !== undefined) {
+    const name = patch.name.trim().slice(0, 60)
+    if (!name) {
+      return { ok: false, code: 'VALIDATION_ERROR', message: 'A column needs a name.' }
+    }
+    update.name = name
+  }
+  if (patch.wip_limit !== undefined) {
+    const limit = patch.wip_limit === null ? null : Math.max(0, Math.trunc(patch.wip_limit))
+    update.wip_limit = limit === null || limit === 0 ? null : limit
+  }
+
+  if (Object.keys(update).length === 0) return { ok: true, data: null }
+
+  const supabase = createClient()
+
+  try {
+    // The board id is not in scope here, so the column is constrained by the
+    // tenant and by its board belonging to this project — a column id from
+    // another project fails the join rather than being renamed.
+    const { data: column, error: readError } = await supabase
+      .from('kanban_columns')
+      .select('id, board:kanban_boards!kanban_columns_board_id_fkey(project_id)')
+      .eq('id', columnId)
+      .eq('organization_id', auth.orgId)
+      .maybeSingle()
+
+    if (readError) throw readError
+
+    const board = Array.isArray(column?.board) ? column.board[0] : column?.board
+    if (!column || board?.project_id !== project.id) {
+      return { ok: false, code: 'NOT_FOUND', message: 'That column was not found.' }
+    }
+
+    const { error } = await supabase
+      .from('kanban_columns')
+      .update(update)
+      .eq('id', columnId)
+      .eq('organization_id', auth.orgId)
+
+    if (error) throw error
+
+    revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
+    return { ok: true, data: null }
+  } catch (error) {
+    return toActionError(error)
+  }
+}
+
+/**
+ * Change one field of a task from a list row (§19.7).
+ *
+ * `updateTask` exists for the task form, which posts every field at once — it
+ * reads `assignee_id` straight off the FormData, so an absent field means
+ * "unassign", which is right for a form and catastrophic for a patch. This
+ * takes an explicit partial instead: a key that is not present is not touched,
+ * and `null` unambiguously means "clear it".
+ *
+ * The status path still goes through the service, so changing status from the
+ * list moves the card on the board too (§18 rule 5).
+ */
+export async function patchTask(
+  scope: Scope,
+  taskId: string,
+  patch: {
+    status?: string
+    priority?: string
+    assignee_id?: string | null
+    due_date?: string | null
+  },
+): Promise<ActionResult<null>> {
+  const auth = await requireAuth(scope.orgSlug)
+  assertCan(auth, 'tasks', 'update')
+
+  // Only the keys actually sent are validated, so a partial cannot be widened
+  // into a full overwrite by a caller that omits half of them.
+  const parsed = taskUpdateSchema.safeParse({
+    ...(patch.status !== undefined ? { status: patch.status } : {}),
+    ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
+    ...(patch.assignee_id !== undefined ? { assignee_id: patch.assignee_id } : {}),
+    ...(patch.due_date !== undefined ? { due_date: patch.due_date } : {}),
+  })
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'VALIDATION_ERROR',
+      fieldErrors: fieldErrors(parsed.error),
+    }
+  }
+
+  const supabase = createClient()
+
+  // The schema carries `description` for the form's sake; nothing here can set
+  // it, so drop it rather than hand the service an untyped Json field.
+  const { description: _description, label_ids: _labelIds, ...fields } = parsed.data
+
+  try {
+    await taskService.updateTask(supabase, taskId, fields, {
+      userId: auth.userId,
+      orgId: auth.orgId,
+    })
+
+    revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
+    return { ok: true, data: null }
+  } catch (error) {
+    return toActionError(error)
+  }
+}

@@ -15,17 +15,21 @@ const badgeVariants = cva(
         outline: 'border-input text-muted-foreground',
         /* Carries its colour from the caller (priority, status, health). */
         bare: 'border-transparent bg-chip',
+        /* Teal on a chip fill inside a hairline — the topbar's sprint marker. */
+        accent: 'border-input bg-chip text-primary',
       },
       /*
        * Three shapes, all from the design:
        *  meta  — tracked monospace caps, for section and column labels
        *  chip  — the 11.5px status tag on cards and table rows
        *  pill  — the rounded sans form used for labels and plan names
+       *  id    — 9.5px monospace at 0.08em, for a sprint or document marker
        */
       shape: {
         meta: 'label-meta rounded-sm px-1.5 py-1',
         chip: 'rounded-sm px-2 py-[3px] text-micro font-medium',
         pill: 'rounded-full px-2.5 py-0.5 text-micro font-medium',
+        id: 'rounded-[4px] px-1.5 py-[3px] font-mono text-id uppercase tracking-[0.08em]',
       },
     },
     defaultVariants: { variant: 'default', shape: 'pill' },

@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
 import { PageBody } from '@/components/layout/page-body'
-import { ProjectViewTabs } from '@/components/projects/project-tabs'
+import { ProjectViewBar } from '@/components/projects/project-tabs'
 import { requireAuthPage } from '@/lib/auth/context'
 import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
@@ -48,11 +48,17 @@ export default async function DocumentsPage({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 px-5 py-3">
-        <ProjectViewTabs base={base} />
-        <p className="label-meta ms-auto text-faint">{documents?.length ?? 0} documents</p>
-        {canCreate ? <NewDocumentDialog scope={params} /> : null}
-      </div>
+      <ProjectViewBar base={base}>
+        <span className="bg-input hidden h-[18px] w-px sm:block" aria-hidden />
+        <span className="label-meta-lg text-subtle">
+          {documents?.length ?? 0} documents
+        </span>
+        {canCreate ? (
+          <span className="ms-auto">
+            <NewDocumentDialog scope={params} />
+          </span>
+        ) : null}
+      </ProjectViewBar>
 
       <PageBody>
         {!documents?.length ? (

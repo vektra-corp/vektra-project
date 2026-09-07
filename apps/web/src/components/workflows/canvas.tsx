@@ -15,9 +15,24 @@ import { Button, cn } from '@pm/ui'
 import { AlertTriangle, Plus, Trash2, X } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 
-const NODE_WIDTH = 176
-const NODE_HEIGHT = 56
+const NODE_WIDTH = 196
+const NODE_HEIGHT = 60
 const GRID = 8
+
+/**
+ * The glyph on each node's icon tile.
+ *
+ * The design gives every node type a geometric mark rather than a drawn icon,
+ * so the canvas reads in the same voice as the sidebar and the board.
+ */
+const NODE_GLYPH: Record<WorkflowNodeType, string> = {
+  trigger: '⚡',
+  condition: '⋔',
+  filter: '⊽',
+  delay: '◔',
+  branch: '⑂',
+  action: '＋',
+}
 
 const NODE_ACCENT: Record<WorkflowNodeType, string> = {
   trigger: 'hsl(var(--status-progress))',
@@ -202,7 +217,7 @@ export function WorkflowCanvas({
           onPointerLeave={() => {
             dragRef.current = null
           }}
-          className="relative overflow-auto rounded-lg border border-border bg-surface/40 [background-image:radial-gradient(hsl(var(--border))_1px,transparent_1px)] [background-size:16px_16px]"
+          className="border-border bg-sunk relative overflow-auto rounded-[11px] border [background-image:radial-gradient(hsl(var(--input))_1px,transparent_1px)] [background-size:18px_18px]"
           style={{ height }}
         >
           <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden>
@@ -275,10 +290,10 @@ export function WorkflowCanvas({
                 onPointerDown={(event) => startDrag(event, node)}
                 onClick={() => (connectingFrom ? connect(node.id) : setSelectedId(node.id))}
                 className={cn(
-                  'absolute flex cursor-grab flex-col justify-center rounded-lg border bg-card px-3 shadow-card transition-colors active:cursor-grabbing',
-                  selectedId === node.id ? 'border-primary' : 'border-border',
+                  'bg-card absolute flex cursor-grab items-center gap-[11px] rounded-[11px] border-[1.5px] px-[13px] py-3 transition-[border-color,box-shadow] active:cursor-grabbing',
+                  selectedId === node.id ? 'border-primary shadow-raised' : 'border-border',
                   nodeProblems.length > 0 && 'border-destructive',
-                  canReceive && 'ring-2 ring-primary/50',
+                  canReceive && 'ring-primary/50 ring-2',
                   isSource && 'opacity-60',
                 )}
                 style={{
@@ -288,23 +303,34 @@ export function WorkflowCanvas({
                   height: NODE_HEIGHT,
                 }}
               >
+                {/* The type is carried by a tinted tile rather than an edge
+                    stripe: at 196px the stripe read as a border artefact. */}
                 <span
-                  className="absolute inset-y-0 start-0 w-1 rounded-s-lg"
-                  style={{ backgroundColor: NODE_ACCENT[node.type] }}
                   aria-hidden
-                />
-                <p className="label-meta ps-1 text-faint">{WORKFLOW_NODE_LABELS[node.type]}</p>
-                <p className="truncate ps-1 text-base">
-                  {node.type === 'action' && node.action_type
-                    ? WORKFLOW_ACTION_LABELS[node.action_type]
-                    : node.type === 'delay'
-                      ? `Wait ${String(node.config.duration ?? '?')}`
-                      : WORKFLOW_NODE_LABELS[node.type]}
-                </p>
+                  className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] font-glyph text-[15px]"
+                  style={{
+                    backgroundColor: `color-mix(in srgb, ${NODE_ACCENT[node.type]} 16%, transparent)`,
+                    color: NODE_ACCENT[node.type],
+                  }}
+                >
+                  {NODE_GLYPH[node.type]}
+                </span>
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-ui font-semibold">
+                    {node.type === 'action' && node.action_type
+                      ? WORKFLOW_ACTION_LABELS[node.action_type]
+                      : node.type === 'delay'
+                        ? `Wait ${String(node.config.duration ?? '?')}`
+                        : WORKFLOW_NODE_LABELS[node.type]}
+                  </span>
+                  <span className="text-faint truncate text-[10.5px]">
+                    {WORKFLOW_NODE_LABELS[node.type]}
+                  </span>
+                </span>
 
                 {nodeProblems.length > 0 ? (
                   <AlertTriangle
-                    className="absolute end-2 top-2 h-3 w-3 text-destructive"
+                    className="text-destructive absolute end-2 top-2 h-3 w-3"
                     aria-label={nodeProblems[0]!.message}
                   />
                 ) : null}

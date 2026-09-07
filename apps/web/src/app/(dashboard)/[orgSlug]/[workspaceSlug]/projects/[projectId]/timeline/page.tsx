@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { GanttDependency, GanttTask } from '@/components/gantt/types'
 import { PageBody } from '@/components/layout/page-body'
-import { ProjectViewTabs } from '@/components/projects/project-tabs'
+import { ProjectViewBar } from '@/components/projects/project-tabs'
 import { requireAuthPage } from '@/lib/auth/context'
 import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
@@ -47,9 +47,7 @@ export default async function TimelinePage({
   if (!featureEnabled(auth.entitlements, 'gantt')) {
     return (
       <>
-        <div className="px-5 py-3">
-          <ProjectViewTabs base={base} />
-        </div>
+        <ProjectViewBar base={base} />
         <PageBody>
           <div className="flex flex-col items-center rounded-lg border border-dashed border-border py-16 text-center">
             <Lock className="h-6 w-6 text-faint" aria-hidden />
@@ -113,9 +111,7 @@ export default async function TimelinePage({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-3 px-5 py-3">
-        <ProjectViewTabs base={base} />
-      </div>
+      <ProjectViewBar base={base} />
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-8">
         {rows.length === 0 ? (

@@ -1,7 +1,7 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { AuthCard } from '../auth-card'
 import { VerifyForm } from './verify-form'
 
 export const metadata: Metadata = { title: 'Verify your email' }
@@ -19,29 +19,27 @@ export default function VerifyPage({
   const type = searchParams.type === 'recovery' ? 'recovery' : 'signup'
 
   return (
-    <Card>
-      <CardHeader className="space-y-1">
-        <CardTitle className="text-head">Check your email</CardTitle>
-        <CardDescription>
+    <AuthCard
+      title="Check your email"
+      description={
+        <>
           We sent a six-digit code to <span className="text-foreground">{email}</span>. It expires
           in an hour.
-        </CardDescription>
-      </CardHeader>
+        </>
+      }
+    >
+      <VerifyForm
+        email={email}
+        type={type}
+        nextPath={type === 'recovery' ? '/reset-password' : '/onboarding'}
+      />
 
-      <CardContent className="space-y-4">
-        <VerifyForm
-          email={email}
-          type={type}
-          nextPath={type === 'recovery' ? '/reset-password' : '/onboarding'}
-        />
-
-        <p className="text-center text-nav text-muted-foreground">
-          Wrong address?{' '}
-          <Link href="/signup" className="text-primary hover:underline">
-            Start again
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
+      <p className="text-faint text-center text-nav">
+        Wrong address?{' '}
+        <Link href="/signup" className="text-primary hover:underline">
+          Start again
+        </Link>
+      </p>
+    </AuthCard>
   )
 }

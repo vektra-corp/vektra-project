@@ -3,7 +3,7 @@ import { formatDateTime } from '@pm/shared/utils'
 import { Badge } from '@pm/ui'
 import type { Metadata } from 'next'
 import { getLocale } from 'next-intl/server'
-import { PageBody } from '@/components/layout/page-body'
+import { SettingsPanel } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
 import { createClient } from '@/lib/supabase/server'
@@ -83,7 +83,7 @@ export default async function AuditLogPage({
   const resourceTypes = [...new Set((resourceRows ?? []).map((row) => row.resource_type))].sort()
 
   return (
-    <PageBody className="pt-4">
+    <SettingsPanel>
       <div className="space-y-4 pb-10">
         <div>
           <h1 className="text-base font-semibold tracking-tight">Audit log</h1>
@@ -168,6 +168,6 @@ export default async function AuditLogPage({
           resource={searchParams.resource ?? ''}
         />
       </div>
-    </PageBody>
+    </SettingsPanel>
   )
 }

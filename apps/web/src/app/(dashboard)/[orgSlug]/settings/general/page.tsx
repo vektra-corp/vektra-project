@@ -2,7 +2,7 @@ import { ORG_ADMIN_ROLES } from '@pm/auth/constants'
 import { DEFAULT_FORMAT_OPTIONS } from '@pm/shared/constants'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { PageBody } from '@/components/layout/page-body'
+import { SettingsPanel } from '@/components/layout/page-body'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
 import { GeneralForm } from './general-form'
@@ -25,8 +25,7 @@ export default async function GeneralSettingsPage({ params }: { params: { orgSlu
   const readOnly = !(ORG_ADMIN_ROLES as readonly string[]).includes(auth.orgRole)
 
   return (
-    <PageBody>
-      <div className="max-w-2xl">
+    <SettingsPanel>
         <GeneralForm
           orgSlug={params.orgSlug}
           readOnly={readOnly}
@@ -41,7 +40,6 @@ export default async function GeneralSettingsPage({ params }: { params: { orgSlu
             time_format: settings.time_format ?? DEFAULT_FORMAT_OPTIONS.timeFormat,
           }}
         />
-      </div>
-    </PageBody>
+    </SettingsPanel>
   )
 }

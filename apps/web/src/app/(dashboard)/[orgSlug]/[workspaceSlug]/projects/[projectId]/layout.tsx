@@ -63,9 +63,8 @@ export default async function ProjectLayout({
         ]}
         meta={
           <Badge
-            variant={project.status === 'active' ? 'success' : 'secondary'}
-            shape="meta"
-            className="ms-1"
+            variant={project.status === 'active' ? 'accent' : 'secondary'}
+            shape="id"
           >
             <span className="pe-1 opacity-70">{project.key}</span>
             {project.status.replace('_', ' ')}
