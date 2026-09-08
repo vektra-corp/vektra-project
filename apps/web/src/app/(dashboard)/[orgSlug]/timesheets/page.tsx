@@ -8,7 +8,8 @@ import { PageBody, SectionHeader } from '@/components/layout/page-body'
 import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
-import { EntryList, formatDuration, type TimeEntryRow } from './entry-list'
+import { EntryList, type TimeEntryRow } from './entry-list'
+import { formatDuration } from './format'
 import { Timer, type RunningEntry } from './timer'
 import {
   ManualEntryDialog,

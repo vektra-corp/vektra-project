@@ -5,6 +5,7 @@ import { Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { deleteTimeEntry, updateTimeEntry } from './actions'
+import { formatDuration } from './format'
 
 export interface TimeEntryRow {
   id: string
@@ -14,13 +15,6 @@ export interface TimeEntryRow {
   taskTitle: string | null
   durationMinutes: number
   isBillable: boolean
-}
-
-export function formatDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  if (h === 0) return `${m}m`
-  return m === 0 ? `${h}h` : `${h}h ${String(m).padStart(2, '0')}m`
 }
 
 /**
