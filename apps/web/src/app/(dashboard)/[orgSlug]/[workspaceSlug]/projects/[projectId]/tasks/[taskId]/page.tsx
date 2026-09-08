@@ -5,7 +5,7 @@ import {
   parseFieldOptions,
   type CustomFieldDefinition,
 } from '@pm/shared/constants'
-import { formatRelativeTime, initials, todayIn } from '@pm/shared/utils'
+import { formatRelativeTime, initials, publicIdToString, todayIn } from '@pm/shared/utils'
 import { Avatar, AvatarFallback, AvatarImage, Button } from '@pm/ui'
 import { Columns3, X } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -17,8 +17,13 @@ import { CommentThread, type CommentRow } from '@/components/comments/comment-th
 import { CustomFieldInputs, type CustomValue } from '@/components/custom-fields/custom-field-inputs'
 import { SubtaskList, type SubtaskRow } from '@/components/tasks/subtask-list'
 import { DueDate, TaskStatusBadge } from '@/components/tasks/task-badges'
+import {
+  TaskDependencies,
+  type DependencyRow,
+} from '@/components/tasks/task-dependencies'
 import { TaskDescription } from '@/components/tasks/task-description'
 import { TaskFields } from '@/components/tasks/task-fields'
+import { TaskLabels } from '@/components/tasks/task-labels'
 import { requireAuthPage } from '@/lib/auth/context'
 import { resolveProject, resolveTask } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
@@ -72,6 +77,9 @@ export default async function TaskDetailPage({
     { data: attachments },
     { data: customFields },
     { data: customValues },
+    { data: taskLabels },
+    { data: labelCatalogue },
+    { data: dependencies },
   ] = await Promise.all([
     supabase
       .from('subtasks')
@@ -106,6 +114,25 @@ export default async function TaskDetailPage({
       .from('custom_field_values')
       .select('custom_field_id, value')
       .eq('entity_id', taskRef.id),
+    // The labels ON this task, and the catalogue it can choose from. Org-wide
+    // labels have a null project_id, so both are offered (§6.2).
+    supabase.from('task_labels').select('label:labels(id, name, color)').eq('task_id', taskRef.id),
+    supabase
+      .from('labels')
+      .select('id, name, color, project_id')
+      .eq('organization_id', auth.orgId)
+      .or(`project_id.is.null,project_id.eq.${project.id}`)
+      .order('name'),
+    // Both directions in one pass: rows where this task is the successor are
+    // what BLOCK it, rows where it is the predecessor are what it blocks.
+    supabase
+      .from('task_dependencies')
+      .select(
+        `id, dependency_type, predecessor_id, successor_id,
+         predecessor:tasks!task_dependencies_predecessor_id_fkey(public_id, title, status, task_number),
+         successor:tasks!task_dependencies_successor_id_fkey(public_id, title, status, task_number)`,
+      )
+      .or(`predecessor_id.eq.${taskRef.id},successor_id.eq.${taskRef.id}`),
   ])
 
   // PostgREST returns to-one embeds as objects; the generated types permit an
@@ -124,9 +151,46 @@ export default async function TaskDetailPage({
     })
     .sort((a, b) => a.full_name.localeCompare(b.full_name))
 
+  const selectedLabels = (taskLabels ?? []).flatMap((row) => {
+    const label = one(row.label) as { id: string; name: string; color: string } | null
+    return label ? [label] : []
+  })
+
   const projectBase = `/${params.orgSlug}/${params.workspaceSlug}/projects/${params.projectId}`
   const projectName = project.name
   const prefix = project.key
+
+  /**
+   * Dependency rows, in the direction a reader cares about.
+   *
+   * `finish_to_start` is the ordinary "A must finish before B starts", so from
+   * B's side it reads as BLOCKED BY and from A's side as BLOCKS. Every other
+   * type is a softer ordering constraint, which the design labels AFTER.
+   */
+  const dependencyRows: DependencyRow[] = (dependencies ?? []).flatMap((row) => {
+    const isSuccessor = row.successor_id === taskRef.id
+    const other = one(isSuccessor ? row.predecessor : row.successor) as {
+      public_id: number
+      title: string
+      status: string
+      task_number: number
+    } | null
+    if (!other) return []
+
+    const kind: DependencyRow['kind'] =
+      row.dependency_type !== 'finish_to_start' ? 'AFTER' : isSuccessor ? 'BLOCKED BY' : 'BLOCKS'
+
+    return [
+      {
+        id: row.id,
+        kind,
+        ref: `${project.key}-${other.task_number}`,
+        title: other.title,
+        href: `${projectBase}/tasks/${publicIdToString(other.public_id)}`,
+        isOpen: other.status !== 'done' && other.status !== 'cancelled',
+      },
+    ]
+  })
 
   const fieldDefinitions: CustomFieldDefinition[] = (customFields ?? []).map((field) => ({
     id: field.id,
@@ -284,6 +348,20 @@ export default async function TaskDetailPage({
                 estimated_hours: task.estimated_hours,
               }}
             />
+
+            <div className="mt-4 flex flex-col gap-3">
+              <TaskLabels
+                scope={params}
+                taskId={task.id}
+                selected={selectedLabels}
+                options={labelCatalogue ?? []}
+                canEdit={canEdit}
+              />
+            </div>
+
+            <div className="mt-4">
+              <TaskDependencies dependencies={dependencyRows} />
+            </div>
 
             <dl className="border-border text-ui mt-5 space-y-3 border-t pt-5">
               <div className="flex items-center justify-between gap-2">

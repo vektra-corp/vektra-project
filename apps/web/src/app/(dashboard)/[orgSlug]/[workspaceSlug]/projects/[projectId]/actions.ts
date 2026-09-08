@@ -600,3 +600,66 @@ export async function patchTask(
     return toActionError(error)
   }
 }
+
+/**
+ * Replace a task's labels.
+ *
+ * The whole set is written at once rather than one add/remove at a time: the
+ * junction has no ordering and no per-row state, so "these are the labels" is
+ * both simpler to reason about and impossible to leave half-applied.
+ *
+ * Label ids are checked against the caller's own organization before insert.
+ * `task_labels` carries `organization_id`, so RLS would catch a foreign label
+ * anyway — but it would surface as an opaque policy violation rather than as
+ * the validation error this is.
+ */
+export async function setTaskLabels(
+  scope: Scope,
+  taskId: string,
+  labelIds: string[],
+): Promise<ActionResult<null>> {
+  const auth = await requireAuth(scope.orgSlug)
+  assertCan(auth, 'tasks', 'update')
+
+  const unique = [...new Set(labelIds)].slice(0, 20)
+  const supabase = createClient()
+
+  try {
+    if (unique.length > 0) {
+      const { data: valid, error: readError } = await supabase
+        .from('labels')
+        .select('id')
+        .eq('organization_id', auth.orgId)
+        .in('id', unique)
+
+      if (readError) throw readError
+      if ((valid ?? []).length !== unique.length) {
+        return { ok: false, code: 'VALIDATION_ERROR', message: 'Unknown label.' }
+      }
+    }
+
+    const { error: deleteError } = await supabase
+      .from('task_labels')
+      .delete()
+      .eq('task_id', taskId)
+    if (deleteError) throw deleteError
+
+    if (unique.length > 0) {
+      const { error: insertError } = await supabase
+        .from('task_labels')
+        .insert(
+          unique.map((labelId) => ({
+            task_id: taskId,
+            label_id: labelId,
+            organization_id: auth.orgId,
+          })),
+        )
+      if (insertError) throw insertError
+    }
+
+    revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
+    return { ok: true, data: null }
+  } catch (error) {
+    return toActionError(error)
+  }
+}

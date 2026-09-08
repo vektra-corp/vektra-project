@@ -1,4 +1,7 @@
-# claude.md — Project Management SaaS
+# claude.md — Vektra Projects
+
+> Product name: **Vektra Projects** (part of the Vektra product suite — Vektra Projects, with Vektra CRM, Vektra HR, and others to follow under the same brand and account).
+> Built by Ecappz Technology Pvt Ltd, trading as Vektra.
 
 > This file is the single source of truth for building this project.
 > Every architectural decision, schema definition, pattern, and convention lives here.
@@ -8,16 +11,21 @@
 
 ## 1. Project overview
 
-A multi-tenant, subscription-based project management SaaS sold across industries.
+**Vektra Projects** — a multi-tenant, subscription-based project management SaaS sold across industries. First product in the Vektra suite.
 
 **Three deliverables:**
-1. **Customer web app** (`app.yourdomain.com`) — projects, tasks, Kanban, Gantt, collaboration, workflows, commercial docs, portal
-2. **Admin portal** (`admin.yourdomain.com`) — org monitoring, subscriptions, payments, notices, marketing, feature flags
+1. **Customer web app** (`projects.vektracorp.in`) — projects, tasks, Kanban, Gantt, collaboration, workflows, contacts, quotations, portal
+2. **Admin portal** (`admin.vektracorp.in/projects`) — org monitoring, subscriptions, payments, notices, marketing, feature flags for this product, nested under the shared Vektra admin portal
 3. **Backend** — Supabase (Postgres + Auth + Storage + Realtime + Edge Functions) + Next.js API routes + Inngest background jobs
 
 **Core hierarchy:** Organization → Workspace → Project → Task → Subtask
 
-**Monetization:** three subscription tiers (Starter, Growth, Enterprise) billed per seat per month, plus operator-created custom plans. Payments run through **Razorpay** for Indian organizations and **PayPal** for everyone else, chosen server-side from the organization's billing country.
+**Domain naming convention (applies to every future Vektra product):**
+- Production: `{product}.vektracorp.in` (e.g. `projects.vektracorp.in`, future `crm.vektracorp.in`, `hr.vektracorp.in`)
+- Staging: `staging-{product}.vektracorp.in` (e.g. `staging-projects.vektracorp.in`)
+- Admin: one shared portal at `admin.vektracorp.in`, with each product nested under its own path (`admin.vektracorp.in/projects`, `admin.vektracorp.in/crm`) rather than a separate admin subdomain per product — this keeps org/subscription/user data visible across the whole Vektra suite from a single login, which matters once a customer buys more than one Vektra product.
+
+**Monetization:** three Razorpay subscription tiers (Starter, Growth, Enterprise) billed per seat per month, India-first pricing with a payment abstraction layer for future non-India providers (see section 3 and 24.2's connector pattern for how new integrations slot in without touching business logic).
 
 ---
 
@@ -25,7 +33,7 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 
 - Multi-tenant isolation enforced at the **database level** (RLS on every table), not just app code.
 - All three clients (web, admin, future mobile) consume the **same API layer** — no client-specific backends.
-- All external service calls (payment gateways, email, AI, integrations) go through the **API layer**, never directly from the client.
+- All external service calls (Razorpay, PayPal, email, AI, integrations) go through the **API layer**, never directly from the client.
 - Every mutation emits an **event** to the events table — this powers workflows, activity feeds, audit logs, and integrations.
 - **Denormalize `organization_id`** onto every table for fast RLS checks — never rely on joins through parent tables for tenant isolation.
 - Prefer **server components** for data fetching, **client components** only when interactivity is required.
@@ -47,11 +55,10 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 | Auth | Supabase Auth | included | JWT with custom claims (org_id, org_role) |
 | Storage | Supabase Storage | included | S3-backed, signed URLs, CDN-fronted |
 | Realtime | Supabase Realtime | included | Postgres changes + broadcast channels |
-| Edge Functions | Supabase Edge Functions | Deno | PDF gen, AI orchestration |
+| Edge Functions | Supabase Edge Functions | Deno | Razorpay/PayPal webhooks, PDF gen, AI orchestration |
 | Background jobs | Inngest | free tier | Durable execution: imports, exports, workflows, digests |
 | Cache | Upstash Redis | free tier | Rate limiting, session cache, job locks |
-| Payments (India) | Razorpay Subscriptions | API v1 | e-mandate / UPI Autopay, INR, 18% GST |
-| Payments (rest of world) | PayPal Subscriptions | API v1 | Billing agreements, USD, zero-rated export |
+| Payments | Razorpay (India) + PayPal (international) | latest | Both active behind the same PaymentProvider interface — org's billing country determines which one is used at checkout |
 | Email | Resend | free→paid | DKIM/SPF/DMARC on your domain from day one |
 | Monitoring | Sentry | free→paid | Source maps, performance, session replay |
 | Uptime | Better Stack | free tier | Status page, log aggregation, alerting |
@@ -60,7 +67,7 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 | CI/CD | GitHub Actions → Vercel | | Preview per PR, gated prod deploy |
 | Gantt chart | Frappe Gantt | MIT | Or custom lightweight implementation |
 | Rich text | Tiptap | 2.x | For task descriptions, comments, documents |
-| PDF generation | @react-pdf/renderer | latest | Server-side, for commercial doc templates |
+| PDF generation | @react-pdf/renderer | latest | Server-side, for quotation PDF templates |
 | Validation | Zod | 3.x | Shared schemas in `packages/shared` |
 | Date handling | date-fns | 3.x | Never use moment.js |
 | Icons | Lucide React | latest | Consistent icon set across both apps |
@@ -104,12 +111,13 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 │   │   │   │   │   │   │   │       ├── tasks/
 │   │   │   │   │   │   │   │       │   └── [taskId]/  # Task detail (subtask Kanban inside)
 │   │   │   │   │   │   │   │       └── settings/
-│   │   │   │   │   │   │   ├── commercial/
-│   │   │   │   │   │   │   │   ├── purchase-orders/
-│   │   │   │   │   │   │   │   ├── sales-orders/
-│   │   │   │   │   │   │   │   ├── invoices/
-│   │   │   │   │   │   │   │   ├── bills/
+│   │   │   │   │   │   │   ├── contacts/
+│   │   │   │   │   │   │   ├── quotations/
+│   │   │   │   │   │   │   │   ├── page.tsx
+│   │   │   │   │   │   │   │   ├── new/
+│   │   │   │   │   │   │   │   ├── [quotationId]/
 │   │   │   │   │   │   │   │   └── templates/       # PDF template editor
+│   │   │   │   │   │   │   ├── leads/                # Lead pipeline (Kanban)
 │   │   │   │   │   │   │   ├── workflows/
 │   │   │   │   │   │   │   │   ├── page.tsx          # Workflow list
 │   │   │   │   │   │   │   │   ├── new/
@@ -128,7 +136,6 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 │   │   │   │   ├── api/
 │   │   │   │   │   ├── webhooks/
 │   │   │   │   │   │   ├── razorpay/route.ts
-│   │   │   │   │   │   ├── paypal/route.ts
 │   │   │   │   │   │   └── integrations/[integrationId]/route.ts
 │   │   │   │   │   ├── inngest/route.ts
 │   │   │   │   │   └── cron/
@@ -140,7 +147,8 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 │   │   │   │   ├── gantt/
 │   │   │   │   ├── tasks/
 │   │   │   │   ├── comments/
-│   │   │   │   ├── commercial/
+│   │   │   │   ├── quotations/
+│   │   │   │   ├── leads/
 │   │   │   │   ├── workflows/
 │   │   │   │   ├── dashboard/
 │   │   │   │   ├── portal/
@@ -152,7 +160,8 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 │   │   │   │   │   ├── server.ts     # Server component client
 │   │   │   │   │   ├── middleware.ts  # Middleware client
 │   │   │   │   │   └── admin.ts      # Service role client (server only)
-│   │   │   │   ├── payments/
+│   │   │   │   ├── razorpay.ts
+│   │   │   │   ├── paypal.ts
 │   │   │   │   ├── inngest.ts
 │   │   │   │   └── utils.ts
 │   │   │   └── styles/
@@ -163,26 +172,30 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 │   │   ├── tsconfig.json
 │   │   └── package.json
 │   │
-│   └── admin/                         # Admin portal (separate app)
+│   └── admin/                         # Shared Vektra admin portal — this product mounts under /projects
 │       ├── src/
 │       │   ├── app/
 │       │   │   ├── (auth)/
-│       │   │   │   └── login/         # Admin-only login (SSO or hardcoded)
-│       │   │   ├── (dashboard)/
-│       │   │   │   ├── orgs/
-│       │   │   │   │   ├── page.tsx
-│       │   │   │   │   └── [orgId]/
-│       │   │   │   ├── users/
-│       │   │   │   ├── subscriptions/
-│       │   │   │   ├── payments/
-│       │   │   │   ├── notices/
-│       │   │   │   ├── announcements/
-│       │   │   │   ├── feature-flags/
-│       │   │   │   ├── marketing/
-│       │   │   │   ├── support/
-│       │   │   │   │   ├── audit-logs/
-│       │   │   │   │   └── system-health/
+│       │   │   │   └── login/         # Admin-only login (SSO or hardcoded), shared across all Vektra products
+│       │   │   ├── projects/          # This product's admin surface — admin.vektracorp.in/projects
+│       │   │   │   ├── (dashboard)/
+│       │   │   │   │   ├── orgs/
+│       │   │   │   │   │   ├── page.tsx
+│       │   │   │   │   │   └── [orgId]/
+│       │   │   │   │   ├── users/
+│       │   │   │   │   ├── subscriptions/
+│       │   │   │   │   ├── payments/
+│       │   │   │   │   ├── notices/
+│       │   │   │   │   ├── announcements/
+│       │   │   │   │   ├── feature-flags/
+│       │   │   │   │   ├── marketing/
+│       │   │   │   │   ├── support/
+│       │   │   │   │   │   ├── audit-logs/
+│       │   │   │   │   │   └── system-health/
+│       │   │   │   │   └── layout.tsx
 │       │   │   │   └── layout.tsx
+│       │   │   │   # Future products add sibling segments here: /crm, /hr, etc. —
+│       │   │   │   # each with its own (dashboard) tree, sharing (auth) and the shell layout
 │       │   │   └── layout.tsx
 │       │   ├── components/
 │       │   ├── hooks/
@@ -235,21 +248,25 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 │       ├── src/
 │       │   ├── constants/
 │       │   │   ├── plans.ts           # Plan limits, feature flags per tier
-│       │   │   ├── statuses.ts        # Task, project, commercial statuses
+│       │   │   ├── statuses.ts        # Task, project, quotation, lead statuses
 │       │   │   └── permissions.ts     # Permission matrix
 │       │   ├── types/
 │       │   │   ├── index.ts
 │       │   │   ├── task.ts
 │       │   │   ├── project.ts
-│       │   │   ├── commercial.ts
+│       │   │   ├── quotation.ts
 │       │   │   ├── workflow.ts
 │       │   │   └── notification.ts
 │       │   ├── validators/            # Zod schemas (shared client + server)
 │       │   │   ├── task.ts
 │       │   │   ├── project.ts
-│       │   │   ├── commercial.ts
+│       │   │   ├── quotation.ts
 │       │   │   ├── workflow.ts
 │       │   │   └── auth.ts
+│       │   ├── payments/              # PaymentProvider interface + implementations
+│       │   │   ├── index.ts
+│       │   │   ├── razorpay-provider.ts
+│       │   │   └── paypal-provider.ts
 │       │   └── utils/
 │       │       ├── date.ts
 │       │       ├── format.ts
@@ -262,13 +279,17 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 │   │   ├── 00001_auth_and_tenancy.sql
 │   │   ├── 00002_project_management.sql
 │   │   ├── 00003_collaboration.sql
-│   │   ├── 00004_commercial.sql
+│   │   ├── 00004_contacts_and_quotations.sql
 │   │   ├── 00005_workflows.sql
 │   │   ├── 00006_integrations.sql
 │   │   ├── 00007_platform.sql
 │   │   ├── 00008_admin.sql
 │   │   └── 00009_rls_policies.sql
 │   ├── functions/                     # Supabase Edge Functions
+│   │   ├── razorpay-webhook/
+│   │   │   └── index.ts
+│   │   ├── paypal-webhook/
+│   │   │   └── index.ts
 │   │   ├── pdf-generator/
 │   │   │   └── index.ts
 │   │   ├── workflow-engine/
@@ -296,19 +317,23 @@ A multi-tenant, subscription-based project management SaaS sold across industrie
 
 ## 5. Environment setup
 
+**Supabase Cloud is used for every environment, including local development — there is no local Docker instance.** A dedicated `dev` Supabase project (separate from staging and production) serves as the shared local development database. This trades local-instance isolation for zero environment drift between developer machines and reduces setup friction, at the cost of requiring network access to develop and shared state if multiple developers work against the same dev project simultaneously (mitigate by giving each developer their own schema/branch if the team grows, or by using Supabase's branching feature).
+
 ```bash
-# Prerequisites: Node.js 20+, pnpm 8+, Docker (for local Supabase)
+# Prerequisites: Node.js 20+, pnpm 8+ (no Docker required)
 
 # Clone and install
 pnpm install
 
-# Start local Supabase
-npx supabase start
+# No local Supabase to start — connect directly to the shared dev Supabase Cloud project
+# Pull the latest schema from the dev project
+npx supabase link --project-ref <dev-project-ref>
+npx supabase db pull
 
-# Generate types from database schema
-npx supabase gen types typescript --local > packages/db/src/types.ts
+# Generate types from the dev project's schema
+npx supabase gen types typescript --linked > packages/db/src/types.ts
 
-# Set up environment variables (copy and fill in)
+# Set up environment variables (copy and fill in with dev project credentials)
 cp .env.example apps/web/.env.local
 cp .env.example apps/admin/.env.local
 
@@ -320,7 +345,7 @@ pnpm dev:admin    # Admin portal only at localhost:3001
 
 **Required env vars (both apps):**
 ```
-NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_URL=            # Dev project URL (ap-south-1 / Mumbai)
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=          # Server-side only, never exposed to client
 RAZORPAY_KEY_ID=
@@ -330,8 +355,7 @@ NEXT_PUBLIC_RAZORPAY_KEY_ID=
 PAYPAL_CLIENT_ID=
 PAYPAL_CLIENT_SECRET=
 PAYPAL_WEBHOOK_ID=
-BILLING_SELLER_GSTIN=
-BILLING_SELLER_STATE=
+NEXT_PUBLIC_PAYPAL_CLIENT_ID=
 RESEND_API_KEY=
 INNGEST_EVENT_KEY=
 INNGEST_SIGNING_KEY=
@@ -361,8 +385,10 @@ CREATE TABLE organizations (
   currency      text NOT NULL DEFAULT 'USD',
   timezone      text NOT NULL DEFAULT 'UTC',
   settings      jsonb NOT NULL DEFAULT '{}',  -- MFA enforcement, session timeout, etc.
-  stripe_customer_id    text UNIQUE,
-  stripe_subscription_id text UNIQUE,
+  payment_provider      text NOT NULL DEFAULT 'razorpay'
+                        CHECK (payment_provider IN ('razorpay', 'paypal')),
+  payment_customer_id   text UNIQUE,
+  payment_subscription_id text UNIQUE,
   plan_id       uuid REFERENCES plans(id),
   trial_ends_at timestamptz,
   status        text NOT NULL DEFAULT 'active'
@@ -372,7 +398,7 @@ CREATE TABLE organizations (
 );
 
 CREATE INDEX idx_organizations_slug ON organizations(slug);
-CREATE INDEX idx_organizations_stripe ON organizations(stripe_customer_id);
+CREATE INDEX idx_organizations_payment_customer ON organizations(payment_customer_id);
 
 -- Branches (optional sub-divisions within an org)
 CREATE TABLE branches (
@@ -708,78 +734,71 @@ CREATE TABLE document_versions (
 );
 ```
 
-### 6.4 Commercial
-
-> **Purchase orders, sales orders, invoices and bills were removed** from the
-> product in migration `00035`, at the product owner's direction. Quotations are
-> the only commercial document that remains, and contacts stay because the
-> timesheet module bills against `contacts.default_hourly_rate`.
->
-> Gone with them: `approval_chains`, `approval_steps`, payment recording
-> (`amount_paid` is retained as a column but is always zero), the
-> quotation→invoice conversion, and the invoiced / outstanding / overdue halves
-> of the revenue rollup. The schema below is kept as written for the shape of
-> the table; the live constraint is `CHECK (doc_type = 'quotation')`.
+### 6.4 Contact & quotation
 
 ```sql
 -- Contacts (clients and vendors)
 CREATE TABLE contacts (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  type            text NOT NULL CHECK (type IN ('client', 'vendor', 'both')),
+  type            text NOT NULL DEFAULT 'client' CHECK (type IN ('client', 'vendor', 'both')),
   company_name    text,
   contact_name    text NOT NULL,
   email           text,
   phone           text,
   address         jsonb,
   tax_id          text,
+  lead_id         uuid REFERENCES leads(id),
+  lifecycle_stage text NOT NULL DEFAULT 'lead'
+                  CHECK (lifecycle_stage IN ('lead', 'prospect', 'customer', 'churned')),
+  tags            text[],
   notes           text,
+  last_contacted_at timestamptz,
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
 
--- Commercial documents (shared structure for PO, SO, Invoice, Bill)
-CREATE TABLE commercial_documents (
+CREATE INDEX idx_contacts_org ON contacts(organization_id);
+
+-- Quotations
+CREATE TABLE quotations (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   workspace_id    uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
   project_id      uuid REFERENCES projects(id) ON DELETE SET NULL,
-  doc_type        text NOT NULL CHECK (doc_type IN ('purchase_order', 'sales_order', 'invoice', 'bill')),
-  doc_number      text NOT NULL,       -- Auto-generated, customizable format (INV-2024-0001)
+  quote_number    text NOT NULL,       -- Auto-generated, customizable format (QUO-2024-0001)
   contact_id      uuid REFERENCES contacts(id) ON DELETE SET NULL,
-  status          text NOT NULL DEFAULT 'draft',
-  -- PO: draft → pending_approval → approved → sent → partially_received → received → closed
-  -- SO: draft → confirmed → in_progress → fulfilled → closed
-  -- Invoice: draft → sent → viewed → partially_paid → paid → overdue → void
-  -- Bill: received → pending_approval → approved → partially_paid → paid
+  status          text NOT NULL DEFAULT 'draft'
+                  CHECK (status IN ('draft', 'sent', 'viewed', 'accepted', 'rejected', 'expired')),
   issue_date      date NOT NULL DEFAULT CURRENT_DATE,
-  due_date        date,
+  valid_until     date,
   currency        text NOT NULL DEFAULT 'USD',
   subtotal        numeric(12, 2) NOT NULL DEFAULT 0,
   tax_total       numeric(12, 2) NOT NULL DEFAULT 0,
   discount_total  numeric(12, 2) NOT NULL DEFAULT 0,
   grand_total     numeric(12, 2) NOT NULL DEFAULT 0,
-  amount_paid     numeric(12, 2) NOT NULL DEFAULT 0,
   notes           text,
   terms           text,
   pdf_template_id uuid REFERENCES pdf_templates(id),
-  reference_doc_id uuid REFERENCES commercial_documents(id), -- SO can ref PO, Invoice can ref SO
-  approved_by     uuid REFERENCES auth.users(id),
-  approved_at     timestamptz,
+  sent_at         timestamptz,
+  viewed_at       timestamptz,
+  accepted_at     timestamptz,
+  rejected_at     timestamptz,
+  rejection_reason text,
   created_by      uuid REFERENCES auth.users(id),
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(organization_id, doc_type, doc_number)
+  UNIQUE(organization_id, quote_number)
 );
 
-CREATE INDEX idx_commercial_docs_org ON commercial_documents(organization_id);
-CREATE INDEX idx_commercial_docs_type ON commercial_documents(doc_type);
-CREATE INDEX idx_commercial_docs_status ON commercial_documents(status);
+CREATE INDEX idx_quotations_org ON quotations(organization_id);
+CREATE INDEX idx_quotations_status ON quotations(organization_id, status);
+CREATE INDEX idx_quotations_contact ON quotations(contact_id);
 
--- Line items
-CREATE TABLE commercial_line_items (
+-- Quotation line items
+CREATE TABLE quotation_line_items (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  document_id     uuid NOT NULL REFERENCES commercial_documents(id) ON DELETE CASCADE,
+  quotation_id    uuid NOT NULL REFERENCES quotations(id) ON DELETE CASCADE,
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   description     text NOT NULL,
   quantity        numeric(10, 2) NOT NULL DEFAULT 1,
@@ -791,30 +810,20 @@ CREATE TABLE commercial_line_items (
   created_at      timestamptz NOT NULL DEFAULT now()
 );
 
--- PDF templates
+-- PDF templates (quotation only, for now)
 CREATE TABLE pdf_templates (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  doc_type        text NOT NULL CHECK (doc_type IN ('purchase_order', 'sales_order', 'invoice', 'bill')),
+  doc_type        text NOT NULL DEFAULT 'quotation' CHECK (doc_type IN ('quotation')),
   name            text NOT NULL,
   template_data   jsonb NOT NULL,     -- Template definition (field positions, styles)
   is_default      boolean NOT NULL DEFAULT false,
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
-
--- Approval chains
-CREATE TABLE approval_chains (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  doc_type        text NOT NULL,
-  name            text NOT NULL,
-  conditions      jsonb NOT NULL DEFAULT '{}',  -- e.g., { "amount_gt": 5000 }
-  steps           jsonb NOT NULL,               -- [{ "role": "manager", "required": true }, ...]
-  is_active       boolean NOT NULL DEFAULT true,
-  created_at      timestamptz NOT NULL DEFAULT now()
-);
 ```
+
+**Note:** Purchase Orders, Sales Orders, Invoices, and Bills have been removed from scope. Quotation is a standalone document with its own lifecycle (draft → sent → viewed → accepted/rejected/expired) — it does not convert into anything else. If billing/invoicing is added later, `quotations` and `contacts` are already structured to support a future `reference_doc_id`-style link without a schema rewrite.
 
 ### 6.5 Workflows
 
@@ -828,7 +837,7 @@ CREATE TABLE workflows (
   description     text,
   is_active       boolean NOT NULL DEFAULT false,
   trigger_type    text NOT NULL
-                  CHECK (trigger_type IN ('task_event', 'subtask_event', 'commercial_event',
+                  CHECK (trigger_type IN ('task_event', 'subtask_event', 'quotation_event',
                          'webhook', 'schedule', 'manual')),
   trigger_config  jsonb NOT NULL DEFAULT '{}',   -- Event type, filters, schedule expression
   graph           jsonb NOT NULL DEFAULT '{}',   -- Full DAG: { nodes: [...], edges: [...] }
@@ -918,8 +927,10 @@ CREATE TABLE plans (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name            text NOT NULL UNIQUE,       -- 'starter', 'growth', 'enterprise'
   display_name    text NOT NULL,
-  stripe_price_id_monthly text,
-  stripe_price_id_annual  text,
+  razorpay_plan_id_monthly text,
+  razorpay_plan_id_annual  text,
+  paypal_plan_id_monthly   text,  -- Used for international/non-India billing
+  paypal_plan_id_annual    text,  -- Used for international/non-India billing
   limits          jsonb NOT NULL DEFAULT '{}', -- See plan limits structure below
   features        jsonb NOT NULL DEFAULT '{}', -- Feature flags per plan
   is_active       boolean NOT NULL DEFAULT true,
@@ -975,8 +986,8 @@ CREATE TABLE audit_logs (
   actor_id        uuid REFERENCES auth.users(id),
   actor_type      text NOT NULL DEFAULT 'user'
                   CHECK (actor_type IN ('user', 'system', 'admin', 'workflow', 'integration')),
-  action          text NOT NULL,       -- 'task.created', 'invoice.approved', 'user.role_changed', etc.
-  resource_type   text NOT NULL,       -- 'task', 'project', 'invoice', 'user', etc.
+  action          text NOT NULL,       -- 'task.created', 'quotation.accepted', 'user.role_changed', etc.
+  resource_type   text NOT NULL,       -- 'task', 'project', 'quotation', 'user', etc.
   resource_id     uuid,
   changes         jsonb,               -- { "status": { "old": "draft", "new": "sent" } }
   metadata        jsonb,               -- IP address, user agent, etc.
@@ -1007,7 +1018,7 @@ CREATE INDEX idx_events_unprocessed ON events(processed) WHERE processed = false
 CREATE TABLE custom_fields (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-  entity_type     text NOT NULL CHECK (entity_type IN ('task', 'project', 'contact', 'commercial_document')),
+  entity_type     text NOT NULL CHECK (entity_type IN ('task', 'project', 'contact', 'quotation')),
   name            text NOT NULL,
   field_type      text NOT NULL CHECK (field_type IN ('text', 'number', 'date', 'dropdown', 'checkbox', 'url', 'email', 'currency')),
   options         jsonb,               -- For dropdown: ["Option 1", "Option 2", ...]
@@ -1093,67 +1104,6 @@ CREATE TABLE feature_flags (
 );
 ```
 
-### 6.8b Billing & payments (migration `00037`)
-
-Stripe was removed. Razorpay serves India, PayPal serves everywhere else, and
-the gateway is derived server-side from `organizations.billing_country` — never
-chosen by the customer, because that choice is also a choice of tax regime.
-
-| Table | What it holds |
-|---|---|
-| `plan_prices` | Per-seat, **tax-exclusive** price per plan/currency/interval, in integer minor units |
-| `provider_plan_refs` | Gateway-side plan objects, created on demand, with the tax-inclusive amount they were created at |
-| `subscriptions` | **The entitlement authority.** One live row per org plus terminated history |
-| `payments` | The ledger: every attempt, successful or failed |
-| `payment_webhook_events` | Raw webhooks; `UNIQUE(provider, provider_event_id)` is the replay defence |
-| `billing_invoices` | Vektra Corporation GST invoices, with buyer and seller snapshot at issue |
-| `billing_invoice_sends` | Delivery attempts, so "resend" is auditable |
-| `billing_invoice_sequences` | Gapless per-FY counter — a table row, not a sequence, so it rolls back with the invoice |
-| `platform_audit_logs` | Operator actions, including platform-wide ones with no tenant |
-
-**Two live privilege-escalation holes were closed by this migration.** Both
-predate the payment work and both are worth understanding, because they are the
-reason the rules below are phrased the way they are.
-
-1. **A tenant could upgrade themselves for free.** `authenticated` holds full
-   DML on every table, and the `"Owners can update their organization"` policy
-   constrains only which ROW an owner may write, never which COLUMNS — RLS
-   cannot express a column. So an owner could `PATCH /rest/v1/organizations`
-   with `{"plan_id": "<enterprise>"}` using nothing but their own anon key, and
-   the enterprise plan id is readable by `anon` because the pricing page needs
-   the catalogue. Closed with `grant_columns_except()` on `organizations`, and
-   independently neutralised because entitlement no longer reads `plan_id` at
-   all.
-
-2. **A tenant could reset their own usage, or exhaust another tenant's.**
-   `increment_usage(org, metric, delta)` is `SECURITY DEFINER`, takes the
-   organization as an *argument*, and was granted to `authenticated` by the
-   blanket `GRANT EXECUTE ON ALL FUNCTIONS`. Closed by revoking it and adding
-   `increment_usage_self()`, which takes the org from the JWT, plus
-   `can_create()` for the metrics that actually gate creation.
-
-**Rules for anything that touches billing:**
-
-- **No end-user session writes a billing table.** None of them has an INSERT,
-  UPDATE or DELETE policy, and the privilege is revoked outright. Every write
-  is the service role, from a signature-verified webhook or a background job.
-  Note that `ALTER DEFAULT PRIVILEGES` in `00009` grants `authenticated` full
-  DML on *newly created* tables, so a new billing table must revoke explicitly
-  and must enable RLS — neither is optional.
-- **Entitlement comes from `org_entitlements()`,** never from
-  `organizations.plan_id`. It is carried on every request by
-  `current_auth_context` and read through `featureEnabled()` / `limitFor()`
-  from `@pm/shared/billing`. The old `planHasFeature(planName, …)` was removed:
-  keyed on a plan's name, it granted an operator-created custom plan nothing.
-- **The client never sends an amount.** A checkout names a plan; the price is
-  read from `plan_prices` and the seat count from `billable_seats()`.
-- **`payments.amount_mismatch` is a generated column.** If the gateway charged
-  something other than what we priced, entitlement is withheld and the row is
-  surfaced to operators.
-- **Caps recount rather than trust a counter** for `projects` and
-  `portal_users`. A counter is a number that can be desynchronised from
-  reality; `count(*)` is reality.
-
 ### 6.9 Utility functions
 
 ```sql
@@ -1224,7 +1174,7 @@ CREATE TRIGGER emit_subtask_event AFTER INSERT OR UPDATE OR DELETE ON subtasks
   FOR EACH ROW EXECUTE FUNCTION emit_event();
 CREATE TRIGGER emit_comment_event AFTER INSERT OR UPDATE ON comments
   FOR EACH ROW EXECUTE FUNCTION emit_event();
-CREATE TRIGGER emit_commercial_event AFTER INSERT OR UPDATE ON commercial_documents
+CREATE TRIGGER emit_quotation_event AFTER INSERT OR UPDATE ON quotations
   FOR EACH ROW EXECUTE FUNCTION emit_event();
 
 -- Custom JWT claims hook (inject org_id and role into JWT)
@@ -1373,11 +1323,21 @@ CREATE POLICY "Users see non-internal comments" ON comments
     -- Portal users (no org_role) cannot see internal comments
   );
 
--- ===== COMMERCIAL DOCUMENTS =====
-ALTER TABLE commercial_documents ENABLE ROW LEVEL SECURITY;
+-- ===== CONTACTS & QUOTATIONS =====
+ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quotations ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users see commercial docs" ON commercial_documents
+CREATE POLICY "Users see contacts in their org" ON contacts
+  FOR SELECT USING (organization_id = auth.org_id());
+
+CREATE POLICY "Users see quotations in their org" ON quotations
   FOR SELECT USING (
+    organization_id = auth.org_id()
+    AND auth.org_role() IN ('owner', 'admin', 'manager', 'member')
+  );
+
+CREATE POLICY "Managers+ can create and update quotations" ON quotations
+  FOR ALL USING (
     organization_id = auth.org_id()
     AND auth.org_role() IN ('owner', 'admin', 'manager')
   );
@@ -1470,14 +1430,14 @@ export const config = {
 // packages/auth/src/rbac.ts
 import type { OrgRole } from './types'
 
-export type Module = 'projects' | 'tasks' | 'commercial' | 'users' | 'billing' | 'workflows'
-export type Action = 'create' | 'read' | 'update' | 'delete' | 'approve'
+export type Module = 'projects' | 'tasks' | 'quotations' | 'users' | 'billing' | 'workflows'
+export type Action = 'create' | 'read' | 'update' | 'delete'
 
 const PERMISSION_MATRIX: Record<OrgRole, Record<Module, Action[]>> = {
-  owner:   { projects: ['create','read','update','delete'], tasks: ['create','read','update','delete'], commercial: ['create','read','update','delete','approve'], users: ['create','read','update','delete'], billing: ['read','update'], workflows: ['create','read','update','delete'] },
-  admin:   { projects: ['create','read','update','delete'], tasks: ['create','read','update','delete'], commercial: ['create','read','update','delete','approve'], users: ['create','read','update','delete'], billing: ['read'], workflows: ['create','read','update','delete'] },
-  manager: { projects: ['create','read','update'], tasks: ['create','read','update','delete'], commercial: ['create','read','update'], users: ['read'], billing: [], workflows: ['create','read','update'] },
-  member:  { projects: ['read'], tasks: ['create','read','update'], commercial: ['read'], users: ['read'], billing: [], workflows: ['read'] },
+  owner:   { projects: ['create','read','update','delete'], tasks: ['create','read','update','delete'], quotations: ['create','read','update','delete'], users: ['create','read','update','delete'], billing: ['read','update'], workflows: ['create','read','update','delete'] },
+  admin:   { projects: ['create','read','update','delete'], tasks: ['create','read','update','delete'], quotations: ['create','read','update','delete'], users: ['create','read','update','delete'], billing: ['read'], workflows: ['create','read','update','delete'] },
+  manager: { projects: ['create','read','update'], tasks: ['create','read','update','delete'], quotations: ['create','read','update'], users: ['read'], billing: [], workflows: ['create','read','update'] },
+  member:  { projects: ['read'], tasks: ['create','read','update'], quotations: ['read'], users: ['read'], billing: [], workflows: ['read'] },
 }
 
 export function hasPermission(role: OrgRole, module: Module, action: Action): boolean {
@@ -1548,44 +1508,101 @@ export async function createTask(projectId: string, formData: FormData) {
 
 ### API route pattern (for webhooks and external calls)
 
-```typescript
-// apps/web/src/app/api/webhooks/stripe/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
-import { createAdminClient } from '@/lib/supabase/admin'
+Two payment providers are active — Razorpay for India-billed orgs, PayPal for everyone else — so each gets its own webhook route, and both resolve their provider explicitly rather than relying on an org-specific default:
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+```typescript
+// packages/shared/src/payments/index.ts
+import { RazorpayProvider } from './razorpay-provider'
+import { PayPalProvider } from './paypal-provider'
+import type { PaymentProvider } from './types'
+
+// Explicit selection only — never inferred from environment or "whichever is configured"
+export function getPaymentProvider(name: 'razorpay' | 'paypal'): PaymentProvider {
+  switch (name) {
+    case 'razorpay': return new RazorpayProvider()
+    case 'paypal': return new PayPalProvider()
+  }
+}
+
+// Used at checkout time to decide which provider an org should be routed to.
+// Billing country comes from the signup form or org settings, not IP geolocation alone —
+// geolocation is a UX default, the user's chosen billing country is the source of truth.
+export function resolveProviderForBillingCountry(countryCode: string): 'razorpay' | 'paypal' {
+  return countryCode === 'IN' ? 'razorpay' : 'paypal'
+}
+```
+
+```typescript
+// apps/web/src/app/api/webhooks/razorpay/route.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { getPaymentProvider } from '@shared/payments'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function POST(request: NextRequest) {
   const body = await request.text()
-  const sig = request.headers.get('stripe-signature')!
+  const signature = request.headers.get('x-razorpay-signature')!
 
-  let event: Stripe.Event
-  try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!)
-  } catch (err) {
+  const provider = getPaymentProvider('razorpay')
+  if (!provider.verifyWebhookSignature(body, signature)) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
+  const event = provider.parseWebhookEvent(body)
   const supabase = createAdminClient()  // Service role — bypasses RLS
 
   switch (event.type) {
-    case 'customer.subscription.updated': {
-      const subscription = event.data.object as Stripe.Subscription
+    case 'subscription.activated':
+    case 'subscription.charged': {
       await supabase
         .from('organizations')
         .update({
-          plan_id: /* map stripe price to plan */,
-          status: subscription.status === 'active' ? 'active' : 'suspended',
+          plan_id: /* map provider plan to internal plan */,
+          status: 'active',
         })
-        .eq('stripe_subscription_id', subscription.id)
+        .eq('payment_subscription_id', event.subscriptionId)
       break
     }
-    case 'invoice.payment_failed': {
-      // Handle dunning
+    case 'subscription.cancelled': {
+      await supabase
+        .from('organizations')
+        .update({ status: 'churned' })
+        .eq('payment_subscription_id', event.subscriptionId)
+      break
+    }
+    case 'payment.failed': {
+      // Handle dunning — notify org admin, log in audit
       break
     }
   }
+
+  return NextResponse.json({ received: true })
+}
+```
+
+```typescript
+// apps/web/src/app/api/webhooks/paypal/route.ts
+// Same shape as the Razorpay route above — different signature verification,
+// same internal event handling, since both providers normalize into the same
+// PaymentWebhookEvent shape via provider.parseWebhookEvent().
+import { NextRequest, NextResponse } from 'next/server'
+import { getPaymentProvider } from '@shared/payments'
+import { createAdminClient } from '@/lib/supabase/admin'
+
+export async function POST(request: NextRequest) {
+  const body = await request.text()
+  const transmissionSig = request.headers.get('paypal-transmission-sig')!
+
+  const provider = getPaymentProvider('paypal')
+  if (!provider.verifyWebhookSignature(body, transmissionSig)) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+  }
+
+  const event = provider.parseWebhookEvent(body)
+  const supabase = createAdminClient()
+
+  // Same switch/case handling as the Razorpay route — subscription.activated,
+  // subscription.charged, subscription.cancelled, payment.failed all map to
+  // the same organizations table updates regardless of which provider sent them.
 
   return NextResponse.json({ received: true })
 }
@@ -1919,12 +1936,12 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com",
+      "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://www.paypal.com https://challenges.cloudflare.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co",
       "font-src 'self'",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com",
-      "frame-src https://js.stripe.com https://challenges.cloudflare.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://api.paypal.com",
+      "frame-src https://checkout.razorpay.com https://www.paypal.com https://challenges.cloudflare.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -1979,7 +1996,7 @@ export function verifyCsrf(request: NextRequest): void {
 
 // RULES:
 // - All state-mutating operations use POST/PUT/PATCH/DELETE, never GET
-// - Stripe webhook routes verify the stripe-signature header, not CSRF
+// - Razorpay webhook routes verify the x-razorpay-signature header, not CSRF
 // - Integration webhook routes verify HMAC signatures per provider
 ```
 
@@ -1990,23 +2007,8 @@ export function verifyCsrf(request: NextRequest): void {
 // - JWTs stored in httpOnly, Secure, SameSite=Lax cookies (Lax for OAuth redirects)
 // - Access tokens: 1-hour expiry. Refresh tokens: 30-day expiry with rotation.
 // - On every refresh, the old refresh token is invalidated (rotation).
-// - Identity is ALWAYS cryptographically established, never read from the cookie.
-//   Two ways satisfy that, and which one to use depends on the layer:
-//     * middleware  → auth.getUser(). Revalidates against the auth server, so a
-//       revoked session is stopped before any render. It also returns the
-//       enrolled MFA factor list, which is not a JWT claim and which the second
-//       -factor gate needs. This call is what makes revocation prompt.
-//     * renders and server actions → auth.getClaims(). The project signs with
-//       an asymmetric key (ES256), so this verifies the signature locally
-//       against the cached JWKS — a forged or tampered cookie fails exactly as
-//       it would at the auth server, with no round trip. Revocation is already
-//       covered by the middleware call on the same request, so repeating
-//       getUser() here only paid for the same fact twice.
-//   auth.getSession() remains forbidden everywhere: it decodes without
-//   verifying, so it is trivially forgeable.
-//   If the project is ever moved back to a symmetric JWT secret, getClaims()
-//   falls back to getUser() by itself and everything stays correct — it just
-//   stops being free. See apps/web/src/lib/auth/jwks.ts.
+// - auth.getUser() is called in EVERY server action and API route — never trust
+//   the client's claim of identity.
 // - MFA (TOTP) is optional per user, enforceable per org on Enterprise tier.
 // - OAuth providers (Google, GitHub) go through Supabase Auth PKCE flow.
 // - Password requirements: minimum 8 chars, checked against haveibeenpwned API
@@ -2207,9 +2209,9 @@ In transit:
 Secrets:
 - All secrets in Doppler, scoped per environment.
 - NEVER in .env files committed to git (gitignore enforced + pre-commit hook).
-- API keys rotated quarterly. Stripe webhook secrets rotated on any team member departure.
+- API keys rotated quarterly. Razorpay and PayPal webhook secrets rotated on any team member departure.
 - Service role key (bypasses RLS) NEVER exposed to client code. Used only in:
-  1. Stripe webhook handler
+  1. Razorpay and PayPal webhook handlers
   2. Admin portal backend
   3. Inngest background jobs
   4. Edge Functions that need cross-org access
@@ -2220,7 +2222,7 @@ Secrets:
 ```
 RULES:
 - Audit log on: login, logout, role change, permission change, org settings change,
-  commercial document approval, user invite/remove, data export, admin impersonation,
+  quotation status change, user invite/remove, data export, admin impersonation,
   subscription change, API key creation/revocation.
 - Audit logs are IMMUTABLE (no UPDATE/DELETE RLS policy).
 - Security events forwarded to Sentry + Better Stack for real-time alerting:
@@ -2252,13 +2254,13 @@ RULES:
 - RLS policies: for each role, test that permission boundaries hold
 - Portal user scoping: verify portal users only see shared projects
 - Workflow execution engine: test a complete workflow run end-to-end
-- Stripe webhook handling: test subscription lifecycle events
+- Razorpay and PayPal webhook handling: test subscription lifecycle events for both providers
 
 ### E2E tests (Playwright)
 
 - Auth flow: signup → verify → onboarding → first project
 - Task lifecycle: create project → add task → drag on Kanban → mark done
-- Commercial flow: create invoice → send → mark paid
+- Quotation flow: create quotation → send → mark accepted
 - Portal flow: invite external user → portal login → view project → comment
 
 ### CI pipeline (GitHub Actions)
@@ -2283,45 +2285,138 @@ jobs:
 
 ---
 
-## 15. Deployment
+## 15. Deployment & data storage
 
-### Environments
+### 15.1 Where code runs
 
-| Environment | URL | Database | Stripe | Purpose |
+| Component | Hosted on | Region | What it does |
+|-----------|-----------|--------|-------------|
+| Web app (`projects.vektracorp.in`) | Vercel Pro | Global edge | Customer-facing Next.js app for this product |
+| Admin portal (`admin.vektracorp.in`) | Vercel Pro | Global edge | Shared internal ops Next.js app across all Vektra products; this product mounts under `/projects` |
+| API routes | Vercel serverless functions | Auto-selected | Request handling, auth, validation |
+| Edge Functions | Supabase (Deno) | Same as DB region | Razorpay webhooks, PDF gen, AI, heavy logic |
+| Background jobs | Inngest (calls your Vercel endpoint) | US | Imports, exports, workflows, digests, crons |
+| DNS + DDoS + SSL | Cloudflare | Global | Security + edge caching |
+
+All compute is serverless. No servers to provision, patch, or scale. Vercel and Supabase handle auto-scaling.
+
+### 15.2 Where data is stored
+
+| Data type | Stored in | Physical location | Encryption |
+|-----------|-----------|-------------------|------------|
+| All customer data (tasks, projects, users, quotations, workflows, audit logs) | Supabase Postgres | AWS `ap-south-1` (Mumbai) | AES-256 at rest, TLS 1.3 in transit |
+| File attachments, exports, profile images | Supabase Storage (S3) | Same region as DB (Mumbai) | AES-256 at rest, signed URLs |
+| User auth (passwords, OAuth tokens, sessions) | Supabase Auth (Postgres `auth` schema) | Same as DB | bcrypt-hashed passwords, encrypted tokens |
+| Payment data (card numbers, billing) | Razorpay (India-billed orgs) or PayPal (international) — both PCI-compliant | Each provider's own infrastructure | Never touches your infra, regardless of which provider |
+| Rate limits, permission cache, job locks | Upstash Redis | Closest region | In-memory, ephemeral |
+| Error reports, performance traces | Sentry | Sentry cloud | Transmitted over TLS |
+| Secrets, API keys | Doppler | Doppler cloud | Encrypted, scoped per env |
+
+**Critical rule**: credit card numbers, CVVs, and full bank details NEVER enter your database or servers, regardless of which payment provider processed the transaction. Your database only stores provider-agnostic reference IDs (`payment_customer_id`, `payment_subscription_id`) plus a `payment_provider` flag — never Razorpay- or PayPal-specific raw payment details.
+
+### 15.3 Database region selection
+
+**Chosen: `ap-south-1` (Mumbai).** India is the initial market, and Mumbai gives the lowest latency for the primary user base while satisfying most Indian customers' data-residency expectations by default. Revisit only when a specific customer segment (EU enterprise, US expansion) requires region-local hosting — see section 22.5 for the multi-region scaling path.
+
+| Primary customer base | Supabase region | Rationale |
+|---|---|---|
+| **India (current)** | **`ap-south-1` (Mumbai)** | **Lowest latency for India, data stays in-country** |
+| Europe (future) | `eu-west-1` (Ireland) or `eu-central-1` (Frankfurt) | GDPR compliance, data stays in EU |
+| US / Americas (future) | `us-east-1` (N. Virginia) | Lowest latency for US, close to Vercel primary edge |
+
+### 15.4 Backup & disaster recovery
+
+| Mechanism | Frequency | Retention | How to restore |
+|-----------|-----------|-----------|----------------|
+| Point-in-time recovery (PITR) | Continuous (every transaction) | 7 days (Pro), 28 days (Team) | Supabase dashboard → pick any second |
+| Daily snapshots | Every 24 hours | 7 days | Supabase dashboard → restore snapshot |
+| Manual pg_dump | On-demand | As long as you keep the file | `psql < backup.sql` to any Postgres |
+
+**Test restores quarterly.** A backup you've never tested is not a backup.
+
+**RTO/RPO targets:**
+- Recovery Point Objective (max data loss): < 1 minute (PITR)
+- Recovery Time Objective (time to restore): < 30 minutes (Supabase managed restore)
+
+### 15.5 Environments
+
+| Environment | URL | Supabase project | Payments mode | Deploy trigger |
 |---|---|---|---|---|
-| Local | localhost:3000/3001 | Supabase local (Docker) | Test mode | Development |
-| Preview | pr-123.vercel.app | Supabase staging project | Test mode | PR review |
-| Staging | staging.yourapp.com | Supabase staging project | Test mode | QA, integration testing |
-| Production | app.yourapp.com | Supabase production project | Live mode | Customer-facing |
+| Local dev | `localhost:3000` / `3001` | Dev project (Supabase Cloud, `ap-south-1`) | Razorpay + PayPal test/sandbox | Manual |
+| Preview | `pr-123.vercel.app` | Dev project (shared) | Razorpay + PayPal test/sandbox | PR opened |
+| Staging | `staging-projects.vektracorp.in` | Staging project (separate, `ap-south-1`) | Razorpay + PayPal test/sandbox | Merge to `develop` |
+| Production | `projects.vektracorp.in` | Production project (separate, `ap-south-1`) | **Live** | Merge to `main` (gated) |
 
-### Deploy process
+All three Supabase projects (dev, staging, production) are Supabase Cloud, no local Postgres instance anywhere in the workflow. They remain COMPLETELY SEPARATE projects with separate databases, separate auth, separate storage buckets — the "no local Docker" change simplifies developer setup, it does not mean developers share the production or staging database. Never test against production data.
 
-1. Developer pushes to a feature branch, opens PR.
-2. CI runs all checks (lint, types, tests, RLS tests, build).
-3. Vercel deploys a preview URL automatically.
-4. Reviewer tests on preview URL, approves PR.
-5. PR merges to `develop` → auto-deploys to staging.
-6. QA on staging. If good, cut a `release/*` branch, merge to `main`.
-7. Merge to `main` → triggers production deploy (requires tech lead approval in GitHub Actions).
-8. Post-deploy: monitor Sentry for errors, Better Stack for uptime.
+### 15.6 Deploy process
 
-### Database migrations
+```
+Developer pushes feature branch
+  → GitHub Actions CI runs (lint, typecheck, test, RLS tests, build)
+  → Vercel auto-deploys preview URL (pr-123.vercel.app)
+  → Reviewer tests on preview, approves PR
+
+PR merges to develop
+  → Vercel auto-deploys to staging-projects.vektracorp.in
+  → QA team tests on staging (with staging Supabase + Razorpay/PayPal test mode)
+  → Database migrations applied to staging: npx supabase db push --linked
+
+Release branch merged to main
+  → GitHub Actions requires tech lead approval (manual gate)
+  → Vercel deploys to production (projects.vektracorp.in)
+  → Database migrations applied to production: npx supabase db push --linked
+  → Post-deploy: monitor Sentry errors, Better Stack uptime, Razorpay webhooks
+  → If critical regression: rollback via Vercel instant rollback (previous deployment)
+```
+
+### 15.7 Database migrations in production
 
 ```bash
-# Create a new migration
-npx supabase migration new <name>
+# Create migration locally
+npx supabase migration new add_timesheet_tables
 
-# Apply to local
-npx supabase db reset
+# Edit the generated SQL file in supabase/migrations/
 
-# Apply to staging/production
+# Test locally
+npx supabase db reset   # Resets local DB and re-runs all migrations
+
+# Apply to staging (linked to staging project)
 npx supabase db push --linked
 
-# Generate updated TypeScript types after migration
+# After QA passes, apply to production (linked to prod project)
+npx supabase link --project-ref <prod-project-ref>
+npx supabase db push --linked
+
+# Regenerate TypeScript types from production schema
 npx supabase gen types typescript --linked > packages/db/src/types.ts
 ```
 
-**Rule:** every migration must be backward-compatible. Never drop a column without a two-step process (1: stop reading it, 2: drop it in a later migration).
+**Migration rules:**
+1. Every migration must be backward-compatible. Never drop a column in the same migration that removes the code reading it. Two-step: (1) deploy code that stops reading the column, (2) drop the column in a later migration.
+2. Never rename a table or column — create the new one, migrate data, update code, then drop the old one in a separate migration.
+3. Every migration must be tested on staging before production.
+4. Always take a manual `pg_dump` before running a migration on production (belt and suspenders with PITR).
+
+### 15.8 Monitoring in production
+
+| Tool | What it monitors | Alert channel |
+|------|-----------------|---------------|
+| Sentry | Application errors, stack traces, performance | Slack + email |
+| Better Stack | Uptime (checks every 30s), response time | Slack + SMS |
+| Better Stack Logs | Structured log aggregation, search | Dashboard |
+| Better Stack Status Page | Public status page for customers | Auto-updates |
+| Supabase Dashboard | DB connections, query performance, storage usage, auth metrics | Email |
+| Razorpay Dashboard | Payment success/failure, webhook delivery, subscription health (India-billed orgs) | Email |
+| PayPal Dashboard | Payment success/failure, webhook delivery, subscription health (international orgs) | Email |
+| Vercel Analytics | Page load times, Web Vitals, serverless function duration | Dashboard |
+
+**Alert rules (set up on day one):**
+- Any Sentry error with 5+ occurrences in 10 minutes
+- Uptime check failure (2 consecutive) → SMS to tech lead
+- Supabase connection pool > 80% utilized
+- Razorpay or PayPal webhook delivery failure
+- Any 5xx error rate > 1% of requests over 5 minutes
 
 ---
 
@@ -2341,8 +2436,8 @@ npx supabase gen types typescript --linked > packages/db/src/types.ts
 - **Components**: PascalCase (`TaskDetailPanel`).
 - **Functions/variables**: camelCase.
 - **Database columns**: snake_case.
-- **API routes**: kebab-case (`/api/webhooks/stripe`).
-- **Event types**: dot-notation (`task.created`, `invoice.status_changed`).
+- **API routes**: kebab-case (`/api/webhooks/razorpay`, `/api/webhooks/paypal`).
+- **Event types**: dot-notation (`task.created`, `quotation.status_changed`).
 - **Feature flags**: snake_case (`gantt_chart`, `workflow_builder`).
 
 ### Commits
@@ -2400,7 +2495,9 @@ export const PLAN_LIMITS = {
     custom_tables: false,
     gantt: false,
     subtask_kanban: false,
-    commercial: false,
+    quotations: true,
+    quotations_per_month: 10,
+    leads: true,
     custom_roles: false,
     api_access: false,
   },
@@ -2416,7 +2513,9 @@ export const PLAN_LIMITS = {
     custom_tables: false,
     gantt: true,
     subtask_kanban: true,
-    commercial: true,
+    quotations: true,
+    quotations_per_month: null,          // Unlimited
+    leads: true,
     custom_roles: false,
     api_access: false,
   },
@@ -2432,7 +2531,9 @@ export const PLAN_LIMITS = {
     custom_tables: true,
     gantt: true,
     subtask_kanban: true,
-    commercial: true,
+    quotations: true,
+    quotations_per_month: null,
+    leads: true,
     custom_roles: true,
     api_access: true,
   },
@@ -2474,39 +2575,23 @@ export async function checkPlanLimit(
 
 1. **Task numbers are sequential per project.** Task PROJ-42 means it was the 42nd task created in that project. Never reuse numbers, even after deletion.
 
-2. **Every id a person sees is a 16-digit number.** Rows keep their uuid primary
-   key — `auth.users.id` is issued by Supabase and cannot change, and RLS is
-   written against uuid throughout — but nothing outside the database ever sees
-   one. `public_id` (migration `00034`) is generated by a bijection over a
-   shared sequence, so values never collide and never run in order, and the
-   generated range stops below 2^53 so an id survives JSON as an exact integer.
-   URLs carry the public id; foreign keys carry the uuid; `lib/route-ids.ts` is
-   the only place that translates between them.
+2. **Subtasks cannot have sub-subtasks.** Two levels only (Task → Subtask). This is enforced by schema design (subtasks table has `task_id`, not `parent_id`).
 
-3. **A project's key is chosen, its id is not.** `projects.key` is the front
-   identifier in a task reference (VEK-241): two to ten characters, starting
-   with a letter, unique within the organization, and editable in project
-   settings. It is derived from the name on create and changes only when someone
-   changes it. This is the opposite of `public_id`, which is generated once and
-   is permanent.
+3. **Kanban column order is the source of truth for task status.** When a task is dragged to a new column, its `status` field and `kanban_column_id` update simultaneously. There is no separate "change status" action that doesn't also move the card.
 
-4. **Subtasks cannot have sub-subtasks.** Two levels only (Task → Subtask). This is enforced by schema design (subtasks table has `task_id`, not `parent_id`).
+4. **Quotation numbers never repeat within an org.** Format is configurable (e.g., `QUO-2024-0001`). The number is assigned on creation, never changed, never recycled.
 
-5. **Kanban column order is the source of truth for task status.** When a task is dragged to a new column, its `status` field and `kanban_column_id` update simultaneously. There is no separate "change status" action that doesn't also move the card.
+5. **Audit logs are immutable.** No UPDATE or DELETE policies on the `audit_logs` table. RLS only allows INSERT (by the system) and SELECT (by admins).
 
-6. **Commercial document numbers never repeat within an org.** Format is configurable (e.g., `INV-2024-0001`). The number is assigned on creation, never changed, never recycled.
+6. **Portal users see only what's explicitly shared.** The `portal_project_access` table is the allowlist. No implicit access through workspace or org membership. If the row doesn't exist, the portal user sees nothing.
 
-7. **Audit logs are immutable.** No UPDATE or DELETE policies on the `audit_logs` table. RLS only allows INSERT (by the system) and SELECT (by admins).
+7. **Events are emitted on every mutation.** The `emit_event()` trigger must fire on every INSERT, UPDATE, DELETE on key tables. Removing this trigger for performance is not allowed — it powers workflows, integrations, and audit logging.
 
-8. **Portal users see only what's explicitly shared.** The `portal_project_access` table is the allowlist. No implicit access through workspace or org membership. If the row doesn't exist, the portal user sees nothing.
+8. **Workflow execution has hard limits.** Max 50 steps, max 5-minute runtime, max 3 retries. These are safety nets against infinite loops and runaway costs. They are not configurable by users.
 
-9. **Events are emitted on every mutation.** The `emit_event()` trigger must fire on every INSERT, UPDATE, DELETE on key tables. Removing this trigger for performance is not allowed — it powers workflows, integrations, and audit logging.
+9. **File attachments use signed URLs.** Never serve files from public URLs. Every file access goes through a signed URL with a 1-hour expiry. This ensures RLS-equivalent access control on file storage.
 
-10. **Workflow execution has hard limits.** Max 50 steps, max 5-minute runtime, max 3 retries. These are safety nets against infinite loops and runaway costs. They are not configurable by users.
-
-11. **File attachments use signed URLs.** Never serve files from public URLs. Every file access goes through a signed URL with a 1-hour expiry. This ensures RLS-equivalent access control on file storage.
-
-12. **Org switching generates a new JWT.** When a user switches organizations, the client calls `supabase.auth.refreshSession()` which triggers the `custom_access_token_hook` to inject the new `org_id` claim. All subsequent queries use the new org context.
+10. **Org switching generates a new JWT.** When a user switches organizations, the client calls `supabase.auth.refreshSession()` which triggers the `custom_access_token_hook` to inject the new `org_id` claim. All subsequent queries use the new org context.
 
 ---
 
@@ -2545,13 +2630,25 @@ CREATE INDEX idx_time_entries_task ON time_entries(task_id);
 CREATE INDEX idx_time_entries_project ON time_entries(project_id);
 CREATE INDEX idx_time_entries_date ON time_entries(start_time);
 
--- Timesheet periods (weekly submission for approval)
+-- Org-level timesheet configuration (which period granularity this org uses)
+CREATE TABLE timesheet_settings (
+  organization_id uuid PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
+  approval_frequency text NOT NULL DEFAULT 'weekly'
+                    CHECK (approval_frequency IN ('daily', 'weekly', 'monthly')),
+  week_start_day  integer NOT NULL DEFAULT 1,     -- 0=Sunday..6=Saturday, for weekly periods
+  auto_submit     boolean NOT NULL DEFAULT false, -- Auto-submit a period when it ends, vs. requiring the user to submit manually
+  require_approval boolean NOT NULL DEFAULT true, -- Enterprise orgs may disable and just track hours without a gate
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+
+-- Timesheet periods (submission for approval — granularity set per org via timesheet_settings)
 CREATE TABLE timesheet_periods (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   user_id         uuid NOT NULL REFERENCES auth.users(id),
+  period_type     text NOT NULL CHECK (period_type IN ('daily', 'weekly', 'monthly')),
   period_start    date NOT NULL,
-  period_end      date NOT NULL,
+  period_end      date NOT NULL,      -- Same as period_start for daily periods
   total_hours     numeric(6, 2) NOT NULL DEFAULT 0,
   billable_hours  numeric(6, 2) NOT NULL DEFAULT 0,
   status          text NOT NULL DEFAULT 'draft'
@@ -2561,70 +2658,208 @@ CREATE TABLE timesheet_periods (
   approved_at     timestamptz,
   rejection_note  text,
   created_at      timestamptz NOT NULL DEFAULT now(),
-  UNIQUE(organization_id, user_id, period_start)
+  UNIQUE(organization_id, user_id, period_type, period_start)
 );
+
+CREATE INDEX idx_timesheet_periods_status ON timesheet_periods(organization_id, status);
+CREATE INDEX idx_timesheet_periods_user ON timesheet_periods(user_id, period_start);
 ```
+
+**Approval frequency is an org-level setting, not hardcoded.** An org picks daily, weekly, or monthly in `timesheet_settings.approval_frequency` — this determines how `timesheet_periods` rows are generated and what the submission UI looks like:
+
+- **Daily**: one `timesheet_periods` row per user per calendar day (`period_start = period_end`). Fits agencies billing clients daily or teams wanting tight, frequent visibility into logged hours. Highest approval overhead for managers.
+- **Weekly**: one row per user per week, `period_start` aligned to `timesheet_settings.week_start_day` (defaults to Monday). The most common choice — matches most payroll and client-billing cycles.
+- **Monthly**: one row per user per calendar month. Lowest approval overhead, but delays visibility into billing/utilization until the month closes — a real tradeoff worth surfacing in the settings UI, not just a dropdown with no explanation.
+
+**Period generation**: an Inngest scheduled function creates the next period's `timesheet_periods` row in `draft` status as soon as the current one closes (nightly for daily, weekly on `week_start_day`, monthly on the 1st) — so users always have an open period to log against without a manual "create period" step.
+
+**Submission and approval flow**: user logs time throughout the period → submits (or it auto-submits at period end if `auto_submit = true`) → status moves to `submitted` → the user's manager (from `employees.manager_id`, section 19.5) reviews and approves or rejects with a note → rejected periods return to `draft` so the user can correct entries and resubmit. Approval triggers an event (`timesheet_period.approved`) that the pipeline/billable-value materialized views (section 19.9) key off — only approved billable hours count toward billable value reporting, never `submitted` or `draft` hours, so the numbers on the dashboard are never provisional.
 
 **Timesheet features:**
 - **Timer mode**: click Start on a task → creates a time_entry with `is_running = true` and `start_time = now()`. Click Stop → sets `end_time`, calculates `duration_minutes`, sets `is_running = false`. Only one timer can be running per user at a time (enforced by a partial unique index or app logic).
 - **Manual entry**: enter hours directly without a timer. Set `start_time`, `duration_minutes`, no `end_time` needed.
-- **Weekly submission**: user submits a timesheet period for the week. Manager approves or rejects. Approved hours feed into revenue tracking and invoicing.
+- **Configurable submission cadence**: daily, weekly, or monthly per org (see above) — manager approves or rejects each period. Only approved billable hours feed into revenue/utilization reporting.
 - **Billable vs non-billable**: each entry is flagged. Billable entries have an hourly rate (from employee record or project override). Billable totals roll up to project profitability and revenue tracking.
 - **Task report integration**: time logged per task is visible in the task detail panel and the task report.
 
-### 19.2 Quotations
+### 19.2 Quotation lifecycle
 
-Quotations are the one commercial document the product still has. The four
-transactional documents that used to sit beside them — purchase orders, sales
-orders, invoices and bills — were removed in migration `00035`; see §6.4.
+Quotation and Contact are the only commercial-adjacent modules in scope. There is no Purchase Order, Sales Order, Invoice, or Bill — the `quotations` table (see section 6.4) is standalone and does not convert into another document type.
 
-The live constraint:
+**Status lifecycle:** `draft → sent → viewed → accepted / rejected / expired`
 
-```sql
-ALTER TABLE commercial_documents
-  ADD CONSTRAINT commercial_documents_doc_type_check
-    CHECK (doc_type = 'quotation');
+- **draft**: being built internally, not yet visible to the contact.
+- **sent**: emailed to the contact (via Resend) with a link to view the quotation online and a generated PDF attached.
+- **viewed**: auto-set when the contact opens the view link (tracked via a lightweight pixel or page-view event).
+- **accepted**: contact confirms acceptance via a button on the view page, or an internal user marks it accepted after receiving confirmation by other means (phone, email reply). Sets `accepted_at`.
+- **rejected**: contact declines, or an internal user marks it rejected. `rejection_reason` captured for reporting.
+- **expired**: auto-transitioned by a daily Inngest cron when `valid_until` passes and the quotation is still in `sent` or `viewed` status.
+
+**Server action — send a quotation:**
+
+```typescript
+// apps/web/src/app/(dashboard)/[orgSlug]/[workspaceSlug]/quotations/[quotationId]/actions.ts
+'use server'
+
+export async function sendQuotation(quotationId: string) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new AppError('Unauthorized', 'UNAUTHORIZED', 401)
+
+  const orgRole = user.user_metadata?.org_role
+  assertPermission(orgRole, 'quotations', 'update')
+
+  const { data: quotation } = await supabase
+    .from('quotations')
+    .select('*, contact:contacts(*), line_items:quotation_line_items(*)')
+    .eq('id', quotationId)
+    .single()
+
+  if (!quotation) throw new AppError('Quotation not found', 'NOT_FOUND', 404)
+
+  // Generate PDF via Edge Function
+  const pdfUrl = await generateQuotationPdf(quotation)
+
+  // Send via Resend
+  await sendEmail({
+    to: quotation.contact.email,
+    subject: `Quotation ${quotation.quote_number}`,
+    template: 'quotation-sent',
+    data: { quotation, viewUrl: `${process.env.NEXT_PUBLIC_APP_URL}/q/${quotation.id}` },
+    attachments: [{ filename: `${quotation.quote_number}.pdf`, path: pdfUrl }],
+  })
+
+  await supabase
+    .from('quotations')
+    .update({ status: 'sent', sent_at: new Date().toISOString() })
+    .eq('id', quotationId)
+
+  return { success: true }
+}
 ```
 
-**Quotation statuses:** `draft → sent → viewed → accepted → rejected → expired`
+**Auto-expire cron (Inngest, daily):**
 
-`converted` went with the invoice: there is nothing left to convert a quotation
-into, so an accepted quotation is the terminal happy path. `converted_to_id` and
-`reference_doc_id` survive as columns (dropping a column takes the two-step
-process in §15) but are pinned null and can never be set again.
+```typescript
+export const expireQuotations = inngest.createFunction(
+  { id: 'expire-quotations' },
+  { cron: '0 1 * * *' },  // 1 AM daily
+  async ({ step }) => {
+    await step.run('expire', async () => {
+      const supabase = createAdminClient()
+      await supabase
+        .from('quotations')
+        .update({ status: 'expired' })
+        .in('status', ['sent', 'viewed'])
+        .lt('valid_until', new Date().toISOString())
+    })
+  }
+)
+```
 
-**Quotation-specific fields:**
-- `valid_until` date — expiry date for the quote
+**Lead → Quotation link:** from a `won` lead or a `customer`-stage contact, a "Create quotation" action pre-fills a new quotation with the contact's info (see 19.3). This is the only cross-module link — quotations do not link forward into any billing document, since none exists in this scope.
 
-**What a quotation still runs through:** the shared numbering sequence
-(`next_doc_number`), the PDF template machinery, custom fields with
-`entity_type = 'commercial_document'`, and the `commercial` permission module.
-Approval is not one of them — every approval status in the old schema belonged
-to a purchase order or a bill.
+### 19.3 Lead management (CRM-lite)
 
-### 19.3 Lead management — REMOVED
+```sql
+CREATE TABLE leads (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  workspace_id    uuid NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
 
-Lead management was specified here and built in migration `00019`, then removed
-in `00023` at the product owner's direction. `leads` and `lead_activities` no
-longer exist and neither does `contacts.lead_id`.
+  -- Contact info
+  contact_name    text NOT NULL,
+  company_name    text,
+  email           text,
+  phone           text,
+  website         text,
 
-`contacts.lifecycle_stage` is retained: it happens to include `'lead'` as a
-value, but it describes where a contact sits in its own lifecycle and does not
-depend on a leads table.
+  -- Lead details
+  source          text NOT NULL DEFAULT 'manual'
+                  CHECK (source IN ('manual', 'web_form', 'referral', 'cold_call',
+                         'social_media', 'advertisement', 'event', 'other')),
+  status          text NOT NULL DEFAULT 'new'
+                  CHECK (status IN ('new', 'contacted', 'qualified', 'proposal',
+                         'negotiation', 'won', 'lost', 'disqualified')),
+  estimated_value numeric(12, 2),
+  currency        text NOT NULL DEFAULT 'USD',
+  expected_close  date,
+  lost_reason     text,
 
-### 19.4 Contact expansion
+  -- Assignment
+  assigned_to     uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  assigned_at     timestamptz,
 
-Update the existing contacts table to carry lifecycle and billing data:
+  -- Conversion
+  converted_to_contact_id uuid REFERENCES contacts(id),
+  converted_at    timestamptz,
+
+  -- Meta
+  notes           text,
+  tags            text[],
+  last_contacted_at timestamptz,
+  next_follow_up  date,
+  created_by      uuid REFERENCES auth.users(id),
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_leads_org ON leads(organization_id);
+CREATE INDEX idx_leads_status ON leads(organization_id, status);
+CREATE INDEX idx_leads_assigned ON leads(assigned_to);
+
+-- Lead activities (calls, emails, meetings logged against a lead)
+CREATE TABLE lead_activities (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id         uuid NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  type            text NOT NULL CHECK (type IN ('call', 'email', 'meeting', 'note', 'task')),
+  subject         text NOT NULL,
+  body            text,
+  activity_date   timestamptz NOT NULL DEFAULT now(),
+  duration_minutes integer,
+  created_by      uuid REFERENCES auth.users(id),
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+```
+
+**Lead features:**
+- **Kanban view for leads**: columns = lead statuses (New → Contacted → Qualified → Proposal → Won/Lost). Same drag-drop as task Kanban.
+- **Lead → Contact conversion**: when a lead status changes to "won", auto-create a Contact record from the lead's info. Link via `converted_to_contact_id`.
+- **Lead → Quotation**: from a won lead, one-click to create a quotation pre-filled with the contact info and estimated value.
+- **Pipeline view**: leads grouped by status with total estimated value per stage. A simple revenue pipeline.
+- **Activity log**: calls, emails, meetings logged against each lead with timestamps.
+- **Follow-up reminders**: `next_follow_up` date triggers a notification to the assigned user.
+
+### 19.4 Contact — additional fields
+
+The core contact fields (lifecycle_stage, tags, lead_id, last_contacted_at) are already defined in the `contacts` table in section 6.4. Two more fields support timesheet billing and quotation-pipeline reporting:
 
 ```sql
 ALTER TABLE contacts ADD COLUMN IF NOT EXISTS
-  lifecycle_stage     text DEFAULT 'lead'
-                      CHECK (lifecycle_stage IN ('lead', 'prospect', 'customer', 'churned')),
-  tags                text[],
-  last_contacted_at   timestamptz,
   default_hourly_rate numeric(10, 2),   -- For timesheet billing
-  total_revenue       numeric(14, 2) NOT NULL DEFAULT 0;  -- Aggregated from paid invoices
+  total_quoted_value  numeric(14, 2) NOT NULL DEFAULT 0;  -- Sum of accepted quotations (updated via trigger)
 ```
+
+```sql
+-- Trigger: keep total_quoted_value in sync when a quotation is accepted
+CREATE OR REPLACE FUNCTION update_contact_quoted_value()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.status = 'accepted' AND OLD.status != 'accepted' THEN
+    UPDATE contacts SET total_quoted_value = total_quoted_value + NEW.grand_total
+    WHERE id = NEW.contact_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER sync_contact_quoted_value
+  AFTER UPDATE ON quotations
+  FOR EACH ROW EXECUTE FUNCTION update_contact_quoted_value();
+```
+
+Note: `total_quoted_value` reflects accepted quotation value, not collected revenue — there is no invoice/payment tracking in this scope, so this is a pipeline/won-value metric rather than cash collected.
 
 ### 19.5 Employee management & leave tracking
 
@@ -2796,7 +3031,7 @@ CREATE TABLE saved_reports (
   created_by      uuid NOT NULL REFERENCES auth.users(id),
   name            text NOT NULL,
   entity_type     text NOT NULL DEFAULT 'task'
-                  CHECK (entity_type IN ('task', 'timesheet', 'commercial', 'employee')),
+                  CHECK (entity_type IN ('task', 'timesheet', 'lead', 'quotation', 'employee')),
   columns         text[] NOT NULL,        -- Ordered list of column keys
   filters         jsonb NOT NULL DEFAULT '{}',
   -- { "status": ["todo", "in_progress"], "priority": ["high"], "assignee_id": ["uuid1"],
@@ -2916,41 +3151,64 @@ CREATE TABLE kanban_view_configs (
 - **Column customization**: rename columns, reorder them, set WIP limits (warning or blocking), collapse columns, set column colors. When grouped by status, column names map to task statuses. Renaming a column renames the status.
 - **Filters**: persistent filters on the view. Filter by assignee, priority, label, due date range, custom field values. Filtered-out cards are hidden, not removed.
 
-### 19.9 Revenue tracking & dashboard
+### 19.9 Pipeline & billable value tracking
 
-Revenue tracking is a reporting layer that aggregates data from invoices, timesheets and quotations. No separate tables — it's computed views and dashboard widgets.
+Without an invoicing module, "revenue tracking" in this product means **quotation pipeline value** (what's been quoted, won, and lost) plus **billable timesheet value** (what's been worked and is billable at rate) — not collected cash. Label this clearly in the UI (e.g., "Quoted value" / "Billable hours value") so it's never confused with actual collected revenue.
 
 ```sql
--- Materialized view for revenue summary (refreshed periodically via cron)
-CREATE MATERIALIZED VIEW revenue_summary AS
+-- Materialized view for quotation pipeline summary (refreshed periodically via cron)
+CREATE MATERIALIZED VIEW quotation_pipeline_summary AS
 SELECT
-  cd.organization_id,
-  date_trunc('month', cd.issue_date) AS month,
-  cd.currency,
-  SUM(CASE WHEN cd.doc_type = 'invoice' AND cd.status = 'paid' THEN cd.grand_total ELSE 0 END) AS invoiced_revenue,
-  SUM(CASE WHEN cd.doc_type = 'invoice' AND cd.status IN ('sent', 'viewed') THEN cd.grand_total ELSE 0 END) AS outstanding_invoices,
-  SUM(CASE WHEN cd.doc_type = 'invoice' AND cd.status = 'overdue' THEN cd.grand_total ELSE 0 END) AS overdue_invoices,
-  SUM(CASE WHEN cd.doc_type = 'quotation' AND cd.status IN ('sent', 'viewed') THEN cd.grand_total ELSE 0 END) AS pipeline_quotations,
-  SUM(CASE WHEN cd.doc_type = 'quotation' AND cd.status = 'accepted' THEN cd.grand_total ELSE 0 END) AS accepted_quotations
-FROM commercial_documents cd
-GROUP BY cd.organization_id, date_trunc('month', cd.issue_date), cd.currency;
+  q.organization_id,
+  date_trunc('month', q.issue_date) AS month,
+  q.currency,
+  SUM(CASE WHEN q.status IN ('sent', 'viewed') THEN q.grand_total ELSE 0 END) AS pipeline_value,
+  SUM(CASE WHEN q.status = 'accepted' THEN q.grand_total ELSE 0 END) AS accepted_value,
+  SUM(CASE WHEN q.status = 'rejected' THEN q.grand_total ELSE 0 END) AS rejected_value,
+  SUM(CASE WHEN q.status = 'expired' THEN q.grand_total ELSE 0 END) AS expired_value,
+  COUNT(*) FILTER (WHERE q.status = 'sent') AS quotes_sent,
+  COUNT(*) FILTER (WHERE q.status = 'accepted') AS quotes_accepted
+FROM quotations q
+GROUP BY q.organization_id, date_trunc('month', q.issue_date), q.currency;
 
-CREATE UNIQUE INDEX idx_revenue_summary ON revenue_summary(organization_id, month, currency);
+CREATE UNIQUE INDEX idx_quotation_pipeline_summary ON quotation_pipeline_summary(organization_id, month, currency);
 
--- Refresh via cron (Inngest scheduled function, every hour)
--- REFRESH MATERIALIZED VIEW CONCURRENTLY revenue_summary;
+-- Materialized view for billable timesheet value
+-- Only counts hours whose timesheet_period has been approved — draft/submitted/rejected
+-- hours are excluded so reported figures are never provisional (see section 19.1).
+CREATE MATERIALIZED VIEW billable_value_summary AS
+SELECT
+  te.organization_id,
+  date_trunc('month', te.start_time) AS month,
+  SUM(te.duration_minutes) FILTER (WHERE te.is_billable) / 60.0 AS billable_hours,
+  SUM(te.duration_minutes) / 60.0 AS total_hours,
+  SUM(te.total_amount) FILTER (WHERE te.is_billable) AS billable_value
+FROM time_entries te
+JOIN timesheet_periods tp
+  ON tp.organization_id = te.organization_id
+  AND tp.user_id = te.user_id
+  AND te.start_time::date BETWEEN tp.period_start AND tp.period_end
+WHERE tp.status = 'approved'
+GROUP BY te.organization_id, date_trunc('month', te.start_time);
+
+CREATE UNIQUE INDEX idx_billable_value_summary ON billable_value_summary(organization_id, month);
+
+-- Refresh both via cron (Inngest scheduled function, every hour)
+-- REFRESH MATERIALIZED VIEW CONCURRENTLY quotation_pipeline_summary;
+-- REFRESH MATERIALIZED VIEW CONCURRENTLY billable_value_summary;
 ```
 
-**Revenue dashboard widgets:**
-- **Revenue this month / quarter / year**: total from paid invoices
-- **Outstanding**: total from sent but unpaid invoices
-- **Overdue**: total from overdue invoices, with age breakdown (30/60/90 days)
-- **Pipeline**: total estimated value from active quotations
-- **Revenue trend**: line chart, monthly revenue over time
-- **Revenue by client**: bar chart, top 10 clients by paid invoice total
-- **Billable utilization**: percentage of total logged hours that are billable (from timesheets)
+**Pipeline dashboard widgets:**
+- **Quoted value this month / quarter / year**: total from all quotations issued
+- **Pipeline (open)**: total value of quotations in `sent` or `viewed` status
+- **Accepted value**: total value of quotations marked `accepted`
+- **Win rate**: quotes accepted ÷ quotes sent (percentage)
+- **Quoted value trend**: line chart, monthly quoted vs accepted value over time
+- **Value by contact**: bar chart, top 10 contacts by accepted quotation value
+- **Billable utilization**: billable hours ÷ total logged hours (from timesheets)
+- **Billable value**: hours × rate, from approved timesheet entries
 - **Average deal size**: mean of accepted quotation values
-- **Conversion rate**: quotations sent vs accepted (percentage)
+- **Lead pipeline value**: leads grouped by status with estimated value per stage
 
 ### 19.10 Fully customizable dashboard
 
@@ -2983,16 +3241,17 @@ CREATE TABLE dashboard_configs (
 | Project progress | PM | specific project or all |
 | Recent activity feed | PM | entity type filter |
 | Kanban mini-view | PM | specific board |
-| Open pipeline | Pipeline | date range, currency |
-| Accepted / rejected value | Pipeline | date range, currency |
-| Accepted trend (chart) | Pipeline | monthly, date range |
-| Win rate | Pipeline | decided quotations only |
-| Won by client | Pipeline | top N, date range |
+| Quoted value this month | Pipeline | date range, currency |
+| Open pipeline value | Pipeline | age breakdown |
+| Quoted value trend (chart) | Pipeline | monthly/quarterly, date range |
+| Pipeline value | Pipeline | lead + quotation |
+| Value by contact | Pipeline | top N, date range |
 | Billable utilization | Timesheet | date range, user filter |
 | Hours logged this week | Timesheet | user or team |
 | Timesheet approval pending | Timesheet | manager view |
 | Leave calendar | HR | team/department filter |
 | Upcoming leaves | HR | next N days |
+| Lead pipeline | CRM | workspace filter |
 | Active workflows | Workflow | workspace filter |
 | System notices | Admin | (admin dashboard only) |
 | MRR / ARR | Admin | (admin dashboard only) |
@@ -3013,10 +3272,10 @@ Build in this order. Each phase depends on the previous one.
 
 | Phase | Weeks | What to build |
 |-------|-------|---------------|
-| 0. Foundations | 2–3 | Auth, org/workspace/profile tables, RLS skeleton, CI/CD pipeline, staging env, Stripe billing skeleton, event system, type generation |
+| 0. Foundations | 2–3 | Auth, org/workspace/profile tables, RLS skeleton, CI/CD pipeline, staging env, Razorpay + PayPal billing skeleton, event system, type generation |
 | 1. MVP | 6–8 | Projects, tasks (with started_at/completed_at auto-set), subtasks, project-level Kanban (customizable views), comments, attachments, basic notifications, task report (defined columns), basic dashboard, subscription checkout, admin console basics |
 | 2. V1 | 4–6 | Subtask Kanban, Gantt chart, documents, import/export, external portal, customizable dashboard (grid layout + widget catalog), email integration, contacts, employee management, leave tracking |
-| 3. V2 | 6–8 | Quotations, PDF templates, timesheet & time tracking, pipeline widgets, auto-assignment engine, workflow builder, custom fields, audit logs, Slack integration |
+| 3. V2 | 5–7 | Quotations, PDF templates, timesheet & time tracking, lead management, pipeline & billable value widgets, auto-assignment engine, workflow builder, custom fields, audit logs, Slack integration |
 | 4. Hardening | 3–4 | Security review, pen test, load testing (k6 against RLS-heavy queries), backup/DR test, saved reports, status page, docs, go-live |
 
 ---
@@ -3561,3 +3820,229 @@ Cache invalidation:
   - TanStack Query invalidation on mutation (revalidatePath, invalidateQueries)
   - Materialized views refreshed by Inngest cron function
 ```
+
+---
+
+## 24. Migration engine — importing from Jira, Asana, Trello, and CSV
+
+Migration friction is the single biggest reason people stay on a tool they dislike. This module makes switching to this product a low-risk, previewable action rather than a leap of faith.
+
+### 24.1 Architecture
+
+Four stages, always in this order: **fetch → map → preview → commit**. Each source is an isolated connector module that normalizes its data into a common intermediate shape before the mapping or commit logic ever sees it — adding a new source later (Monday.com, ClickUp, Notion) means writing one new fetch module, not touching anything downstream.
+
+```sql
+-- Extends the existing import_export_jobs table (section 6.7) with source-specific fields
+ALTER TABLE import_export_jobs ADD COLUMN IF NOT EXISTS
+  source_tool     text CHECK (source_tool IN ('jira', 'asana', 'trello', 'csv', 'monday', 'clickup')),
+  source_config   jsonb,          -- { api_url, auth_type } — never store raw tokens here, see 24.5
+  mapping_template_id uuid REFERENCES import_mapping_templates(id),
+  preview_summary jsonb,          -- { projects: 3, tasks: 247, comments: 89, attachments: 34, warnings: [...] }
+  progress_current integer NOT NULL DEFAULT 0,
+  progress_total  integer;
+
+-- Reusable field mapping templates (per org, per source tool)
+CREATE TABLE import_mapping_templates (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  source_tool     text NOT NULL CHECK (source_tool IN ('jira', 'asana', 'trello', 'csv', 'monday', 'clickup')),
+  name            text NOT NULL,
+  field_mapping   jsonb NOT NULL,
+  -- { "source_field": "customfield_10032", "target_field": "priority",
+  --   "value_mapping": { "Highest": "critical", "High": "high", "Medium": "medium", "Low": "low" } }
+  status_mapping  jsonb NOT NULL DEFAULT '{}',   -- { "To Do": "todo", "In Progress": "in_progress", ... }
+  created_by      uuid REFERENCES auth.users(id),
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(organization_id, source_tool, name)
+);
+```
+
+### 24.2 Connector implementations
+
+Each connector implements the same interface so the pipeline stages never need to know which source they're handling:
+
+```typescript
+// packages/shared/src/migration/types.ts
+export interface MigrationConnector {
+  authenticate(credentials: SourceCredentials): Promise<{ valid: boolean; error?: string }>
+  listProjects(): Promise<ExternalProject[]>
+  fetchProjectData(externalProjectId: string): Promise<ExternalProjectData>
+  fetchAttachment(url: string, auth: SourceCredentials): Promise<Buffer>
+}
+
+// Common intermediate shape every connector normalizes into
+export interface ExternalProjectData {
+  project: { name: string; description?: string }
+  tasks: ExternalTask[]
+  comments: ExternalComment[]
+  attachments: ExternalAttachment[]
+  customFieldDefinitions: { sourceId: string; sourceName: string; type: string }[]
+}
+
+export interface ExternalTask {
+  sourceId: string           // Original ID in the source tool (e.g. "PROJ-42")
+  title: string
+  description?: string
+  status: string             // Raw status string from source — mapped later
+  priority?: string
+  assigneeEmail?: string      // Matched against org users by email
+  dueDate?: string
+  createdAt: string
+  updatedAt: string
+  parentSourceId?: string     // For subtasks / Jira sub-issues
+  customFields: Record<string, unknown>
+}
+```
+
+**Jira connector** — Basic Auth with an API token, issues fetched via `/rest/api/3/search` with JQL pagination (`startAt`/`maxResults`), attachments retrieved via their download URLs since the API doesn't embed file content directly in the issue response. Jira custom fields are keyed by opaque IDs like `customfield_10032` rather than names, and the same field name can have different IDs across different Jira instances, so the connector resolves field ID → human-readable name per connection before handing data to the mapper — never assume a fixed ID mapping across customers.
+
+```typescript
+// packages/shared/src/migration/jira-connector.ts
+export class JiraConnector implements MigrationConnector {
+  async fetchProjectData(projectKey: string): Promise<ExternalProjectData> {
+    const fieldMeta = await this.fetchFieldMetadata()  // Resolves customfield_XXXXX -> names
+
+    let startAt = 0
+    const allIssues: ExternalTask[] = []
+    while (true) {
+      const res = await this.jiraGet(`/rest/api/3/search`, {
+        jql: `project=${projectKey} ORDER BY created ASC`,
+        startAt, maxResults: 100,
+        fields: '*all',
+      })
+      allIssues.push(...res.issues.map(issue => this.normalizeIssue(issue, fieldMeta)))
+      if (startAt + 100 >= res.total) break
+      startAt += 100
+    }
+    return { project: { name: projectKey }, tasks: allIssues, /* ...comments, attachments */ }
+  }
+}
+```
+
+**Asana connector** — OAuth2 or personal access token, REST API, cleaner mapping than Jira since projects/sections/tasks/subtasks map almost 1:1 to this product's schema. Custom fields are named consistently within a workspace, so no ID-resolution step is needed.
+
+**Trello connector** — key + token auth, boards → projects, lists → Kanban columns, cards → tasks. Trello has no native subtask concept; checklists are the closest analog, so the connector maps each checklist item to a subtask with a specific `source_type: 'checklist_item'` flag so users understand the mapping choice during preview.
+
+**CSV/Excel connector** — no API calls; parses an uploaded file (via SheetJS, matching the xlsx skill) and is the universal fallback for any tool without a direct connector (Monday.com, ClickUp, Notion, or ad-hoc spreadsheets). This is the most important connector to keep robust, since it's the safety net for every source not yet directly supported.
+
+### 24.3 Field mapping
+
+Auto-suggest mappings by name similarity (Levenshtein distance or simple substring match against target field names), but never auto-commit a guessed mapping — the user always reviews and confirms before moving to preview.
+
+```typescript
+export function suggestFieldMapping(
+  sourceFields: { id: string; name: string }[],
+  targetFields: TaskReportColumn[]
+): FieldMappingSuggestion[] {
+  return sourceFields.map(source => {
+    const bestMatch = targetFields
+      .map(target => ({ target, score: similarity(source.name, target) }))
+      .sort((a, b) => b.score - a.score)[0]
+    return {
+      sourceField: source.id,
+      sourceLabel: source.name,
+      suggestedTarget: bestMatch.score > 0.6 ? bestMatch.target : null,
+      confidence: bestMatch.score,
+    }
+  })
+}
+```
+
+Status values get their own mapping step, since no two tools share status vocabulary ("To Do" vs "Open" vs "Backlog" vs "New") — the UI shows source statuses on the left, a dropdown of this product's five statuses on the right, pre-filled with a best guess.
+
+### 24.4 Preview before commit
+
+This is the trust-building step — nothing is written to the database until the user explicitly confirms.
+
+```typescript
+export async function generateImportPreview(
+  data: ExternalProjectData,
+  mapping: FieldMapping,
+  orgId: string
+): Promise<ImportPreview> {
+  const warnings: string[] = []
+
+  // Detect unmatched assignees
+  const unmatchedEmails = await findUnmatchedAssignees(data.tasks, orgId)
+  if (unmatchedEmails.length > 0) {
+    warnings.push(`${unmatchedEmails.length} tasks have assignees not found in your organization`)
+  }
+
+  // Detect unmapped statuses
+  const unmappedStatuses = data.tasks
+    .map(t => t.status)
+    .filter(s => !mapping.statusMapping[s])
+  if (unmappedStatuses.length > 0) {
+    warnings.push(`${new Set(unmappedStatuses).size} status values have no mapping and will default to "todo"`)
+  }
+
+  return {
+    projectCount: 1,
+    taskCount: data.tasks.length,
+    subtaskCount: data.tasks.filter(t => t.parentSourceId).length,
+    commentCount: data.comments.length,
+    attachmentCount: data.attachments.length,
+    warnings,
+    sampleTasks: data.tasks.slice(0, 10),  // Show a representative sample, not everything
+  }
+}
+```
+
+The UI presents this as: *"This will create 1 project, 247 tasks, 89 comments, 34 attachments. 12 tasks have assignees that don't match any user in your organization — choose how to handle them."* Users pick a resolution for each warning class (assign to importer, leave unassigned, invite the missing user) before the commit button becomes active.
+
+### 24.5 Commit — background job, not inline
+
+A Jira project with thousands of issues will exceed a serverless function's timeout, so commit always runs through Inngest, never inline in a server action.
+
+```typescript
+export const runImport = inngest.createFunction(
+  { id: 'run-import', retries: 2 },
+  { event: 'import/commit' },
+  async ({ event, step }) => {
+    const { jobId, orgId, projectId, data, mapping } = event.data
+
+    await step.run('update-status', () =>
+      updateImportJob(jobId, { status: 'processing', progress_total: data.tasks.length }))
+
+    const sourceIdMap = new Map<string, string>()  // source task ID -> new internal task ID
+
+    // Pass 1: create all tasks (without parent links, since parents may not exist yet)
+    for (const [i, task] of data.tasks.entries()) {
+      const created = await step.run(`create-task-${task.sourceId}`, () =>
+        createTaskFromImport(task, mapping, orgId, projectId))
+      sourceIdMap.set(task.sourceId, created.id)
+      if (i % 25 === 0) await updateImportJob(jobId, { progress_current: i })
+    }
+
+    // Pass 2: link subtasks now that all parent IDs exist
+    for (const task of data.tasks.filter(t => t.parentSourceId)) {
+      await step.run(`link-subtask-${task.sourceId}`, () =>
+        linkSubtaskToParent(sourceIdMap.get(task.sourceId)!, sourceIdMap.get(task.parentSourceId!)!))
+    }
+
+    // Pass 3: comments and attachments, referencing the new task IDs
+    for (const comment of data.comments) {
+      await step.run(`comment-${comment.sourceId}`, () =>
+        createCommentFromImport(comment, sourceIdMap.get(comment.taskSourceId)!))
+    }
+
+    await step.run('finalize', () => updateImportJob(jobId, { status: 'completed' }))
+  }
+)
+```
+
+Progress is tracked via the existing `import_export_jobs` table and pushed to the UI over Supabase Realtime — the user sees a live progress bar, not a spinner with no feedback for a multi-thousand-row import.
+
+### 24.6 Reusable mapping templates
+
+A mapping built once is saved to `import_mapping_templates` and offered as a starting point on the next import from the same source — this matters for agencies running the same migration across multiple clients on the same source tool, or a team re-running an import after fixing an issue in the first pass. Templates are org-scoped and never shared cross-tenant.
+
+### 24.7 Security notes specific to migration
+
+- **Source credentials (Jira API tokens, Asana OAuth tokens) are never persisted** beyond the duration of the import job — encrypted in transit, held in memory for the fetch phase, and discarded after commit or failure. If a saved mapping template needs re-authentication for a repeat import, the user re-enters credentials; they are not stored long-term the way `integrations.access_token` is for ongoing Slack/Teams connections (section 6.6).
+- **Rate limiting on source APIs** is respected per-connector (Jira and Asana both throttle aggressively) — the fetch stage backs off on 429 responses rather than hammering the source and getting the org's connection blocked.
+- **Import jobs are audit-logged** (`audit_logs`, action `import.committed`) including source tool, row counts, and the user who triggered it — bulk data creation is exactly the kind of action section 13.11 calls out for audit coverage.
+
+### 24.8 Roadmap placement
+
+CSV import (already in Phase 1 MVP scope per section 4) covers the universal fallback from day one. Direct Jira, Asana, and Trello connectors are a **Phase 2 (V1)** addition — they're meaningfully more engineering effort than CSV (OAuth flows, pagination, custom field resolution) but are the difference between "you can technically get your data in" and "switching to us is genuinely easy," which matters most right when you're trying to win customers off incumbent tools.

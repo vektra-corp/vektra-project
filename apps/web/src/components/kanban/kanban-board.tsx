@@ -9,6 +9,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
@@ -74,6 +75,14 @@ export function KanbanBoard({
   // Collapsed columns live here rather than in each column, because the board's
   // grid template has to know which tracks are 46px and which share the rest.
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
+  // Where a drop would land right now: the column, and the index within it.
+  // dnd-kit knows what you are OVER, but the design shows where the card would
+  // GO — a line above the card that would be displaced, and a live end slot —
+  // so the insertion point is tracked separately and fed to the columns.
+  const [dropTarget, setDropTarget] = useState<{ columnId: string; index: number } | null>(null)
+  // The card that most recently landed, so it can play the arrival animation
+  // once and then stop.
+  const [landed, setLanded] = useState<string | null>(null)
   const [, startTransition] = useTransition()
   const router = useRouter()
 
@@ -108,12 +117,51 @@ export function KanbanBoard({
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id))
+    setLanded(null)
     setError(null)
+  }
+
+  /**
+   * Track the insertion point as the pointer moves.
+   *
+   * Over a card, the slot is that card's index — the dragged card would take
+   * its place and push it down. Over a column's empty space, the slot is the
+   * end. The dragged card is excluded from the destination first, so dragging
+   * within a column does not count itself and report an index one too far.
+   */
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event
+    if (!over) {
+      setDropTarget(null)
+      return
+    }
+
+    const overData = over.data.current as { type?: string; card?: KanbanCardData } | undefined
+    const columnId =
+      overData?.type === 'column' ? String(over.id) : overData?.card ? columnKeyOf(overData.card) : null
+    if (!columnId) {
+      setDropTarget(null)
+      return
+    }
+
+    const destination = (byColumn.get(columnId) ?? []).filter((c) => c.id !== String(active.id))
+    // A card that is not in the destination list — which happens for a moment
+    // while the optimistic update settles — means "the end", not "the top";
+    // clamping a -1 to 0 would flash the line at the wrong place.
+    const overIndex = overData?.card
+      ? destination.findIndex((c) => c.id === String(over.id))
+      : -1
+    const index = overIndex === -1 ? destination.length : overIndex
+
+    setDropTarget((current) =>
+      current?.columnId === columnId && current.index === index ? current : { columnId, index },
+    )
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     setActiveId(null)
+    setDropTarget(null)
     if (!over) return
 
     const card = cards.find((c) => c.id === String(active.id))
@@ -157,6 +205,9 @@ export function KanbanBoard({
     const position = positionBetween(before, after)
 
     const previous = cards
+    // The arrival animation plays on the card that just moved. It is cleared on
+    // the next drag start, so a card cannot be left permanently pulsing.
+    setLanded(card.id)
 
     // Optimistic update (§23.2 rule 5): paint the move now, reconcile after.
     setCards((current) =>
@@ -237,8 +288,12 @@ export function KanbanBoard({
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
-        onDragCancel={() => setActiveId(null)}
+        onDragCancel={() => {
+          setActiveId(null)
+          setDropTarget(null)
+        }}
       >
         {/*
           * The design separates columns with a 1px rule that runs the full
@@ -270,6 +325,9 @@ export function KanbanBoard({
               view={view}
               canCreate={canCreate}
               canQuickAdd={isStatusGrouped}
+              isDragging={activeId !== null}
+              dropIndex={dropTarget?.columnId === column.id ? dropTarget.index : null}
+              landedId={landed}
               collapsed={Boolean(collapsed[column.id])}
               onToggleCollapse={(next) =>
                 setCollapsed((current) => ({ ...current, [column.id]: next }))

@@ -36,6 +36,8 @@ export function KanbanCard({
   scope,
   view,
   isOverlay = false,
+  showDropLine = false,
+  justLanded = false,
 }: {
   card: KanbanCardData
   href: string
@@ -46,6 +48,10 @@ export function KanbanCard({
   view: Pick<KanbanViewConfig, 'card_fields' | 'compact_mode' | 'card_color_by'>
   /** Rendered inside the drag overlay rather than in a column. */
   isOverlay?: boolean
+  /** A dragged card would land immediately above this one. */
+  showDropLine?: boolean
+  /** This card just arrived from a drop, so it plays the landing animation. */
+  justLanded?: boolean
 }) {
   const shows = (field: Parameters<typeof isCardFieldVisible>[1]) => isCardFieldVisible(view, field)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -99,6 +105,11 @@ export function KanbanCard({
         isOverlay && 'border-primary shadow-drag cursor-grabbing',
         done && 'opacity-70',
         pending && 'opacity-60',
+        // The design marks the insertion point with a teal edge along the top
+        // of the card that is about to be displaced, rather than by opening a
+        // gap — the column keeps its rhythm while you aim.
+        showDropLine && 'shadow-[inset_0_3px_0_0_hsl(var(--primary))]',
+        justLanded && 'animate-card-drop',
       )}
       {...attributes}
       {...listeners}

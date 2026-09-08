@@ -166,12 +166,39 @@ const config: Omit<Config, 'content'> = {
           from: { opacity: '0', transform: 'translateY(4px) scale(0.98)' },
           to: { opacity: '1', transform: 'translateY(0) scale(1)' },
         },
+        /*
+         * A card landing after a drag. The design's own curve: it arrives a
+         * touch small, overshoots, and settles while a teal ring expands out of
+         * it — so your eye is told where the card went without the board having
+         * to move anything else.
+         */
+        'card-drop': {
+          '0%': {
+            transform: 'scale(0.955)',
+            boxShadow: '0 0 0 0 hsl(var(--primary) / 0.5)',
+          },
+          '55%': {
+            transform: 'scale(1.022)',
+            boxShadow: '0 0 0 6px hsl(var(--primary) / 0.14)',
+          },
+          '100%': {
+            transform: 'scale(1)',
+            boxShadow: '0 0 0 12px hsl(var(--primary) / 0)',
+          },
+        },
+        /* The gap that opens where a dragged card would land. */
+        'drop-slot': {
+          from: { opacity: '0', transform: 'scaleY(0.6)' },
+          to: { opacity: '1', transform: 'scaleY(1)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in': 'fade-in 0.15s ease-out',
         'overlay-in': 'overlay-in 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+        'card-drop': 'card-drop 420ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+        'drop-slot': 'drop-slot 120ms ease-out',
       },
     },
   },

@@ -23,6 +23,9 @@ export function KanbanColumn({
   view,
   canCreate,
   canQuickAdd,
+  isDragging,
+  dropIndex,
+  landedId,
   collapsed,
   onToggleCollapse,
 }: {
@@ -37,6 +40,12 @@ export function KanbanColumn({
   canCreate: boolean
   /** Quick-add only makes sense for a column a new task can actually land in. */
   canQuickAdd: boolean
+  /** True while any card on the board is being dragged. */
+  isDragging: boolean
+  /** Where a drop would land in THIS column, or null when it would not. */
+  dropIndex: number | null
+  /** The card that just landed, so it plays the arrival animation once. */
+  landedId: string | null
   collapsed: boolean
   onToggleCollapse: (collapsed: boolean) => void
 }) {
@@ -51,6 +60,14 @@ export function KanbanColumn({
   const points = cards.reduce((sum, card) => sum + (card.estimated_hours ?? 0), 0)
   const accent = column.color ?? STATUS_ACCENT[column.status]
   const lanes = swimlanesFor(cards, view.swimlane_by)
+  // Running start index of each lane within the column, so a column-wide drop
+  // index can be resolved to the lane it falls in.
+  const laneOffsets = new Map<string, number>()
+  let offset = 0
+  for (const lane of lanes) {
+    laneOffsets.set(lane.key, offset)
+    offset += lane.cards.length
+  }
 
   if (collapsed) {
     return (
@@ -129,7 +146,25 @@ export function KanbanColumn({
         className="scrollbar-slim flex min-h-0 flex-1 flex-col gap-[9px] overflow-y-auto px-2.5 pb-3"
       >
         <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
-          {lanes.map((lane) => (
+          {lanes.map((lane) => {
+            // `dropIndex` counts across the whole column; a lane needs it in its
+            // own terms, and only when the insertion point falls inside it.
+            const laneStart = laneOffsets.get(lane.key) ?? 0
+            const laneDropIndex =
+              dropIndex !== null &&
+              dropIndex >= laneStart &&
+              dropIndex < laneStart + lane.cards.length
+                ? dropIndex - laneStart
+                : null
+            // Only the LAST lane shows an end slot. Otherwise an index that
+            // falls on a lane boundary would be drawn twice: once as this
+            // lane's trailing slot and again as the next lane's leading line.
+            const dropsAtLaneEnd =
+              dropIndex !== null &&
+              lane.key === lanes[lanes.length - 1]?.key &&
+              dropIndex >= laneStart + lane.cards.length
+
+            return (
             <div key={lane.key} className="flex flex-col gap-[7px]">
               {lane.label ? (
                 <div className="flex items-center gap-[7px] px-0.5 pb-px pt-0.5">
@@ -146,22 +181,35 @@ export function KanbanColumn({
               ) : null}
 
               <ul className="flex flex-col gap-[9px]">
-                {lane.cards.map((card) => (
+                {lane.cards.map((card, index) => (
                   <KanbanCard
                     key={card.id}
                     card={card}
                     scope={scope}
                     today={today}
                     view={view}
+                    // The line sits on top of the card that would be pushed
+                    // down, which is where the dragged card is about to go.
+                    showDropLine={laneDropIndex === index}
+                    justLanded={landedId === card.id}
                     href={`/${scope.orgSlug}/${scope.workspaceSlug}/projects/${scope.projectId}/tasks/${card.publicId}`}
                   />
                 ))}
               </ul>
+
+              {/* The slot the card drops into at the foot of a lane. */}
+              {dropsAtLaneEnd ? (
+                <span
+                  aria-hidden
+                  className="border-primary bg-primary/[0.07] animate-drop-slot block h-[38px] rounded-[9px] border border-dashed"
+                />
+              ) : null}
             </div>
-          ))}
+            )
+          })}
         </SortableContext>
 
-        {canCreate && canQuickAdd ? (
+        {isDragging ? null : canCreate && canQuickAdd ? (
           <KanbanQuickAdd scope={scope} columnId={column.id} />
         ) : null}
       </div>
