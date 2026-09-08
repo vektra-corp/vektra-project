@@ -13,11 +13,11 @@ build/
 .turbo/
 
 # Environment — NEVER commit real secrets (see claude.md §13.10)
-.env
-.env.local
-.env.*.local
-.env.development
-.env.production
+# Deny every .env* by default, then allow back the one template file. The
+# previous list enumerated known names, so .env.sentry-build-plugin — which the
+# Sentry wizard writes, and which carries an org auth token — was not matched
+# and was committed to a public repository.
+.env*
 !.env.example
 
 # Supabase local
