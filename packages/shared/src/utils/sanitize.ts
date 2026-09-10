@@ -3,7 +3,7 @@
  *
  * RULE: rich text is sanitized SERVER-SIDE BEFORE STORAGE, not only on render.
  * A payload that reaches the database is already safe, so every consumer of that
- * row — the web app, the portal, a PDF, a webhook — inherits the guarantee.
+ * row — the web app, a PDF, a webhook — inherits the guarantee.
  *
  * This module is deliberately DEPENDENCY-FREE. The HTML sanitizer lives in
  * `sanitize-html.ts` because DOMPurify drags jsdom in behind it, and jsdom

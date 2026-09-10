@@ -17,18 +17,14 @@ export function isProtectedRoute(pathname: string): boolean {
   return !pathname.startsWith('/_next') && pathname !== '/favicon.ico'
 }
 
-/** The external portal is mounted under a literal prefix, not at the root. */
-const PORTAL_PREFIX = 'portal'
-
 /*
  * Top-level paths that are NOT an organisation slug.
  *
  * Every route at the root of the app has to be listed, because anything not
  * listed is read as a tenant slug — and a signed-in user visiting one is then
  * checked for membership of an organisation that does not exist, and sent to
- * /403. That has bitten twice now: once for `/portal`, and once for `/mfa`,
- * where it made the second-factor page unreachable and left the person in a
- * redirect loop they could not escape.
+ * /403. That bit once already, for `/mfa`, where it made the second-factor page
+ * unreachable and left the person in a redirect loop they could not escape.
  *
  * Derived from PUBLIC_ROUTE_PREFIXES where possible so adding a public route
  * cannot forget this list, plus the authenticated non-tenant routes.
@@ -50,39 +46,23 @@ const NON_TENANT_SEGMENTS = [
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/
 
 /**
- * Extract the org slug from a dashboard or portal URL.
+ * Extract the org slug from a dashboard URL.
  * `/acme/engineering/projects` -> `acme`
- * `/portal/acme/projects`      -> `acme`
  * Returns null for non-tenant routes so the caller skips the membership check.
  */
 export function extractOrgSlug(pathname: string): string | null {
   const segments = pathname.split('/').filter(Boolean)
-
-  // Portal URLs carry the org one segment deeper. Without this the guard would
-  // check membership of an organization literally named "portal", find none,
-  // and 403 every external user.
-  const offset = segments[0] === PORTAL_PREFIX ? 1 : 0
-  const candidate = segments[offset]
+  const candidate = segments[0]
 
   if (!candidate) return null
-  if (offset === 0) {
-    if (isPublicRoute(`/${candidate}`)) return null
-    if (NON_TENANT_SEGMENTS.includes(candidate)) return null
-  }
+  if (isPublicRoute(`/${candidate}`)) return null
+  if (NON_TENANT_SEGMENTS.includes(candidate)) return null
 
   return SLUG_PATTERN.test(candidate) ? candidate : null
 }
 
-/** True when the path addresses the external portal rather than the app. */
-export function isPortalRoute(pathname: string): boolean {
-  const segments = pathname.split('/').filter(Boolean)
-  return segments[0] === PORTAL_PREFIX
-}
-
 export function extractWorkspaceSlug(pathname: string): string | null {
   const segments = pathname.split('/').filter(Boolean)
-  // The portal has no workspace level — projects are addressed directly.
-  if (segments[0] === PORTAL_PREFIX) return null
   return segments[1] ?? null
 }
 

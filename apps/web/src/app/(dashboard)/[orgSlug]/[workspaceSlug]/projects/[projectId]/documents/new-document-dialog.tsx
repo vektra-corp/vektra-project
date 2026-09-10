@@ -58,7 +58,7 @@ export function NewDocumentDialog({ scope }: { scope: KanbanScope }) {
           <DialogHeader>
             <DialogTitle>New document</DialogTitle>
             <DialogDescription>
-              Starts as a draft. Only published documents are visible to portal users.
+              Starts as a draft. Publish it when it is ready to share with the project.
             </DialogDescription>
           </DialogHeader>
 

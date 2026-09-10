@@ -19,7 +19,7 @@ export interface JWTClaims {
   role?: string
   aal?: 'aal1' | 'aal2'
   exp: number
-  /** Default organization for this session. Absent for portal-only users. */
+  /** Default organization for this session. */
   org_id?: string
   org_role?: OrgRole
 }
@@ -39,18 +39,7 @@ export interface AuthContext {
   mfaVerified: boolean
 }
 
-/** A portal (external) user has no org role and only sees allow-listed projects. */
-export interface PortalContext {
-  userId: string
-  email: string | null
-  orgId: string
-  portalUserId: string
-  projectIds: string[]
-}
-
-export type RequestPrincipal =
-  | ({ kind: 'member' } & AuthContext)
-  | ({ kind: 'portal' } & PortalContext)
+export type RequestPrincipal = { kind: 'member' } & AuthContext
 
 export interface PermissionCheck {
   module: Module

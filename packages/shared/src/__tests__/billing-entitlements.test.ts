@@ -126,7 +126,6 @@ describe('limitFor', () => {
     // an operator's typo into a free upgrade.
     const e = resolveEntitlements({ plan_tier: 'starter', plan_limits: {} })
     expect(limitFor(e, 'projects')).toBe(10)
-    expect(limitFor(e, 'portal_users')).toBe(0)
   })
 
   it('falls back to the tier default when the value is not a number', () => {
@@ -136,7 +135,6 @@ describe('limitFor', () => {
 
   it('falls back to starter when there are no entitlements', () => {
     expect(limitFor(null, 'projects')).toBe(10)
-    expect(limitFor(undefined, 'portal_users')).toBe(0)
   })
 
   it('honours a custom plan that raises a tier ceiling', () => {

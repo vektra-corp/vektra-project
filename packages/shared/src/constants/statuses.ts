@@ -50,8 +50,6 @@ export type WorkspaceRole = (typeof WORKSPACE_ROLES)[number]
 export const PROJECT_ROLES = ['owner', 'contributor', 'viewer'] as const
 export type ProjectRole = (typeof PROJECT_ROLES)[number]
 
-export const PORTAL_USER_STATUSES = ['invited', 'active', 'disabled'] as const
-export type PortalUserStatus = (typeof PORTAL_USER_STATUSES)[number]
 
 // --- Documents ----------------------------------------------------------------
 export const DOCUMENT_STATUSES = ['draft', 'published', 'archived'] as const

@@ -3,7 +3,6 @@ import {
   extractOrgSlug,
   extractWorkspaceSlug,
   isAllowedOrigin,
-  isPortalRoute,
   isMfaExemptRoute,
   isProtectedRoute,
   isPublicRoute,
@@ -17,13 +16,6 @@ describe('extractOrgSlug', () => {
     expect(extractOrgSlug('/acme')).toBe('acme')
   })
 
-  it('reads one segment deeper on a portal URL', () => {
-    // Without this the guard checks membership of an org named "portal",
-    // finds none, and 403s every external user.
-    expect(extractOrgSlug('/portal/acme')).toBe('acme')
-    expect(extractOrgSlug('/portal/acme/projects/abc')).toBe('acme')
-  })
-
   it('returns null for routes that are not tenant-scoped', () => {
     expect(extractOrgSlug('/')).toBeNull()
     expect(extractOrgSlug('/login')).toBeNull()
@@ -35,26 +27,9 @@ describe('extractOrgSlug', () => {
   it('rejects a segment that cannot be a slug', () => {
     expect(extractOrgSlug('/Acme')).toBeNull()
     expect(extractOrgSlug('/-acme')).toBeNull()
-    expect(extractOrgSlug('/portal/Acme')).toBeNull()
   })
 
-  it('returns null for a bare /portal with no org', () => {
-    expect(extractOrgSlug('/portal')).toBeNull()
-  })
 
-  it('does not treat a public prefix as reserved inside the portal', () => {
-    // An org may legitimately be slugged "login"; only the root-level route is
-    // reserved, and the portal's org segment is never at the root.
-    expect(extractOrgSlug('/portal/login')).toBe('login')
-  })
-})
-
-describe('isPortalRoute', () => {
-  it('distinguishes portal paths from app paths', () => {
-    expect(isPortalRoute('/portal/acme')).toBe(true)
-    expect(isPortalRoute('/acme/portal')).toBe(false)
-    expect(isPortalRoute('/')).toBe(false)
-  })
 })
 
 describe('extractWorkspaceSlug', () => {
@@ -62,9 +37,6 @@ describe('extractWorkspaceSlug', () => {
     expect(extractWorkspaceSlug('/acme/engineering/projects')).toBe('engineering')
   })
 
-  it('returns null in the portal, which has no workspace level', () => {
-    expect(extractWorkspaceSlug('/portal/acme/projects')).toBeNull()
-  })
 })
 
 describe('isPublicRoute / isProtectedRoute', () => {
@@ -81,7 +53,6 @@ describe('isPublicRoute / isProtectedRoute', () => {
 
   it('protects everything that is not public', () => {
     expect(isProtectedRoute('/acme/dashboard')).toBe(true)
-    expect(isProtectedRoute('/portal/acme')).toBe(true)
     expect(isProtectedRoute('/login')).toBe(false)
   })
 })

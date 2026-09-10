@@ -1,7 +1,7 @@
 'use client'
 
 import { formatRelativeTime, initials } from '@pm/shared/utils'
-import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Checkbox } from '@pm/ui'
+import { Avatar, AvatarFallback, AvatarImage, Badge, Button } from '@pm/ui'
 import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
 import { createComment } from '@/app/(dashboard)/[orgSlug]/[workspaceSlug]/projects/[projectId]/actions'
@@ -119,11 +119,14 @@ export function CommentThread({
             mentions={{ orgSlug: scope.orgSlug, taskId }}
           />
           {error ? <p className="text-nav text-destructive">{error}</p> : null}
-          <div className="flex items-center justify-between gap-3">
-            <label className="flex cursor-pointer items-center gap-2 text-nav text-muted-foreground">
-              <Checkbox name="is_internal" size="sm" />
-              Internal only (hidden from portal users)
-            </label>
+          {/*
+            * There is no "internal only" toggle any more. It existed solely to
+            * hide a comment from external portal users, and the portal is gone
+            * — so the control could no longer change who sees anything. The
+            * `is_internal` column and its badge stay for comments written
+            * while the portal existed.
+            */}
+          <div className="flex items-center justify-end gap-3">
             <Button type="submit" size="sm" loading={pending}>
               Comment
             </Button>

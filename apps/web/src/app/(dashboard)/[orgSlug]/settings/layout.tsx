@@ -39,7 +39,6 @@ export default async function SettingsLayout({
     // sits one rung lower than the rest of settings.
     ...(isManager
       ? [
-          { segment: 'portal', label: 'Portal access' },
           { segment: 'automation', label: 'Automation' },
           { segment: 'data', label: 'Import & export' },
         ]

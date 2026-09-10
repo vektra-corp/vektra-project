@@ -88,18 +88,7 @@ export async function middleware(request: NextRequest) {
       .maybeSingle()
 
     if (!membership) {
-      // A portal user may still legitimately reach the portal routes for this org.
-      const { data: portalAccess } = await supabase
-        .from('portal_users')
-        .select('id, organizations!inner(slug)')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .eq('organizations.slug', orgSlug)
-        .maybeSingle()
-
-      if (!portalAccess) {
-        return NextResponse.redirect(new URL('/403', request.url))
-      }
+      return NextResponse.redirect(new URL('/403', request.url))
     }
   }
 

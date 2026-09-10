@@ -4,7 +4,6 @@ export const PLAN_LIMITS = {
     projects: 10,
     storage_bytes: 1_073_741_824, // 1 GB
     max_file_size_bytes: 10_485_760, // 10 MB
-    portal_users: 0,
     workflows_per_workspace: 3,
     workflow_runs_per_month: 500,
     documents_per_project: 5,
@@ -20,7 +19,6 @@ export const PLAN_LIMITS = {
     projects: null, // Unlimited
     storage_bytes: 10_737_418_240, // 10 GB
     max_file_size_bytes: 52_428_800, // 50 MB
-    portal_users: 5,
     workflows_per_workspace: 20,
     workflow_runs_per_month: 5_000,
     documents_per_project: null,
@@ -36,7 +34,6 @@ export const PLAN_LIMITS = {
     projects: null,
     storage_bytes: null, // Custom
     max_file_size_bytes: 104_857_600, // 100 MB
-    portal_users: null,
     workflows_per_workspace: null,
     workflow_runs_per_month: 50_000,
     documents_per_project: null,
@@ -72,7 +69,6 @@ export const METERED_METRICS = [
   'projects',
   'storage_bytes',
   'workflow_runs',
-  'portal_users',
   'ai_tokens',
 ] as const
 
@@ -83,7 +79,6 @@ export const PLAN_LIMIT_KEYS = [
   'projects',
   'storage_bytes',
   'max_file_size_bytes',
-  'portal_users',
   'workflows_per_workspace',
   'workflow_runs_per_month',
   'documents_per_project',

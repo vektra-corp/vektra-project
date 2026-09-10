@@ -163,9 +163,10 @@ async function performAction(
           type: 'doc',
           content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
         } as never,
-        // Automated notes are internal by default: a portal user should not be
-        // shown the customer's internal automation chatter (§18 rule 6).
-        is_internal: node.config.visible_to_portal !== true,
+        // `is_internal` only ever hid a comment from external portal users.
+        // With the portal removed there is no such reader, so an automated note
+        // is an ordinary comment.
+        is_internal: false,
       })
 
       return error ? { status: 'failed', error: error.message } : { status: 'success' }

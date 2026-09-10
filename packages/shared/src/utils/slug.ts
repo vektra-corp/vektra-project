@@ -17,6 +17,8 @@ export const RESERVED_SLUGS = new Set([
   'login',
   'logout',
   'new',
+  // No longer a route — kept reserved so an org cannot take a slug that
+  // historical links still point at.
   'portal',
   'pricing',
   'privacy',

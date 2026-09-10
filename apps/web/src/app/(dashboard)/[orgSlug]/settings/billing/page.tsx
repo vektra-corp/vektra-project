@@ -80,7 +80,6 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
           <CardContent>
             <dl className="grid gap-3 sm:grid-cols-2">
               <Limit label="Projects" value={limitFor(entitlements, 'projects')} />
-              <Limit label="Portal users" value={limitFor(entitlements, 'portal_users')} />
               <Limit
                 label="Workflows per workspace"
                 value={limitFor(entitlements, 'workflows_per_workspace')}
