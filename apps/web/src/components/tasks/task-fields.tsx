@@ -73,9 +73,10 @@ export function TaskFields({
     formData.set('assignee_id', next.assignee_id)
     formData.set('due_date', next.due_date)
     formData.set('start_date', next.start_date)
-    if (next.estimated_hours !== null) {
-      formData.set('estimated_hours', String(next.estimated_hours))
-    }
+    // Always sent, empty when cleared: `updateTask` reads an absent key as
+    // "leave it alone", so omitting this would make an estimate impossible to
+    // remove once set.
+    formData.set('estimated_hours', next.estimated_hours === null ? '' : String(next.estimated_hours))
 
     startTransition(async () => {
       const result = await updateTask(scope, taskId, null, formData)

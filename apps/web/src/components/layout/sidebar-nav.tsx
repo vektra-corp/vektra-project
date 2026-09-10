@@ -186,9 +186,9 @@ export function SidebarProjectGroup({
   const { pending, onNavigate } = usePendingNav()
   const base = `/${orgSlug}/${project.workspaceSlug}/projects/${project.id}`
   const inProject = isActive(base)
-  // Clicking the project itself lands on its overview, the design's home for a
-  // project; the views under it are the other ways in.
-  const home = `${base}/overview`
+  // Clicking the project itself lands on its list, the first of its views; the
+  // rows under it are the other ways in.
+  const home = `${base}/list`
 
   return (
     <>

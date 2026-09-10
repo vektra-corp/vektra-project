@@ -147,10 +147,18 @@ export default async function WorkflowPage({
             )}
           </section>
 
+          {/*
+            * This used to say delays, task creation and outbound webhooks were
+            * "recorded as skipped — not implemented yet". All three have been
+            * implemented in the runner for some time (see workflow-runner.ts),
+            * so the note was talking anyone out of the features it shipped. A
+            * step is only skipped now when its own config is incomplete — no
+            * recipient, no URL, no project — which the run log names.
+            */}
           <p className="text-nav text-faint">
-            Active workflows are dispatched every couple of minutes from the event log. Delays,
-            task creation and outbound webhooks are recorded as skipped — those actions are not
-            implemented yet.{' '}
+            Active workflows are dispatched every couple of minutes from the event log. A step
+            whose configuration is incomplete — no recipient, no URL, no target project — is
+            recorded as skipped and the run carries on.{' '}
             <Link href={base} className="text-primary hover:underline">
               All workflows
             </Link>

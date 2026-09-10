@@ -93,8 +93,13 @@ export const WIDGET_SPECS: Record<DashboardWidgetType, WidgetSpec> = {
     minH: 3,
   },
   recent_activity: {
-    label: 'Recent activity',
-    description: 'What changed most recently across the organization.',
+    // Named for what it can actually show. There is no actor here: the widget
+    // reads `tasks` ordered by updated_at, because the `events` table that
+    // records who did what is admin-only by policy and would be empty for the
+    // roles this dashboard serves. Calling it "Recent activity" promised a
+    // feed of people and delivered a list of rows.
+    label: 'Recently updated',
+    description: 'Tasks that changed most recently, newest first.',
     category: 'pm',
     w: 12,
     h: 4,
@@ -123,7 +128,9 @@ export const WIDGET_SPECS: Record<DashboardWidgetType, WidgetSpec> = {
   pending_approvals: {
     label: 'Leave approvals',
     description: 'Requests waiting on your decision.',
-    category: 'timesheet',
+    // Reads leave_requests and badges itself HR; the catalogue filed it under
+    // TIMESHEET, so the same widget appeared in two different modules.
+    category: 'hr',
     w: 6,
     h: 4,
     minW: 3,

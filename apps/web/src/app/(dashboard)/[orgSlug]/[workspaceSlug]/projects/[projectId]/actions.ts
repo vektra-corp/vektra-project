@@ -119,17 +119,33 @@ export async function updateTask(
   assertCan(auth, 'tasks', 'update')
 
   const rawDescription = formData.get('description')
+
+  /**
+   * Three states, not two.
+   *
+   * A key that is ABSENT means "this form was not about that field, leave it
+   * alone". A key that is PRESENT BUT EMPTY means "clear it". Collapsing the
+   * two into `formData.get(key) || null` is what let the description editor —
+   * which posts nothing but `description` — silently null the assignee, both
+   * dates and the estimate of every task whose description was ever saved.
+   */
+  const optionalText = (key: string): string | null | undefined => {
+    if (!formData.has(key)) return undefined
+    const raw = String(formData.get(key) ?? '').trim()
+    return raw === '' ? null : raw
+  }
+
+  const rawHours = optionalText('estimated_hours')
+
   const parsed = taskUpdateSchema.safeParse({
     title: formData.get('title') ?? undefined,
     description: rawDescription ? JSON.parse(String(rawDescription)) : undefined,
     status: formData.get('status') ?? undefined,
     priority: formData.get('priority') ?? undefined,
-    assignee_id: formData.get('assignee_id') || null,
-    due_date: formData.get('due_date') || null,
-    start_date: formData.get('start_date') || null,
-    estimated_hours: formData.get('estimated_hours')
-      ? Number(formData.get('estimated_hours'))
-      : null,
+    assignee_id: optionalText('assignee_id'),
+    due_date: optionalText('due_date'),
+    start_date: optionalText('start_date'),
+    estimated_hours: rawHours === undefined || rawHours === null ? rawHours : Number(rawHours),
   })
 
   if (!parsed.success) {
@@ -555,6 +571,7 @@ export async function patchTask(
   scope: Scope,
   taskId: string,
   patch: {
+    title?: string
     status?: string
     priority?: string
     assignee_id?: string | null
@@ -567,6 +584,7 @@ export async function patchTask(
   // Only the keys actually sent are validated, so a partial cannot be widened
   // into a full overwrite by a caller that omits half of them.
   const parsed = taskUpdateSchema.safeParse({
+    ...(patch.title !== undefined ? { title: patch.title } : {}),
     ...(patch.status !== undefined ? { status: patch.status } : {}),
     ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
     ...(patch.assignee_id !== undefined ? { assignee_id: patch.assignee_id } : {}),
@@ -656,6 +674,113 @@ export async function setTaskLabels(
         )
       if (insertError) throw insertError
     }
+
+    revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
+    return { ok: true, data: null }
+  } catch (error) {
+    return toActionError(error)
+  }
+}
+
+/** A label's colour, as the picker and the chips render it. */
+const LABEL_COLOR = /^#[0-9a-fA-F]{6}$/
+
+/**
+ * Create a label for this project.
+ *
+ * Project-scoped rather than org-wide: `labels.project_id` is nullable and a
+ * null means "every project in the org sees it", which is a decision about
+ * other people's projects. Nothing in a single project's settings should be
+ * able to make that, so this always writes the project id and org-wide labels
+ * stay an organization-settings concern.
+ *
+ * The name is unique per project only in this check, not in the schema — there
+ * is no unique index on (project_id, name), so this is a courtesy against
+ * duplicates rather than a guarantee. Two racing creates can still both land;
+ * the cost is a duplicate chip, not a broken row.
+ */
+export async function createLabel(
+  scope: Scope,
+  input: { name: string; color: string },
+): Promise<ActionResult<{ id: string }>> {
+  const auth = await requireAuth(scope.orgSlug)
+  assertCan(auth, 'tasks', 'update')
+
+  const name = input.name.trim().slice(0, 40)
+  if (!name) {
+    return { ok: false, code: 'VALIDATION_ERROR', message: 'Give the label a name.' }
+  }
+  if (!LABEL_COLOR.test(input.color)) {
+    return { ok: false, code: 'VALIDATION_ERROR', message: 'Pick a colour.' }
+  }
+
+  const project = await projectUuid(scope)
+  if (!project.ok) return project.error
+
+  const supabase = createClient()
+
+  try {
+    const { data: clash } = await supabase
+      .from('labels')
+      .select('id')
+      .eq('organization_id', auth.orgId)
+      .eq('project_id', project.id)
+      .ilike('name', name)
+      .maybeSingle()
+
+    if (clash) {
+      return { ok: false, code: 'ALREADY_EXISTS', message: `“${name}” already exists here.` }
+    }
+
+    const { data, error } = await supabase
+      .from('labels')
+      .insert({
+        organization_id: auth.orgId,
+        project_id: project.id,
+        name,
+        color: input.color,
+      })
+      .select('id')
+      .single()
+
+    if (error) throw error
+
+    revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
+    return { ok: true, data: { id: data.id } }
+  } catch (error) {
+    return toActionError(error)
+  }
+}
+
+/**
+ * Delete a label.
+ *
+ * `task_labels` cascades on the label, so this also unlabels every task that
+ * carried it — which is the only sensible reading of "delete this label", but
+ * is worth the caller confirming first.
+ *
+ * Scoped to this project's own labels: an org-wide label (project_id IS NULL)
+ * is shared with every other project, so removing it from here would delete it
+ * out from under them.
+ */
+export async function deleteLabel(scope: Scope, labelId: string): Promise<ActionResult<null>> {
+  const auth = await requireAuth(scope.orgSlug)
+  assertCan(auth, 'tasks', 'update')
+
+  const project = await projectUuid(scope)
+  if (!project.ok) return project.error
+
+  const supabase = createClient()
+
+  try {
+    const { error } = await supabase
+      .from('labels')
+      .delete()
+      .eq('id', labelId)
+      .eq('organization_id', auth.orgId)
+      .eq('project_id', project.id)
+
+    if (error) throw error
 
     revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
     return { ok: true, data: null }

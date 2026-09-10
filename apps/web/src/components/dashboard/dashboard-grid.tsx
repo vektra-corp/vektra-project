@@ -98,6 +98,14 @@ export function DashboardGrid({
   )
 
   function addWidget(type: DashboardWidgetType) {
+    // One of each. None of these widgets takes per-instance configuration, so a
+    // second copy renders exactly the same panel twice and only costs space.
+    // (If widgets ever gain their own filters, this is the line to relax.)
+    if (placements.some((item) => item.type === type)) {
+      setEditing(true)
+      return
+    }
+
     const spec = WIDGET_SPECS[type]
     // Drop it below everything so it never lands on top of existing widgets.
     const bottom = placements.reduce((max, item) => Math.max(max, item.y + item.h), 0)

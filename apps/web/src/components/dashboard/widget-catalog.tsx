@@ -71,8 +71,13 @@ export function WidgetCatalog({
                 key={type}
                 type="button"
                 onClick={() => onAdd(type)}
-                title={WIDGET_SPECS[type].description}
-                className="border-border bg-card hover:border-input flex items-center gap-[9px] rounded-lg border px-[11px] py-2.5 text-start transition-colors"
+                disabled={isPlaced}
+                title={
+                  isPlaced
+                    ? `${WIDGET_SPECS[type].label} is already on the board`
+                    : WIDGET_SPECS[type].description
+                }
+                className="border-border bg-card hover:border-input flex items-center gap-[9px] rounded-lg border px-[11px] py-2.5 text-start transition-colors disabled:cursor-default disabled:opacity-60 disabled:hover:border-border"
               >
                 <span className="min-w-0 flex-1 truncate text-ui">{WIDGET_SPECS[type].label}</span>
                 <span

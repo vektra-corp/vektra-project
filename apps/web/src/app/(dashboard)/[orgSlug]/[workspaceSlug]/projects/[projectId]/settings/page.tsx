@@ -7,6 +7,8 @@ import { requireAuthPage } from '@/lib/auth/context'
 import { loadCustomFields } from '@/lib/custom-fields'
 import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
+import { ProjectArchive } from './project-archive'
+import { ProjectLabels } from './project-labels'
 import { ProjectSettingsForm } from './project-settings-form'
 
 export const metadata: Metadata = { title: 'Project settings' }
@@ -39,6 +41,16 @@ export default async function ProjectSettingsPage({
 
   if (!project) notFound()
 
+  // This project's own labels plus the org-wide ones, matching what the task
+  // panel's picker offers (§6.2) — otherwise settings would list a different
+  // set from the one people actually choose between.
+  const { data: labels } = await supabase
+    .from('labels')
+    .select('id, name, color, project_id')
+    .eq('organization_id', auth.orgId)
+    .or(`project_id.is.null,project_id.eq.${project.id}`)
+    .order('name')
+
   const custom = await loadCustomFields(supabase, auth.orgId, 'project', project.id)
   const canEdit = can(auth, 'projects', 'update')
 
@@ -50,6 +62,17 @@ export default async function ProjectSettingsPage({
           project={project}
           publicId={resolved.publicId}
           canEdit={canEdit}
+        />
+
+        <ProjectLabels
+          scope={params}
+          canEdit={canEdit}
+          labels={(labels ?? []).map((label) => ({
+            id: label.id,
+            name: label.name,
+            color: label.color,
+            projectId: label.project_id,
+          }))}
         />
 
         {custom.fields.length > 0 ? (
@@ -72,6 +95,13 @@ export default async function ProjectSettingsPage({
             </div>
           </section>
         ) : null}
+
+        <ProjectArchive
+          scope={params}
+          projectName={project.name}
+          archived={project.status === 'archived'}
+          canEdit={canEdit}
+        />
       </div>
     </PageBody>
   )

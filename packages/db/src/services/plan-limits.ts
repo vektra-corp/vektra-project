@@ -18,7 +18,12 @@ type UntypedRpc = (
 }>
 
 function rpc(db: Db): UntypedRpc {
-  return (db as unknown as { rpc: UntypedRpc }).rpc
+  // Bound to the client on purpose. supabase-js implements rpc() as
+  // `return this.rest.rpc(...)`, so handing back a detached method reference
+  // calls it with `this === undefined` and every RPC throws
+  // "Cannot read properties of undefined (reading 'rest')".
+  const client = db as unknown as { rpc: UntypedRpc }
+  return client.rpc.bind(client)
 }
 
 /**

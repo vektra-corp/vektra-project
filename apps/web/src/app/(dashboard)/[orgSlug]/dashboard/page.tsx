@@ -72,6 +72,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
     { data: config },
     { data: organization },
     pendingApprovals,
+    teamLoad,
   ] = await Promise.all([
       supabase
         .from('tasks')
@@ -140,6 +141,19 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
             .order('start_date')
             .limit(8)
         : Promise.resolve({ data: [] as never[] }),
+
+      // Open tasks per person, for the workload widget. Counted here rather
+      // than with a group-by because PostgREST has no aggregate for it and the
+      // row count this reads is bounded by the cap below.
+      isManager
+        ? supabase
+            .from('tasks')
+            .select('assignee_id, assignee:profiles!tasks_assignee_id_fkey(id, full_name, avatar_url)')
+            .eq('organization_id', auth.orgId)
+            .not('status', 'in', '(done,cancelled)')
+            .not('assignee_id', 'is', null)
+            .limit(1000)
+        : Promise.resolve({ data: [] as never[] }),
     ])
 
   const normalise = (rows: typeof myTasks): TaskRow[] =>
@@ -152,6 +166,34 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
 
   const mine = normalise(myTasks)
   const activity = normalise(recent)
+
+  /**
+   * Open tasks per person, busiest first.
+   *
+   * "Workload" here is what the widget's own description promises — open tasks
+   * per person — not timesheet hours. It was a placeholder saying analytics
+   * "arrive with timesheets in Phase 3", which was both wrong (this needs no
+   * timesheet) and a dead panel for anyone who added it.
+   */
+  const workload = (() => {
+    const counts = new Map<string, { name: string; avatar: string | null; open: number }>()
+    for (const row of teamLoad.data ?? []) {
+      const person = Array.isArray(row.assignee) ? row.assignee[0] : row.assignee
+      if (!person) continue
+      const entry = counts.get(person.id) ?? {
+        name: person.full_name,
+        avatar: person.avatar_url,
+        open: 0,
+      }
+      entry.open += 1
+      counts.set(person.id, entry)
+    }
+    const rows = [...counts.entries()].map(([id, value]) => ({ id, ...value }))
+    rows.sort((a, b) => b.open - a.open || a.name.localeCompare(b.name))
+    return rows.slice(0, 8)
+  })()
+
+  const workloadPeak = workload.reduce((max, row) => Math.max(max, row.open), 0)
 
   const overdue = mine.filter((task) => task.due_date && task.due_date < today)
   const dueThisWeek = mine.filter(
@@ -298,7 +340,7 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
       </Widget>
     ),
     recent_activity: (
-      <Widget title="Recent activity" category="pm" className="h-full">
+      <Widget title="Recently updated" category="pm" className="h-full">
         {activity.length === 0 ? (
           <WidgetEmpty>Nothing has changed yet.</WidgetEmpty>
         ) : (
@@ -311,12 +353,23 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
 
               return (
                 <li key={task.id} className="flex items-center gap-2.5 py-2">
-                  <Avatar className="h-5 w-5 shrink-0">
+                  {/*
+                    * The assignee, not an actor — this list has no actor to
+                    * show. An unassigned row used to render initials('?') as a
+                    * literal question mark, which read as "we don't know who
+                    * did this" rather than "nobody owns this yet".
+                    */}
+                  <Avatar
+                    className="h-5 w-5 shrink-0"
+                    title={
+                      task.assignee ? `Assigned to ${task.assignee.full_name}` : 'Unassigned'
+                    }
+                  >
                     {task.assignee?.avatar_url ? (
                       <AvatarImage src={task.assignee.avatar_url} alt="" />
                     ) : null}
                     <AvatarFallback className="bg-chip text-[9px] font-medium uppercase text-muted-foreground">
-                      {initials(task.assignee?.full_name ?? '?')}
+                      {task.assignee ? initials(task.assignee.full_name) : '–'}
                     </AvatarFallback>
                   </Avatar>
                   {href ? (
@@ -408,7 +461,32 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
     ),
     team_workload: (
       <Widget title="Team workload" category="pm" className="h-full">
-        <WidgetEmpty>Workload analytics arrive with timesheets in Phase 3.</WidgetEmpty>
+        {workload.length === 0 ? (
+          <WidgetEmpty>Nothing is assigned to anyone right now.</WidgetEmpty>
+        ) : (
+          <ul className="scrollbar-slim min-h-0 flex-1 space-y-2.5 overflow-y-auto pt-1">
+            {workload.map((row) => (
+              <li key={row.id} className="flex items-center gap-2.5">
+                <Avatar className="h-5 w-5 shrink-0">
+                  {row.avatar ? <AvatarImage src={row.avatar} alt="" /> : null}
+                  <AvatarFallback className="bg-chip text-[9px] font-medium uppercase text-muted-foreground">
+                    {initials(row.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="min-w-0 flex-1 truncate text-base">{row.name}</span>
+                <span className="bg-chip block h-1 w-24 shrink-0 overflow-hidden rounded-sm">
+                  <span
+                    className="bg-primary block h-full rounded-sm"
+                    style={{ width: `${workloadPeak ? (row.open / workloadPeak) * 100 : 0}%` }}
+                  />
+                </span>
+                <span className="text-faint w-6 shrink-0 text-end font-mono text-id tabular-nums">
+                  {row.open}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </Widget>
     ),
   }

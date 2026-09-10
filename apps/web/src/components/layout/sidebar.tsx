@@ -8,7 +8,6 @@ import { WorkspaceSwitcher, type SwitcherWorkspace } from './workspace-switcher'
 
 /** Project views with a route today; the rest render as "soon". */
 const ROUTED_PROJECT_VIEWS = [
-  'overview',
   'list',
   'board',
   'timeline',
@@ -98,7 +97,6 @@ export async function Sidebar({
   // The design's project views, in its sidebar order: Documents and Settings
   // belong to the project rather than to its task views, so they sit here.
   const projectViews: NavItem[] = [
-    { key: 'overview', label: t('overview'), icon: 'projects' },
     { key: 'list', label: t('list'), icon: 'list' },
     { key: 'board', label: t('board'), icon: 'board' },
     { key: 'timeline', label: t('timeline'), icon: 'timeline' },

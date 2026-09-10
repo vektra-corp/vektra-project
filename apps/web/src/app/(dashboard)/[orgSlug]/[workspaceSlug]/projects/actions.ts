@@ -173,18 +173,41 @@ export async function updateProject(
   return { ok: true, data: null }
 }
 
-export async function archiveProject(orgSlug: string, workspaceSlug: string, projectId: string) {
+/**
+ * Archive a project, or put it back.
+ *
+ * Archiving is the only removal this product offers, and deliberately so: a
+ * project owns its tasks, comments, attachments and time entries by cascade, so
+ * a hard delete would silently destroy work that people logged against it — and
+ * quotations and reports that reference the project would lose their subject.
+ * `status = 'archived'` keeps all of it readable and is reversible, which a
+ * DELETE is not.
+ *
+ * One action for both directions rather than archive/unarchive pairs, so the
+ * two can never drift apart.
+ */
+export async function setProjectArchived(
+  orgSlug: string,
+  workspaceSlug: string,
+  projectId: string,
+  archived: boolean,
+): Promise<ActionResult<null>> {
   const auth = await requireAuth(orgSlug)
   assertCan(auth, 'projects', 'update')
 
   const project = await resolveProject(projectId)
-  if (!project) return
+  if (!project) return { ok: false, code: 'NOT_FOUND', message: 'That project was not found.' }
 
   const supabase = createClient()
-  await supabase
+  const { error } = await supabase
     .from('projects')
-    .update({ status: 'archived' })
+    .update({ status: archived ? 'archived' : 'active' })
     .eq('id', project.id)
     .eq('organization_id', auth.orgId)
+
+  if (error) return { ok: false, code: 'INTERNAL_ERROR', message: error.message }
+
   revalidatePath(`/${orgSlug}/${workspaceSlug}/projects`)
+  revalidatePath(`/${orgSlug}/${workspaceSlug}/projects/${projectId}/settings`)
+  return { ok: true, data: null }
 }

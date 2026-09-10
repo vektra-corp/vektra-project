@@ -24,6 +24,7 @@ import {
 import { TaskDescription } from '@/components/tasks/task-description'
 import { TaskFields } from '@/components/tasks/task-fields'
 import { TaskLabels } from '@/components/tasks/task-labels'
+import { TaskTitle } from '@/components/tasks/task-title'
 import { requireAuthPage } from '@/lib/auth/context'
 import { resolveProject, resolveTask } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
@@ -255,9 +256,12 @@ export default async function TaskDetailPage({
 
         <div className="flex min-h-0 flex-1">
           <div className="scrollbar-slim flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto px-[22px] pb-[26px] pt-5">
-            <h1 className="text-[22px] font-semibold leading-tight tracking-[-0.02em]">
-              {task.title}
-            </h1>
+            <TaskTitle
+              scope={params}
+              taskId={task.id}
+              title={task.title}
+              canEdit={canEdit}
+            />
 
             <section className="flex flex-col gap-2">
               <h2 className="label-meta text-subtle">Description</h2>

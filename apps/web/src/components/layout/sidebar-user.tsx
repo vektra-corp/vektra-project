@@ -24,8 +24,12 @@ import { ThemeToggle } from './theme-toggle'
  * The name opens the account menu; the toggle is its own control so switching
  * theme never costs a menu round trip.
  *
- * Sign-out posts to a server action inside a form rather than calling it from
- * an onClick, so it still works if hydration has not finished.
+ * Sign-out calls the server action from onSelect rather than submitting a
+ * <form>. A form cannot work here: Radix unmounts the menu as soon as an item
+ * is selected, so the form is disconnected before its submit event dispatches
+ * and the action never runs (the browser logs "Form submission canceled
+ * because the form is not connected"). The menu needs hydration to open at
+ * all, so nothing is lost by not using a form.
  */
 export function SidebarUser({
   orgSlug,
@@ -67,12 +71,14 @@ export function SidebarUser({
             <Link href={`/${orgSlug}/settings`}>Settings</Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild variant="destructive">
-            <form action={signOut}>
-              <button type="submit" className="w-full text-start">
-                Sign out
-              </button>
-            </form>
+          <DropdownMenuItem
+            variant="destructive"
+            className="cursor-pointer"
+            onSelect={() => {
+              void signOut()
+            }}
+          >
+            Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

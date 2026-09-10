@@ -17,6 +17,21 @@ function SubmitButton({ label }: { label: string }) {
   )
 }
 
+/**
+ * The host this workspace address will live under.
+ *
+ * Was hard-coded to "app.example.com", so the very first screen of a new
+ * account showed a placeholder domain next to the address the customer was
+ * choosing. Read from the same variable the OAuth return trip uses, falling
+ * back to the current origin so preview deployments read correctly too.
+ */
+function appHost(): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL
+  if (configured) return configured.replace(/^https?:\/\//, '').replace(/\/+$/, '')
+  if (typeof window !== 'undefined') return window.location.host
+  return 'app.example.com'
+}
+
 export function OnboardingForm({
   defaultName,
   defaultSlug,
@@ -25,6 +40,7 @@ export function OnboardingForm({
   defaultSlug: string
 }) {
   const t = useTranslations('onboarding')
+  const host = appHost()
   const [state, formAction] = useFormState(createOrganization, null)
   const [slug, setSlug] = useState(defaultSlug)
   // Once the user edits the slug themselves, stop overwriting it from the name.
@@ -64,7 +80,7 @@ export function OnboardingForm({
       <div className="space-y-2">
         <Label htmlFor="slug">{t('slug_label')}</Label>
         <div className="flex items-center rounded-md border border-input focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-          <span className="ps-3 text-ui text-muted-foreground">app.example.com/</span>
+          <span className="ps-3 text-ui text-muted-foreground">{host}/</span>
           <Input
             id="slug"
             name="slug"

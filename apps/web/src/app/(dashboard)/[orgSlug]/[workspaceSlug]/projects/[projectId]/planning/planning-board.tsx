@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
 import { TaskPriorityIcon } from '@/components/tasks/task-badges'
 import { setTaskSprint } from './actions'
+import { SprintCreate } from './sprint-create'
 
 export interface PlanningItem {
   id: string
@@ -75,6 +76,10 @@ export function PlanningBoard({
     }
     return [...map.entries()]
   }, [backlog])
+
+  // "HOS Sprint 1" reads better as a starting point than an empty field, and
+  // the number is only a suggestion — sprints are named, not counted, here.
+  const suggestedSprintName = `${prefix} Sprint 1`
 
   const pickedItems = backlog.filter((item) => picked.has(item.id))
   const committedPoints = committed.reduce((sum, item) => sum + item.points, 0)
@@ -233,10 +238,12 @@ export function PlanningBoard({
               </Button>
             ) : null}
           </div>
+        ) : canEdit ? (
+          <SprintCreate scope={scope} suggestedName={suggestedSprintName} />
         ) : (
           <div className="border-border bg-card rounded-lg border p-4">
             <p className="text-faint text-ui">
-              No sprint is open for this project yet. Create one to start committing work.
+              No sprint is open for this project yet.
             </p>
           </div>
         )}

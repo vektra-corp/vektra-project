@@ -93,6 +93,31 @@ export async function createWorkflow(
     // has to be generated here, where the plaintext can be handed back once.
     const minted = triggerType === 'webhook' ? mintWebhookToken() : null
 
+    /**
+     * Seed the graph with its trigger.
+     *
+     * The canvas deliberately keeps `trigger` out of the node palette, on the
+     * stated assumption that creation already placed exactly one. Creation did
+     * not: the row was inserted with an empty graph, so every new workflow
+     * opened on "The workflow needs a trigger to start from" with no control
+     * anywhere that could add one. Nodes could still be dropped, but nothing
+     * could ever be wired to a start, so no workflow was completable.
+     *
+     * The node carries the trigger type so the canvas and the dispatcher read
+     * the same fact from the graph rather than re-deriving it from the row.
+     */
+    const graph = {
+      nodes: [
+        {
+          id: 'trigger',
+          type: 'trigger',
+          config: { trigger_type: triggerType },
+          position: { x: 24, y: 24 },
+        },
+      ],
+      edges: [],
+    }
+
     const { data, error } = await supabase
       .from('workflows')
       .insert({
@@ -104,8 +129,9 @@ export async function createWorkflow(
         trigger_config: triggerType === 'schedule' ? { schedule: { ...schedule } } : {},
         cron_expression: triggerType === 'schedule' ? scheduleToCron(schedule) : null,
         webhook_token_hash: minted?.hash ?? null,
-        // A new workflow starts inactive: it has no graph yet, so activating it
-        // could only ever be a mistake.
+        graph,
+        // A new workflow starts inactive: it has only its trigger so far, so
+        // activating it could only ever be a mistake.
         is_active: false,
       })
       // The dialog navigates straight to the new workflow, so it needs the id

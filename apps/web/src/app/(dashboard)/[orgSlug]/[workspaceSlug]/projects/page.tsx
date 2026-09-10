@@ -221,7 +221,7 @@ export default async function ProjectsPage({
             {rows.map((row) => (
               <Link
                 key={row.id}
-                href={`${base}/${row.publicId}/overview`}
+                href={`${base}/${row.publicId}/list`}
                 className={cn(
                   PROJECT_GRID,
                   'border-border hover:bg-surface-hover/40 grid items-center border-b px-5 py-3.5 transition-colors',
