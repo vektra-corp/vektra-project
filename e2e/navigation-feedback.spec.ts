@@ -115,7 +115,6 @@ test('every section that got a boundary still renders', async ({ page }) => {
     `/${ORG_SLUG}/my-tasks`,
     `/${ORG_SLUG}/reports`,
     `/${ORG_SLUG}/members`,
-    `/${ORG_SLUG}/timesheets`,
     `/${ORG_SLUG}/settings/profile`,
     `/${ORG_SLUG}/${WORKSPACE_SLUG}/projects`,
     `/${ORG_SLUG}/${WORKSPACE_SLUG}/workflows`,
@@ -141,10 +140,3 @@ test('every section that got a boundary still renders', async ({ page }) => {
   expect(broken.join(' | ')).toBe('')
 })
 
-test('the commercial section renders one header, not two', async ({ page }) => {
-  // templates/page.tsx used to render its own <Topbar> underneath the one the
-  // commercial layout already provides: two stacked headers, and the same
-  // org_members query run twice.
-  await page.goto(`/${ORG_SLUG}/${WORKSPACE_SLUG}/commercial/templates`)
-  await expect(page.getByRole('banner')).toHaveCount(1)
-})

@@ -251,6 +251,11 @@ export interface SortableTask {
   task_number: number
 }
 
+/** Lower sorts first. An unknown value ranks last rather than throwing. */
+function priorityRank(priority: string): number {
+  return PRIORITY_WEIGHT[priority as keyof typeof PRIORITY_WEIGHT] ?? 99
+}
+
 /**
  * Order cards within their column, per the view's sort.
  *
@@ -265,13 +270,23 @@ export function sortForView<T extends SortableTask>(
   const direction = view.sort_order === 'desc' ? -1 : 1
 
   return [...cards].sort((a, b) => {
+    // Urgency outranks the chosen sort.
+    //
+    // A board sorted by due date still has to surface the critical item at the
+    // top of its column — otherwise the one card that needs attention today
+    // hides three screens down behind a fortnight of ordinary work. The view's
+    // own sort then orders everything within a priority band, which is what
+    // people actually mean when they pick a sort.
+    //
+    // Applied regardless of `sort_order`: "most urgent first" is not a
+    // direction the reader chose, so descending must not invert it.
+    const urgency = priorityRank(a.priority) - priorityRank(b.priority)
+    if (urgency !== 0 && view.sort_by !== 'priority') return urgency
+
     switch (view.sort_by) {
       case 'priority':
-        return (
-          ((PRIORITY_WEIGHT[a.priority as keyof typeof PRIORITY_WEIGHT] ?? 99) -
-            (PRIORITY_WEIGHT[b.priority as keyof typeof PRIORITY_WEIGHT] ?? 99)) *
-          direction
-        )
+        // The one case where the reader explicitly asked for a direction.
+        return (priorityRank(a.priority) - priorityRank(b.priority)) * direction
       case 'due_date':
         if (!a.due_date && !b.due_date) return 0
         if (!a.due_date) return 1

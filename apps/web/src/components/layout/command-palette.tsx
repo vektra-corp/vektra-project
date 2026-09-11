@@ -19,11 +19,7 @@ const SCREENS = [
   { label: 'My tasks', path: 'my-tasks' },
   { label: 'Projects', path: '' },
   { label: 'Members', path: 'members' },
-  { label: 'Team', path: 'team' },
-  { label: 'Leave', path: 'team/leave' },
-  { label: 'Timesheet', path: 'timesheets' },
   { label: 'Reports', path: 'reports' },
-  { label: 'Revenue', path: 'revenue' },
   { label: 'Search', path: 'search' },
   { label: 'Settings', path: 'settings' },
 ] as const

@@ -31,7 +31,7 @@ export default async function AcceptInvitePage({
   const orgSlug =
     searchParams.org && /^[a-z0-9-]{1,60}$/.test(searchParams.org) ? searchParams.org : ''
 
-  const [{ data: profile }, { data: membership }] = await Promise.all([
+  const [{ data: profile }, { data: membership }, { data: projectRows }] = await Promise.all([
     supabase.from('profiles').select('full_name').eq('id', user.id).maybeSingle(),
     orgSlug
       ? supabase
@@ -41,16 +41,35 @@ export default async function AcceptInvitePage({
           .eq('organizations.slug', orgSlug)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    // Named on this screen so the invitation reads as an invitation to
+    // something, and so the redirect that follows is not a surprise.
+    supabase
+      .from('project_members')
+      .select('project:projects!project_members_project_id_fkey(name)')
+      .eq('user_id', user.id)
+      .limit(5),
   ])
 
   const organization = Array.isArray(membership?.organization)
     ? membership.organization[0]
     : membership?.organization
 
+  const projectNames = (projectRows ?? [])
+    .map((row) => (Array.isArray(row.project) ? row.project[0] : row.project))
+    .map((project) => project?.name)
+    .filter((name): name is string => Boolean(name))
+
+  const description =
+    projectNames.length > 0
+      ? `Choose a password, then you will land in ${projectNames.slice(0, 2).join(' and ')}${
+          projectNames.length > 2 ? ` and ${projectNames.length - 2} more` : ''
+        }.`
+      : 'Choose a password so you can sign in again after today.'
+
   return (
     <AuthCard
       title={organization ? `Join ${organization.name}` : 'Accept your invitation'}
-      description="Choose a password so you can sign in again after today."
+      description={description}
     >
       <AcceptInviteForm
         orgSlug={orgSlug}

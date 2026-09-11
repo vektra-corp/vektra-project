@@ -412,6 +412,258 @@ export interface Database {
           },
         ]
       }
+      billing_invoice_sends: {
+        Row: {
+          id: string
+          invoice_id: string
+          organization_id: string
+          to_email: string
+          status: string
+          requested_by: string
+          admin_user_id: string | null
+          provider_message_id: string | null
+          error: string | null
+          attempts: number
+          created_at: string
+          sent_at: string | null
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          organization_id: string
+          to_email: string
+          status?: string
+          requested_by?: string
+          admin_user_id?: string | null
+          provider_message_id?: string | null
+          error?: string | null
+          attempts?: number
+          created_at?: string
+          sent_at?: string | null
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          organization_id?: string
+          to_email?: string
+          status?: string
+          requested_by?: string
+          admin_user_id?: string | null
+          provider_message_id?: string | null
+          error?: string | null
+          attempts?: number
+          created_at?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'billing_invoice_sends_admin_user_id_fkey'
+            columns: ['admin_user_id']
+            isOneToOne: false
+            referencedRelation: 'admin_users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'billing_invoice_sends_invoice_id_fkey'
+            columns: ['invoice_id']
+            isOneToOne: false
+            referencedRelation: 'billing_invoices'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'billing_invoice_sends_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      billing_invoice_sequences: {
+        Row: {
+          series: string
+          fiscal_year: string
+          last_number: number
+          updated_at: string
+        }
+        Insert: {
+          series: string
+          fiscal_year: string
+          last_number?: number
+          updated_at?: string
+        }
+        Update: {
+          series?: string
+          fiscal_year?: string
+          last_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+        ]
+      }
+      billing_invoices: {
+        Row: {
+          id: string
+          public_id: number
+          organization_id: string
+          subscription_id: string | null
+          payment_id: string | null
+          invoice_number: string
+          series: string
+          fiscal_year: string
+          sequence_number: number
+          issue_date: string
+          status: string
+          cancelled_reason: string | null
+          tax_treatment: string
+          seller_snapshot: Json
+          seller_gstin: string | null
+          seller_state: string | null
+          lut_arn: string | null
+          buyer_snapshot: Json
+          buyer_gstin: string | null
+          buyer_country: string
+          place_of_supply: string
+          sac_code: string
+          reverse_charge: boolean
+          currency: string
+          taxable_minor: number
+          cgst_rate_bp: number
+          sgst_rate_bp: number
+          igst_rate_bp: number
+          cgst_minor: number
+          sgst_minor: number
+          igst_minor: number
+          total_minor: number
+          fx_rate_to_inr: number | null
+          total_inr_minor: number | null
+          quantity: number
+          line_description: string
+          period_start: string | null
+          period_end: string | null
+          pdf_storage_path: string | null
+          pdf_generated_at: string | null
+          last_emailed_at: string | null
+          email_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          public_id?: number
+          organization_id: string
+          subscription_id?: string | null
+          payment_id?: string | null
+          invoice_number: string
+          series: string
+          fiscal_year: string
+          sequence_number: number
+          issue_date?: string
+          status?: string
+          cancelled_reason?: string | null
+          tax_treatment: string
+          seller_snapshot: Json
+          seller_gstin?: string | null
+          seller_state?: string | null
+          lut_arn?: string | null
+          buyer_snapshot: Json
+          buyer_gstin?: string | null
+          buyer_country: string
+          place_of_supply: string
+          sac_code?: string
+          reverse_charge?: boolean
+          currency: string
+          taxable_minor: number
+          cgst_rate_bp?: number
+          sgst_rate_bp?: number
+          igst_rate_bp?: number
+          cgst_minor?: number
+          sgst_minor?: number
+          igst_minor?: number
+          total_minor: number
+          fx_rate_to_inr?: number | null
+          total_inr_minor?: number | null
+          quantity?: number
+          line_description: string
+          period_start?: string | null
+          period_end?: string | null
+          pdf_storage_path?: string | null
+          pdf_generated_at?: string | null
+          last_emailed_at?: string | null
+          email_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          public_id?: number
+          organization_id?: string
+          subscription_id?: string | null
+          payment_id?: string | null
+          invoice_number?: string
+          series?: string
+          fiscal_year?: string
+          sequence_number?: number
+          issue_date?: string
+          status?: string
+          cancelled_reason?: string | null
+          tax_treatment?: string
+          seller_snapshot?: Json
+          seller_gstin?: string | null
+          seller_state?: string | null
+          lut_arn?: string | null
+          buyer_snapshot?: Json
+          buyer_gstin?: string | null
+          buyer_country?: string
+          place_of_supply?: string
+          sac_code?: string
+          reverse_charge?: boolean
+          currency?: string
+          taxable_minor?: number
+          cgst_rate_bp?: number
+          sgst_rate_bp?: number
+          igst_rate_bp?: number
+          cgst_minor?: number
+          sgst_minor?: number
+          igst_minor?: number
+          total_minor?: number
+          fx_rate_to_inr?: number | null
+          total_inr_minor?: number | null
+          quantity?: number
+          line_description?: string
+          period_start?: string | null
+          period_end?: string | null
+          pdf_storage_path?: string | null
+          pdf_generated_at?: string | null
+          last_emailed_at?: string | null
+          email_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'billing_invoices_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'billing_invoices_payment_id_fkey'
+            columns: ['payment_id']
+            isOneToOne: false
+            referencedRelation: 'payments'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'billing_invoices_subscription_id_fkey'
+            columns: ['subscription_id']
+            isOneToOne: false
+            referencedRelation: 'subscriptions'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       branches: {
         Row: {
           id: string
@@ -2095,6 +2347,10 @@ export interface Database {
           status: string
           created_at: string
           updated_at: string
+          billing_country: string | null
+          billing_state: string | null
+          gstin: string | null
+          payment_provider: string | null
         }
         Insert: {
           id?: string
@@ -2114,6 +2370,10 @@ export interface Database {
           status?: string
           created_at?: string
           updated_at?: string
+          billing_country?: string | null
+          billing_state?: string | null
+          gstin?: string | null
+          payment_provider?: string | null
         }
         Update: {
           id?: string
@@ -2133,6 +2393,10 @@ export interface Database {
           status?: string
           created_at?: string
           updated_at?: string
+          billing_country?: string | null
+          billing_state?: string | null
+          gstin?: string | null
+          payment_provider?: string | null
         }
         Relationships: [
           {
@@ -2140,6 +2404,197 @@ export interface Database {
             columns: ['plan_id']
             isOneToOne: false
             referencedRelation: 'plans'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      payment_webhook_events: {
+        Row: {
+          id: string
+          provider: string
+          provider_event_id: string
+          event_type: string
+          event_at: string | null
+          signature_valid: boolean
+          status: string
+          attempts: number
+          error: string | null
+          organization_id: string | null
+          subscription_id: string | null
+          payment_id: string | null
+          payload: Json
+          received_at: string
+          processed_at: string | null
+        }
+        Insert: {
+          id?: string
+          provider: string
+          provider_event_id: string
+          event_type: string
+          event_at?: string | null
+          signature_valid: boolean
+          status?: string
+          attempts?: number
+          error?: string | null
+          organization_id?: string | null
+          subscription_id?: string | null
+          payment_id?: string | null
+          payload: Json
+          received_at?: string
+          processed_at?: string | null
+        }
+        Update: {
+          id?: string
+          provider?: string
+          provider_event_id?: string
+          event_type?: string
+          event_at?: string | null
+          signature_valid?: boolean
+          status?: string
+          attempts?: number
+          error?: string | null
+          organization_id?: string | null
+          subscription_id?: string | null
+          payment_id?: string | null
+          payload?: Json
+          received_at?: string
+          processed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'payment_webhook_events_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_webhook_events_payment_id_fkey'
+            columns: ['payment_id']
+            isOneToOne: false
+            referencedRelation: 'payments'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payment_webhook_events_subscription_id_fkey'
+            columns: ['subscription_id']
+            isOneToOne: false
+            referencedRelation: 'subscriptions'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          id: string
+          public_id: number
+          organization_id: string
+          subscription_id: string | null
+          plan_id: string | null
+          provider: string
+          provider_payment_id: string | null
+          provider_order_id: string | null
+          provider_invoice_id: string | null
+          provider_subscription_id: string | null
+          status: string
+          currency: string
+          amount_minor: number
+          expected_amount_minor: number | null
+          amount_refunded_minor: number
+          amount_mismatch: boolean | null
+          seats: number | null
+          method: string | null
+          error_code: string | null
+          error_description: string | null
+          description: string | null
+          billing_period_start: string | null
+          billing_period_end: string | null
+          provider_payload: Json | null
+          captured_at: string | null
+          failed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          public_id?: number
+          organization_id: string
+          subscription_id?: string | null
+          plan_id?: string | null
+          provider: string
+          provider_payment_id?: string | null
+          provider_order_id?: string | null
+          provider_invoice_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          currency: string
+          amount_minor?: number
+          expected_amount_minor?: number | null
+          amount_refunded_minor?: number
+          amount_mismatch?: boolean | null
+          seats?: number | null
+          method?: string | null
+          error_code?: string | null
+          error_description?: string | null
+          description?: string | null
+          billing_period_start?: string | null
+          billing_period_end?: string | null
+          provider_payload?: Json | null
+          captured_at?: string | null
+          failed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          public_id?: number
+          organization_id?: string
+          subscription_id?: string | null
+          plan_id?: string | null
+          provider?: string
+          provider_payment_id?: string | null
+          provider_order_id?: string | null
+          provider_invoice_id?: string | null
+          provider_subscription_id?: string | null
+          status?: string
+          currency?: string
+          amount_minor?: number
+          expected_amount_minor?: number | null
+          amount_refunded_minor?: number
+          amount_mismatch?: boolean | null
+          seats?: number | null
+          method?: string | null
+          error_code?: string | null
+          error_description?: string | null
+          description?: string | null
+          billing_period_start?: string | null
+          billing_period_end?: string | null
+          provider_payload?: Json | null
+          captured_at?: string | null
+          failed_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'payments_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payments_plan_id_fkey'
+            columns: ['plan_id']
+            isOneToOne: false
+            referencedRelation: 'plans'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'payments_subscription_id_fkey'
+            columns: ['subscription_id']
+            isOneToOne: false
+            referencedRelation: 'subscriptions'
             referencedColumns: ['id']
           },
         ]
@@ -2185,6 +2640,47 @@ export interface Database {
           },
         ]
       }
+      plan_prices: {
+        Row: {
+          id: string
+          plan_id: string
+          currency: string
+          billing_interval: string
+          unit_amount_minor: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          plan_id: string
+          currency: string
+          billing_interval: string
+          unit_amount_minor: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          plan_id?: string
+          currency?: string
+          billing_interval?: string
+          unit_amount_minor?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'plan_prices_plan_id_fkey'
+            columns: ['plan_id']
+            isOneToOne: false
+            referencedRelation: 'plans'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       plans: {
         Row: {
           id: string
@@ -2197,6 +2693,12 @@ export interface Database {
           sort_order: number
           is_active: boolean
           created_at: string
+          tier: string
+          organization_id: string | null
+          description: string | null
+          public_id: number
+          created_by_admin_id: string | null
+          updated_at: string
         }
         Insert: {
           id?: string
@@ -2209,6 +2711,12 @@ export interface Database {
           sort_order?: number
           is_active?: boolean
           created_at?: string
+          tier?: string
+          organization_id?: string | null
+          description?: string | null
+          public_id?: number
+          created_by_admin_id?: string | null
+          updated_at?: string
         }
         Update: {
           id?: string
@@ -2221,8 +2729,82 @@ export interface Database {
           sort_order?: number
           is_active?: boolean
           created_at?: string
+          tier?: string
+          organization_id?: string | null
+          description?: string | null
+          public_id?: number
+          created_by_admin_id?: string | null
+          updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: 'plans_created_by_admin_id_fkey'
+            columns: ['created_by_admin_id']
+            isOneToOne: false
+            referencedRelation: 'admin_users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'plans_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      platform_audit_logs: {
+        Row: {
+          id: string
+          admin_user_id: string | null
+          admin_email: string
+          action: string
+          resource_type: string
+          resource_id: string | null
+          organization_id: string | null
+          changes: Json | null
+          metadata: Json | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          admin_user_id?: string | null
+          admin_email: string
+          action: string
+          resource_type: string
+          resource_id?: string | null
+          organization_id?: string | null
+          changes?: Json | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          admin_user_id?: string | null
+          admin_email?: string
+          action?: string
+          resource_type?: string
+          resource_id?: string | null
+          organization_id?: string | null
+          changes?: Json | null
+          metadata?: Json | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'platform_audit_logs_admin_user_id_fkey'
+            columns: ['admin_user_id']
+            isOneToOne: false
+            referencedRelation: 'admin_users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'platform_audit_logs_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
         ]
       }
       portal_project_access: {
@@ -2432,6 +3014,61 @@ export interface Database {
           },
         ]
       }
+      project_notification_preferences: {
+        Row: {
+          id: string
+          organization_id: string
+          project_id: string
+          user_id: string
+          preferences: Json
+          muted: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          project_id: string
+          user_id: string
+          preferences?: Json
+          muted?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          project_id?: string
+          user_id?: string
+          preferences?: Json
+          muted?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'project_notification_preferences_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'project_notification_preferences_project_id_fkey'
+            columns: ['project_id']
+            isOneToOne: false
+            referencedRelation: 'projects'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'project_notification_preferences_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       projects: {
         Row: {
           id: string
@@ -2513,6 +3150,47 @@ export interface Database {
             columns: ['workspace_id']
             isOneToOne: false
             referencedRelation: 'workspaces'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      provider_plan_refs: {
+        Row: {
+          id: string
+          plan_price_id: string
+          provider: string
+          provider_plan_id: string
+          provider_product_id: string | null
+          amount_minor: number
+          currency: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          plan_price_id: string
+          provider: string
+          provider_plan_id: string
+          provider_product_id?: string | null
+          amount_minor: number
+          currency: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          plan_price_id?: string
+          provider?: string
+          provider_plan_id?: string
+          provider_product_id?: string | null
+          amount_minor?: number
+          currency?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'provider_plan_refs_plan_price_id_fkey'
+            columns: ['plan_price_id']
+            isOneToOne: false
+            referencedRelation: 'plan_prices'
             referencedColumns: ['id']
           },
         ]
@@ -2688,6 +3366,183 @@ export interface Database {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          id: string
+          public_id: number
+          organization_id: string
+          plan_id: string
+          plan_price_id: string | null
+          provider_plan_ref_id: string | null
+          grant_kind: string
+          granted_by_admin_id: string | null
+          grant_reason: string | null
+          grant_ends_at: string | null
+          provider: string
+          provider_subscription_id: string | null
+          provider_customer_id: string | null
+          status: string
+          currency: string
+          billing_interval: string
+          unit_amount_minor: number
+          seats: number
+          trial_ends_at: string | null
+          current_period_start: string | null
+          current_period_end: string | null
+          cancel_at_period_end: boolean
+          cancelled_at: string | null
+          ended_at: string | null
+          pending_plan_id: string | null
+          pending_price_id: string | null
+          pending_seats: number | null
+          pending_reason: string | null
+          pending_set_by_admin_id: string | null
+          pending_synced_at: string | null
+          needs_reauthorization: boolean
+          reauthorization_url: string | null
+          provider_state_at: string | null
+          checkout_token_hash: string | null
+          checkout_expires_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          public_id?: number
+          organization_id: string
+          plan_id: string
+          plan_price_id?: string | null
+          provider_plan_ref_id?: string | null
+          grant_kind?: string
+          granted_by_admin_id?: string | null
+          grant_reason?: string | null
+          grant_ends_at?: string | null
+          provider: string
+          provider_subscription_id?: string | null
+          provider_customer_id?: string | null
+          status?: string
+          currency: string
+          billing_interval: string
+          unit_amount_minor: number
+          seats?: number
+          trial_ends_at?: string | null
+          current_period_start?: string | null
+          current_period_end?: string | null
+          cancel_at_period_end?: boolean
+          cancelled_at?: string | null
+          ended_at?: string | null
+          pending_plan_id?: string | null
+          pending_price_id?: string | null
+          pending_seats?: number | null
+          pending_reason?: string | null
+          pending_set_by_admin_id?: string | null
+          pending_synced_at?: string | null
+          needs_reauthorization?: boolean
+          reauthorization_url?: string | null
+          provider_state_at?: string | null
+          checkout_token_hash?: string | null
+          checkout_expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          public_id?: number
+          organization_id?: string
+          plan_id?: string
+          plan_price_id?: string | null
+          provider_plan_ref_id?: string | null
+          grant_kind?: string
+          granted_by_admin_id?: string | null
+          grant_reason?: string | null
+          grant_ends_at?: string | null
+          provider?: string
+          provider_subscription_id?: string | null
+          provider_customer_id?: string | null
+          status?: string
+          currency?: string
+          billing_interval?: string
+          unit_amount_minor?: number
+          seats?: number
+          trial_ends_at?: string | null
+          current_period_start?: string | null
+          current_period_end?: string | null
+          cancel_at_period_end?: boolean
+          cancelled_at?: string | null
+          ended_at?: string | null
+          pending_plan_id?: string | null
+          pending_price_id?: string | null
+          pending_seats?: number | null
+          pending_reason?: string | null
+          pending_set_by_admin_id?: string | null
+          pending_synced_at?: string | null
+          needs_reauthorization?: boolean
+          reauthorization_url?: string | null
+          provider_state_at?: string | null
+          checkout_token_hash?: string | null
+          checkout_expires_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'subscriptions_granted_by_admin_id_fkey'
+            columns: ['granted_by_admin_id']
+            isOneToOne: false
+            referencedRelation: 'admin_users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'subscriptions_organization_id_fkey'
+            columns: ['organization_id']
+            isOneToOne: false
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'subscriptions_pending_plan_id_fkey'
+            columns: ['pending_plan_id']
+            isOneToOne: false
+            referencedRelation: 'plans'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'subscriptions_pending_price_id_fkey'
+            columns: ['pending_price_id']
+            isOneToOne: false
+            referencedRelation: 'plan_prices'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'subscriptions_pending_set_by_admin_id_fkey'
+            columns: ['pending_set_by_admin_id']
+            isOneToOne: false
+            referencedRelation: 'admin_users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'subscriptions_plan_id_fkey'
+            columns: ['plan_id']
+            isOneToOne: false
+            referencedRelation: 'plans'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'subscriptions_plan_price_id_fkey'
+            columns: ['plan_price_id']
+            isOneToOne: false
+            referencedRelation: 'plan_prices'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'subscriptions_provider_plan_ref_id_fkey'
+            columns: ['provider_plan_ref_id']
+            isOneToOne: false
+            referencedRelation: 'provider_plan_refs'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       subtasks: {
         Row: {
           id: string
@@ -2708,6 +3563,7 @@ export interface Database {
           created_at: string
           updated_at: string
           public_id: number
+          priority_rank: number | null
         }
         Insert: {
           id?: string
@@ -2728,6 +3584,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           public_id?: number
+          priority_rank?: number | null
         }
         Update: {
           id?: string
@@ -2748,6 +3605,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           public_id?: number
+          priority_rank?: number | null
         }
         Relationships: [
           {
@@ -2945,6 +3803,7 @@ export interface Database {
           updated_at: string
           sprint_id: string | null
           public_id: number
+          priority_rank: number | null
         }
         Insert: {
           id?: string
@@ -2971,6 +3830,7 @@ export interface Database {
           updated_at?: string
           sprint_id?: string | null
           public_id?: number
+          priority_rank?: number | null
         }
         Update: {
           id?: string
@@ -2997,6 +3857,7 @@ export interface Database {
           updated_at?: string
           sprint_id?: string | null
           public_id?: number
+          priority_rank?: number | null
         }
         Relationships: [
           {
@@ -3758,14 +4619,36 @@ export interface Database {
         }
         Returns: Database['public']['Tables']['system_notices']['Row'][]
       }
+      apply_plan_limits: {
+        Args: {
+          p_org: string
+        }
+        Returns: undefined
+      }
       apply_updated_at_triggers: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      billable_seats: {
+        Args: {
+          p_org: string
+        }
+        Returns: number
       }
       can_access_project: {
         Args: {
           proj_id: string
         }
+        Returns: boolean
+      }
+      can_create: {
+        Args: {
+          p_metric: string
+        }
+        Returns: boolean
+      }
+      can_create_workspace: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
       create_organization: {
@@ -3857,6 +4740,13 @@ export interface Database {
         }
         Returns: number
       }
+      increment_usage_self: {
+        Args: {
+          p_metric: string
+          p_delta?: number
+        }
+        Returns: number
+      }
       integration_access_token: {
         Args: {
           p_integration: string
@@ -3897,10 +4787,6 @@ export interface Database {
         }
         Returns: Json
       }
-      org_member_emails: {
-        Args: Record<PropertyKey, never>
-        Returns: { user_id: string; email: string }[]
-      }
       mentionable_members: {
         Args: {
           p_task_id: string
@@ -3918,6 +4804,13 @@ export interface Database {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      next_billing_invoice_number: {
+        Args: {
+          p_series: string
+          p_date?: string
+        }
+        Returns: unknown
+      }
       next_doc_number: {
         Args: {
           org: string
@@ -3927,9 +4820,32 @@ export interface Database {
         }
         Returns: string
       }
+      org_entitlements: {
+        Args: {
+          p_org: string
+        }
+        Returns: unknown
+      }
       org_id: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      org_member_directory: {
+        Args: Record<PropertyKey, never>
+        // Hand-written: the generator emits `unknown` for a function that
+        // RETURNS TABLE(...), because it reads proc signatures rather than
+        // expanding the row type. Keep in step with migrations 00042/00046.
+        Returns: {
+          user_id: string
+          email: string
+          status: string
+          invited_at: string | null
+          last_sign_in_at: string | null
+        }[]
+      }
+      org_member_emails: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown
       }
       org_member_ids_for_emails: {
         Args: {
@@ -3996,6 +4912,14 @@ export interface Database {
         }
         Returns: string
       }
+      set_billing_profile: {
+        Args: {
+          p_country: string
+          p_state?: string
+          p_gstin?: string
+        }
+        Returns: undefined
+      }
       shares_org_with: {
         Args: {
           target_user: string
@@ -4015,11 +4939,24 @@ export interface Database {
         }
         Returns: boolean
       }
+      usage_actual: {
+        Args: {
+          p_org: string
+          p_metric: string
+        }
+        Returns: number
+      }
       user_id_for_email: {
         Args: {
           p_email: string
         }
         Returns: string
+      }
+      user_needs_password: {
+        Args: {
+          p_email: string
+        }
+        Returns: boolean
       }
     }
     Enums: { [_ in never]: never }

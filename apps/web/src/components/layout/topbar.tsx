@@ -1,6 +1,8 @@
+import { ORG_ADMIN_ROLES } from '@pm/auth/constants'
 import { AvatarStack, Skeleton, type StackedPerson } from '@pm/ui'
 import Link from 'next/link'
 import { Suspense, type ReactNode } from 'react'
+import { InviteDialog } from '@/app/(dashboard)/[orgSlug]/members/invite-dialog'
 import { TopbarPaletteTrigger } from '@/components/layout/palette-trigger'
 import { requireAuthPage } from '@/lib/auth/context'
 import { createClient } from '@/lib/supabase/server'
@@ -74,6 +76,9 @@ export function Topbar({
 
       <div className="ms-auto flex shrink-0 items-center gap-2.5">
         <TopbarPaletteTrigger />
+        <Suspense fallback={<Skeleton className="h-7 w-[74px] rounded-md" />}>
+          <TopbarInvite orgSlug={orgSlug} />
+        </Suspense>
         <Suspense fallback={<Skeleton className="h-6 w-[41px] rounded-full" />}>
           <TopbarMembers orgSlug={orgSlug} />
         </Suspense>
@@ -107,4 +112,46 @@ async function TopbarMembers({ orgSlug }: { orgSlug: string }) {
 
   if (people.length === 0) return null
   return <AvatarStack people={people} max={2} />
+}
+
+/**
+ * Invite, from anywhere.
+ *
+ * Owners and admins add people constantly and were previously required to
+ * navigate to Members first; the action belongs wherever they happen to be. It
+ * resolves in its own Suspense boundary for the same reason the avatar stack
+ * does — the breadcrumb must not wait on a workspace query to paint.
+ *
+ * Role is re-read here rather than passed down: every page renders this header,
+ * and a prop would let one of them pass the wrong answer.
+ */
+async function TopbarInvite({ orgSlug }: { orgSlug: string }) {
+  const auth = await requireAuthPage(orgSlug)
+  if (!(ORG_ADMIN_ROLES as readonly string[]).includes(auth.orgRole)) return null
+
+  const supabase = createClient()
+
+  const [{ data: workspaces }, { data: projects }] = await Promise.all([
+    supabase.from('workspaces').select('id, name').eq('organization_id', auth.orgId).order('name'),
+    supabase
+      .from('projects')
+      .select('id, name, workspace_id')
+      .eq('organization_id', auth.orgId)
+      .neq('status', 'archived')
+      .order('name'),
+  ])
+
+  return (
+    <InviteDialog
+      orgSlug={orgSlug}
+      actorRole={auth.orgRole}
+      workspaces={workspaces ?? []}
+      projects={(projects ?? []).map((project) => ({
+        id: project.id,
+        name: project.name,
+        workspaceId: project.workspace_id,
+      }))}
+      trigger="compact"
+    />
+  )
 }

@@ -73,6 +73,19 @@ export const inviteMemberSchema = z.object({
   email: emailSchema,
   role: z.enum(['admin', 'manager', 'member']),
   workspace_ids: z.array(z.string().uuid()).default([]),
+  /**
+   * Projects to put them straight into. A workspace grant alone lets someone see
+   * the workspace; project membership is what RLS reads to let them open a
+   * board, so an invite that names no project lands the person in an empty app.
+   */
+  project_ids: z.array(z.string().uuid()).default([]),
+})
+
+/** Editing an existing member's workspace and project access after the fact. */
+export const memberAccessSchema = z.object({
+  user_id: z.string().uuid(),
+  workspace_ids: z.array(z.string().uuid()).default([]),
+  project_ids: z.array(z.string().uuid()).default([]),
 })
 
 export const otpSchema = z.object({
@@ -84,3 +97,4 @@ export type LoginInput = z.infer<typeof loginSchema>
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
 export type InviteMemberInput = z.infer<typeof inviteMemberSchema>
+export type MemberAccessInput = z.infer<typeof memberAccessSchema>

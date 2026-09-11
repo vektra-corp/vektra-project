@@ -9,6 +9,7 @@ import { Topbar } from '@/components/layout/topbar'
 import { requireAuthPage } from '@/lib/auth/context'
 import { forbidden } from '@/lib/forbidden'
 import { createClient } from '@/lib/supabase/server'
+import type { PickerProject, PickerWorkspace } from './access-picker'
 import { InviteDialog } from './invite-dialog'
 import { MemberRowActions } from './member-row-actions'
 
@@ -28,8 +29,14 @@ const ROLE_TONE: Record<OrgRole, string> = {
   member: 'text-muted-foreground',
 }
 
-/** The design's five tracks, shared by the header and every row. */
-const MEMBER_GRID = 'grid-cols-[1.6fr_1.3fr_0.9fr_1.1fr_0.8fr] gap-3.5'
+/**
+ * Six tracks: the five the design had, plus access.
+ *
+ * Access earns a column because it is the answer to the question the screen is
+ * usually open to settle — "why can this person not see the project?" — and it
+ * was previously invisible.
+ */
+const MEMBER_GRID = 'grid-cols-[1.5fr_1.3fr_0.8fr_0.7fr_1.2fr_0.7fr] gap-3.5'
 
 export default async function MembersPage({ params }: { params: { orgSlug: string } }) {
   const auth = await requireAuthPage(params.orgSlug)
@@ -38,8 +45,14 @@ export default async function MembersPage({ params }: { params: { orgSlug: strin
   const locale = await getLocale()
   const supabase = createClient()
 
-  const [{ data: members }, { data: workspaces }, { data: emails }, { data: memberships }] =
-    await Promise.all([
+  const [
+    { data: members },
+    { data: workspaces },
+    { data: directory },
+    { data: workspaceMemberships },
+    { data: projects },
+    { data: projectMemberships },
+  ] = await Promise.all([
     supabase
       .from('org_members')
       .select(
@@ -47,45 +60,93 @@ export default async function MembersPage({ params }: { params: { orgSlug: strin
       )
       .eq('organization_id', auth.orgId)
       .order('joined_at'),
-    supabase
-      .from('workspaces')
-      .select('id, name')
-      .eq('organization_id', auth.orgId)
-      .order('name'),
+    supabase.from('workspaces').select('id, name').eq('organization_id', auth.orgId).order('name'),
     // auth.users is not readable by `authenticated`; this function bridges it
-    // for manager-and-above within their own tenant (migration 00038).
-    supabase.rpc('org_member_emails'),
+    // for manager-and-above within their own tenant (migration 00042).
+    supabase.rpc('org_member_directory'),
     supabase
       .from('workspace_members')
-      .select('user_id, workspace:workspaces!workspace_members_workspace_id_fkey(name)')
+      .select('user_id, workspace_id')
+      .eq('organization_id', auth.orgId),
+    supabase
+      .from('projects')
+      .select('id, name, workspace_id')
+      .eq('organization_id', auth.orgId)
+      .neq('status', 'archived')
+      .order('name'),
+    supabase
+      .from('project_members')
+      .select('user_id, project_id')
       .eq('organization_id', auth.orgId),
   ])
 
-  const emailByUser = new Map((emails ?? []).map((row) => [row.user_id, row.email]))
+  const directoryByUser = new Map((directory ?? []).map((row) => [row.user_id, row]))
 
-  const workspacesByUser = new Map<string, string[]>()
-  for (const row of memberships ?? []) {
-    const workspace = Array.isArray(row.workspace) ? row.workspace[0] : row.workspace
-    if (!workspace) continue
-    const list = workspacesByUser.get(row.user_id) ?? []
-    list.push(workspace.name)
-    workspacesByUser.set(row.user_id, list)
+  const workspaceIdsByUser = new Map<string, string[]>()
+  for (const row of workspaceMemberships ?? []) {
+    workspaceIdsByUser.set(row.user_id, [
+      ...(workspaceIdsByUser.get(row.user_id) ?? []),
+      row.workspace_id,
+    ])
   }
+
+  const projectIdsByUser = new Map<string, string[]>()
+  for (const row of projectMemberships ?? []) {
+    projectIdsByUser.set(row.user_id, [
+      ...(projectIdsByUser.get(row.user_id) ?? []),
+      row.project_id,
+    ])
+  }
+
+  const workspaceNames = new Map((workspaces ?? []).map((row) => [row.id, row.name]))
+  const projectNames = new Map((projects ?? []).map((row) => [row.id, row.name]))
+
+  const pickerWorkspaces: PickerWorkspace[] = (workspaces ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+  }))
+
+  const pickerProjects: PickerProject[] = (projects ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    workspaceId: row.workspace_id,
+  }))
 
   const rows = (members ?? []).map((row) => {
     // PostgREST returns a to-one embed as an object; the generated types allow
     // an array, so normalise rather than casting blindly.
     const profile = Array.isArray(row.profile) ? row.profile[0] : row.profile
+    const entry = directoryByUser.get(row.user_id)
+    const memberWorkspaceIds = workspaceIdsByUser.get(row.user_id) ?? []
+    const memberProjectIds = projectIdsByUser.get(row.user_id) ?? []
+
     return {
       userId: row.user_id,
       role: row.role as OrgRole,
       joinedAt: row.joined_at,
       fullName: profile?.full_name ?? 'Unknown',
       avatarUrl: profile?.avatar_url ?? null,
-      email: emailByUser.get(row.user_id) ?? null,
-      workspaces: (workspacesByUser.get(row.user_id) ?? []).join(', '),
+      email: entry?.email ?? null,
+      // Absent from the directory means the row could not be joined to an auth
+      // user at all; treating that as pending is the fail-closed reading.
+      status: entry?.status === 'active' ? ('active' as const) : ('pending' as const),
+      workspaceIds: memberWorkspaceIds,
+      projectIds: memberProjectIds,
+      accessLabel:
+        memberProjectIds.length > 0
+          ? memberProjectIds
+              .map((id) => projectNames.get(id))
+              .filter(Boolean)
+              .join(', ')
+          : memberWorkspaceIds
+              .map((id) => workspaceNames.get(id))
+              .filter(Boolean)
+              .join(', '),
+      accessKind: memberProjectIds.length > 0 ? ('project' as const) : ('workspace' as const),
     }
   })
+
+  const pendingCount = rows.filter((row) => row.status === 'pending').length
 
   return (
     <>
@@ -93,12 +154,17 @@ export default async function MembersPage({ params }: { params: { orgSlug: strin
 
       <SectionHeader
         title="Members"
-        count={`${rows.length} ${rows.length === 1 ? 'person' : 'people'}`}
+        count={
+          pendingCount > 0
+            ? `${rows.length} ${rows.length === 1 ? 'person' : 'people'} · ${pendingCount} invited`
+            : `${rows.length} ${rows.length === 1 ? 'person' : 'people'}`
+        }
       >
         <InviteDialog
           orgSlug={params.orgSlug}
           actorRole={auth.orgRole}
-          workspaces={workspaces ?? []}
+          workspaces={pickerWorkspaces}
+          projects={pickerProjects}
         />
       </SectionHeader>
 
@@ -112,7 +178,8 @@ export default async function MembersPage({ params }: { params: { orgSlug: strin
           <span>Name</span>
           <span>Email</span>
           <span>Role</span>
-          <span>Workspaces</span>
+          <span>Status</span>
+          <span>Access</span>
           <span>Joined</span>
         </div>
 
@@ -147,8 +214,28 @@ export default async function MembersPage({ params }: { params: { orgSlug: strin
               {ORG_ROLE_LABELS[member.role]}
             </span>
 
-            <span className="text-muted-foreground truncate text-ui">
-              {member.workspaces || '—'}
+            <span
+              className={cn(
+                'justify-self-start rounded-[5px] px-2 py-[3px] text-[11px] font-semibold uppercase',
+                member.status === 'pending'
+                  ? 'bg-warning/10 text-warning'
+                  : 'bg-chip text-muted-foreground',
+              )}
+            >
+              {member.status === 'pending' ? 'Invited' : 'Active'}
+            </span>
+
+            <span className="text-muted-foreground min-w-0 truncate text-ui">
+              {member.accessLabel ? (
+                <>
+                  {member.accessKind === 'workspace' ? (
+                    <span className="text-faint">Workspace only · </span>
+                  ) : null}
+                  {member.accessLabel}
+                </>
+              ) : (
+                <span className="text-warning">No access</span>
+              )}
             </span>
 
             <span className="flex items-center gap-2">
@@ -160,6 +247,8 @@ export default async function MembersPage({ params }: { params: { orgSlug: strin
                 actorRole={auth.orgRole}
                 member={member}
                 isSelf={member.userId === auth.userId}
+                workspaces={pickerWorkspaces}
+                projects={pickerProjects}
               />
             </span>
           </div>

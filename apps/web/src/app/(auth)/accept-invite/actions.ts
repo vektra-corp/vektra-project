@@ -1,6 +1,7 @@
 'use server'
 
 import type { ActionResult } from '@pm/shared/types'
+import { publicIdToString } from '@pm/shared/utils'
 import { fieldErrors, resetPasswordSchema } from '@pm/shared/validators'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -65,8 +66,40 @@ export async function acceptInvite(
     await supabase.from('profiles').update({ full_name: fullName }).eq('id', user.id)
   }
 
-  // Straight into the organization they were invited to. The JWT minted by the
-  // link already carries its org_id claim, because the membership row was
-  // written before the invitation was sent.
-  redirect(orgSlug ? `/${orgSlug}/dashboard` : '/')
+  // Straight into the work they were invited to do. The JWT minted by the link
+  // already carries the org_id claim, because the membership row was written
+  // before the invitation was sent — so this query is already tenant-scoped.
+  //
+  // The project, not the dashboard: an invitation is almost always "come and
+  // work on this", and landing on a generic dashboard leaves the person hunting
+  // for the thing they were asked to join. Falls back to the dashboard when the
+  // invite granted no project, because there is nothing better to show.
+  redirect(orgSlug ? await landingPath(orgSlug, user.id) : '/')
+}
+
+/** The first project this person can open, as a path; the dashboard otherwise. */
+async function landingPath(orgSlug: string, userId: string): Promise<string> {
+  const supabase = createClient()
+
+  const { data } = await supabase
+    .from('project_members')
+    .select(
+      'project:projects!project_members_project_id_fkey(public_id, status, workspace:workspaces!projects_workspace_id_fkey(slug))',
+    )
+    .eq('user_id', userId)
+    .order('joined_at')
+    .limit(5)
+
+  for (const row of data ?? []) {
+    const project = Array.isArray(row.project) ? row.project[0] : row.project
+    if (!project || project.status === 'archived') continue
+
+    const workspace = Array.isArray(project.workspace) ? project.workspace[0] : project.workspace
+    const publicId = publicIdToString(project.public_id)
+    if (workspace?.slug && publicId) {
+      return `/${orgSlug}/${workspace.slug}/projects/${publicId}/list`
+    }
+  }
+
+  return `/${orgSlug}/dashboard`
 }

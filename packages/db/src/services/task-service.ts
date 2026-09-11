@@ -90,8 +90,31 @@ export async function updateTask(
     if (column) next.kanban_column_id = column
   }
 
-  // Record who made an assignment, so the task report's "Assigned by" is real.
-  if (patch.assignee_id) next.assigner_id = options.userId
+  /*
+   * Record who made an assignment, so the task report's "Assigned by" is real.
+   *
+   * Only when the assignee actually CHANGES. The task panel posts every field
+   * on every save, so `patch.assignee_id` is present whenever anyone edits a
+   * due date or a priority — and the old unconditional write therefore
+   * reassigned "Assigned by" to whoever touched the task last. The column then
+   * recorded the most recent editor rather than the person who handed the work
+   * out, which is the one thing it exists to say, and it silently broke
+   * notifying the assigner about their own task.
+   */
+  if (patch.assignee_id) {
+    const { data: current } = await db
+      .from('tasks')
+      .select('assignee_id')
+      .eq('id', taskId)
+      .maybeSingle()
+
+    if (current?.assignee_id !== patch.assignee_id) {
+      next.assigner_id = options.userId
+    } else {
+      // Nothing to record: leave whatever is already there.
+      delete next.assigner_id
+    }
+  }
 
   const updated = unwrap(
     await db.from('tasks').update(next).eq('id', taskId).select(COLUMNS.taskDetail).single(),

@@ -1,6 +1,6 @@
 'use server'
 
-import { assertCan } from '@pm/auth/rbac'
+import { assertCan, canCreateTask, canDeleteTask, canUpdateTask } from '@pm/auth/rbac'
 import * as taskService from '@pm/db'
 import { sanitizeTiptapJson } from '@pm/shared/sanitize'
 import type { ActionResult } from '@pm/shared/types'
@@ -16,6 +16,8 @@ import {
 import { revalidatePath } from 'next/cache'
 import { toActionError } from '@/lib/action-error'
 import { requireAuth } from '@/lib/auth/context'
+import { loadProjectAccess } from '@/lib/auth/project-access'
+import { notifyTaskChange } from '@/lib/notifications/task-events'
 import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
 
@@ -68,6 +70,30 @@ export async function createTask(
   const project = await projectUuid(scope)
   if (!project.ok) return project.error
 
+  /*
+   * Project-level gate on top of the org matrix: the project may reserve task
+   * creation for its managers, and a viewer may never create regardless of what
+   * their org role allows (§2 — both must pass).
+   *
+   * RETURNED, not thrown. `assertPermission` and friends throw, which is right
+   * for an unreachable state but wrong here: a member hitting a policy that is
+   * working exactly as configured is an expected outcome, and an uncaught throw
+   * escapes the action, trips the route's error boundary, and tells them
+   * "something went wrong fetching this data" — hiding both the reason and the
+   * fact that the refusal was deliberate.
+   */
+  const access = await loadProjectAccess(auth, project.id)
+  if (!canCreateTask(access)) {
+    return {
+      ok: false,
+      code: 'FORBIDDEN',
+      message:
+        access.taskCreatePolicy === 'managers'
+          ? 'This project only lets project managers create tasks.'
+          : 'You are not a member of this project.',
+    }
+  }
+
   const parsed = taskCreateSchema.safeParse({
     project_id: project.id,
     kanban_column_id: formData.get('kanban_column_id') || null,
@@ -118,6 +144,18 @@ export async function updateTask(
   const auth = await requireAuth(scope.orgSlug)
   assertCan(auth, 'tasks', 'update')
 
+  const project = await projectUuid(scope)
+  if (!project.ok) return project.error
+
+  const access = await loadProjectAccess(auth, project.id)
+  if (!canUpdateTask(access)) {
+    return {
+      ok: false,
+      code: 'FORBIDDEN',
+      message: 'You do not have permission to change tasks in this project.',
+    }
+  }
+
   const rawDescription = formData.get('description')
 
   /**
@@ -161,7 +199,18 @@ export async function updateTask(
 
   try {
     const { label_ids, description, ...patch } = parsed.data
-    await taskService.updateTask(
+
+    // Read before writing: the notification has to say what CHANGED, and after
+    // the update the old values are gone. One extra read on a path that is
+    // already writing, in exchange for "priority raised to critical" instead of
+    // an unhelpful "the task was updated".
+    const { data: before } = await supabase
+      .from('tasks')
+      .select('title, status, priority, due_date, assignee_id, assigner_id')
+      .eq('id', taskId)
+      .maybeSingle()
+
+    const updated = await taskService.updateTask(
       supabase,
       taskId,
       {
@@ -173,6 +222,19 @@ export async function updateTask(
       },
       { userId: auth.userId, orgId: auth.orgId, labelIds: label_ids },
     )
+
+    await notifyTaskChange({
+      orgId: auth.orgId,
+      orgSlug: scope.orgSlug,
+      workspaceSlug: scope.workspaceSlug,
+      projectId: project.id,
+      actorId: auth.userId,
+      before,
+      after: updated,
+      // `scope.projectId` is the project's 16-digit public id, which is exactly
+      // what a URL needs — no extra lookup.
+      projectPublicId: scope.projectId,
+    })
 
     revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
     return { ok: true, data: null }
@@ -217,6 +279,16 @@ export async function moveTask(
 export async function deleteTask(scope: Scope, taskId: string): Promise<ActionResult<null>> {
   const auth = await requireAuth(scope.orgSlug)
   assertCan(auth, 'tasks', 'delete')
+
+  const project = await projectUuid(scope)
+  if (!project.ok) return project.error
+
+  // Deleting stays a manager power INSIDE the project too: the org matrix lets
+  // a manager delete tasks, but not in a project they have nothing to do with.
+  const access = await loadProjectAccess(auth, project.id)
+  if (!canDeleteTask(access)) {
+    return { ok: false, code: 'FORBIDDEN', message: 'Only project managers can delete tasks here.' }
+  }
 
   const supabase = createClient()
   try {

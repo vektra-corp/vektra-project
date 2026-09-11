@@ -68,10 +68,8 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
     { data: projects },
     { data: recent },
     { count: activeProjects },
-    { data: me },
     { data: config },
     { data: organization },
-    pendingApprovals,
     teamLoad,
   ] = await Promise.all([
       supabase
@@ -108,15 +106,6 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
         .eq('organization_id', auth.orgId)
         .eq('status', 'active'),
 
-      // The viewer's own employee record, if they have one — the leave widgets
-      // are meaningless without it and are omitted rather than shown empty.
-      supabase
-        .from('employees')
-        .select('id')
-        .eq('organization_id', auth.orgId)
-        .eq('user_id', auth.userId)
-        .maybeSingle(),
-
       // The saved layout is per person per org; absence means "never
       // customised", which is what keeps DEFAULT_DASHBOARD the single
       // definition of the default.
@@ -129,18 +118,6 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
         .maybeSingle(),
 
       supabase.from('organizations').select('settings').eq('id', auth.orgId).maybeSingle(),
-
-      isManager
-        ? supabase
-            .from('leave_requests')
-            .select(
-              'id, start_date, end_date, duration_days, employee:employees!leave_requests_employee_id_fkey(profile:profiles!employees_user_id_fkey(full_name))',
-            )
-            .eq('organization_id', auth.orgId)
-            .eq('status', 'pending')
-            .order('start_date')
-            .limit(8)
-        : Promise.resolve({ data: [] as never[] }),
 
       // Open tasks per person, for the workload widget. Counted here rather
       // than with a group-by because PostgREST has no aggregate for it and the
@@ -205,24 +182,12 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
   const projectIds = (projects ?? []).map((project) => project.id)
 
   /*
-   * The second and last wave: the two queries that need a result from the first.
-   * `projectTasks` needs the project ids; `leaveBalances` needs the viewer's
-   * employee row.
+   * The second and last wave: the one query that needs a result from the first —
+   * `projectTasks` needs the project ids.
    */
-  const [{ data: projectTasks }, leaveBalances] = await Promise.all([
-    projectIds.length
-      ? supabase.from('tasks').select('project_id, status').in('project_id', projectIds)
-      : Promise.resolve({ data: [] as { project_id: string; status: string }[] }),
-    me
-      ? supabase
-          .from('leave_balances')
-          .select(
-            'id, remaining_days, total_days, carried_over, leave_type:leave_types!leave_balances_leave_type_id_fkey(name)',
-          )
-          .eq('employee_id', me.id)
-          .eq('year', new Date().getFullYear())
-      : Promise.resolve({ data: [] as never[] }),
-  ])
+  const { data: projectTasks } = projectIds.length
+    ? await supabase.from('tasks').select('project_id, status').in('project_id', projectIds)
+    : { data: [] as { project_id: string; status: string }[] }
 
   const stats = new Map<string, { total: number; done: number }>()
   for (const task of projectTasks ?? []) {
@@ -384,73 +349,6 @@ export default async function DashboardPage({ params }: { params: { orgSlug: str
                   )}
                   <span className="label-meta shrink-0 text-faint">
                     {formatRelativeTime(task.updated_at, locale)}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </Widget>
-    ),
-    my_leave: (
-      <Widget
-        title="My leave"
-        category="hr"
-        className="h-full"
-        action={{ label: 'Request', href: `/${params.orgSlug}/team/leave` }}
-      >
-        {!leaveBalances.data?.length ? (
-          <WidgetEmpty>{me ? 'No leave allocated yet.' : 'No employee record.'}</WidgetEmpty>
-        ) : (
-          <ul className="divide-y divide-border scrollbar-slim min-h-0 flex-1 overflow-y-auto">
-            {leaveBalances.data.map((balance) => {
-              const type = Array.isArray(balance.leave_type)
-                ? balance.leave_type[0]
-                : balance.leave_type
-              return (
-                <li key={balance.id} className="flex items-center gap-2.5 py-2">
-                  <span className="min-w-0 flex-1 truncate text-base">
-                    {type?.name ?? 'Leave'}
-                  </span>
-                  <span className="label-meta tabular-nums text-faint">
-                    <span className="text-foreground">{balance.remaining_days}</span> left of{' '}
-                    {Number(balance.total_days) + Number(balance.carried_over)}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </Widget>
-    ),
-    pending_approvals: (
-      <Widget
-        title="Leave approvals"
-        category="hr"
-        className="h-full"
-        action={{ label: 'All', href: `/${params.orgSlug}/team/leave` }}
-      >
-        {!pendingApprovals.data?.length ? (
-          <WidgetEmpty>Nothing to approve.</WidgetEmpty>
-        ) : (
-          <ul className="divide-y divide-border scrollbar-slim min-h-0 flex-1 overflow-y-auto">
-            {pendingApprovals.data.map((request) => {
-              const employee = Array.isArray(request.employee)
-                ? request.employee[0]
-                : request.employee
-              const profile = employee
-                ? Array.isArray(employee.profile)
-                  ? employee.profile[0]
-                  : employee.profile
-                : null
-
-              return (
-                <li key={request.id} className="flex items-center gap-2.5 py-2">
-                  <span className="min-w-0 flex-1 truncate text-base">
-                    {profile?.full_name ?? 'Unknown'}
-                  </span>
-                  <span className="label-meta text-faint">
-                    {request.start_date} · {request.duration_days}d
                   </span>
                 </li>
               )

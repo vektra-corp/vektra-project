@@ -1,7 +1,7 @@
 'use client'
 
 import { ASSIGNABLE_ORG_ROLES, ORG_ROLE_LABELS } from '@pm/auth/constants'
-import { canManageRole } from '@pm/auth/rbac'
+import { canManageRole, hasPermission, isAtLeast } from '@pm/auth/rbac'
 import type { OrgRole } from '@pm/shared/constants'
 import {
   Button,
@@ -24,7 +24,10 @@ import {
 import { MoreHorizontal } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { removeMember, updateMemberRole } from './actions'
+import type { PickerProject, PickerWorkspace } from './access-picker'
+import { removeMember, resendInvite, updateMemberRole } from './actions'
+import { InviteLinkNotice } from './invite-link-notice'
+import { MemberAccessDialog } from './member-access-dialog'
 
 /**
  * Per-member menu.
@@ -38,13 +41,27 @@ export function MemberRowActions({
   actorRole,
   member,
   isSelf,
+  workspaces,
+  projects,
 }: {
   orgSlug: string
   actorRole: OrgRole
-  member: { userId: string; fullName: string; role: OrgRole }
+  member: {
+    userId: string
+    fullName: string
+    email: string | null
+    role: OrgRole
+    status: 'pending' | 'active'
+    workspaceIds: string[]
+    projectIds: string[]
+  }
   isSelf: boolean
+  workspaces: PickerWorkspace[]
+  projects: PickerProject[]
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [accessOpen, setAccessOpen] = useState(false)
+  const [fallbackLink, setFallbackLink] = useState<{ email: string; url: string } | null>(null)
   const [pending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -52,8 +69,12 @@ export function MemberRowActions({
     canManageRole(actorRole, member.role, role),
   )
   const canRemove = !isSelf && canManageRole(actorRole, member.role, 'member')
+  // Access is editable for anyone but the owner: it is not a rank change, so it
+  // is not gated by `canManageRole` — a manager may put a peer on a project.
+  const canEditAccess = member.role !== 'owner' && hasPermission(actorRole, 'users', 'update')
+  const canResend = member.status === 'pending' && hasPermission(actorRole, 'users', 'create')
 
-  if (assignable.length === 0 && !canRemove) return null
+  if (assignable.length === 0 && !canRemove && !canEditAccess && !canResend) return null
 
   function changeRole(next: string) {
     startTransition(async () => {
@@ -63,6 +84,28 @@ export function MemberRowActions({
         router.refresh()
       } else {
         toast({ variant: 'destructive', title: 'Could not change role', description: result.message })
+      }
+    })
+  }
+
+  function resend() {
+    startTransition(async () => {
+      const result = await resendInvite(orgSlug, member.userId)
+      if (!result.ok) {
+        toast({ variant: 'destructive', title: 'Could not resend', description: result.message })
+        return
+      }
+      if (result.data.emailed) {
+        toast({ title: `Invitation resent to ${member.fullName}` })
+        return
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Not emailed',
+        description: result.data.emailError ?? 'Email could not be delivered.',
+      })
+      if (result.data.acceptUrl && member.email) {
+        setFallbackLink({ email: member.email, url: result.data.acceptUrl })
       }
     })
   }
@@ -94,7 +137,21 @@ export function MemberRowActions({
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" className="w-44">
+        <DropdownMenuContent align="end" className="w-52">
+          {canEditAccess ? (
+            <DropdownMenuItem onSelect={() => setAccessOpen(true)}>
+              Workspace & project access
+            </DropdownMenuItem>
+          ) : null}
+
+          {canResend ? (
+            <DropdownMenuItem onSelect={resend}>Resend invitation</DropdownMenuItem>
+          ) : null}
+
+          {(canEditAccess || canResend) && assignable.length > 0 ? (
+            <DropdownMenuSeparator />
+          ) : null}
+
           {assignable.length > 0 ? (
             <>
               <DropdownMenuLabel>Role</DropdownMenuLabel>
@@ -110,7 +167,9 @@ export function MemberRowActions({
 
           {canRemove ? (
             <>
-              {assignable.length > 0 ? <DropdownMenuSeparator /> : null}
+              {assignable.length > 0 || canEditAccess || canResend ? (
+                <DropdownMenuSeparator />
+              ) : null}
               <DropdownMenuItem variant="destructive" onSelect={() => setConfirmOpen(true)}>
                 Remove from organization
               </DropdownMenuItem>
@@ -118,6 +177,18 @@ export function MemberRowActions({
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <MemberAccessDialog
+        orgSlug={orgSlug}
+        open={accessOpen}
+        onOpenChange={setAccessOpen}
+        member={member}
+        workspaces={workspaces}
+        projects={projects}
+        workspacesReadOnly={!isAtLeast(actorRole, 'admin')}
+      />
+
+      <InviteLinkNotice invite={fallbackLink} onClose={() => setFallbackLink(null)} />
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="max-w-md">

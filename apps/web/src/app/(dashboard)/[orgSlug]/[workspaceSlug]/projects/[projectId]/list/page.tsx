@@ -49,6 +49,11 @@ export default async function ListPage({
                   assignee:profiles!subtasks_assignee_id_fkey(id, full_name))`,
       )
       .eq('project_id', project.id)
+      // Urgency first, then the board's own order within a priority band.
+      // Postgres has no ordering for the priority CHECK values — they are text,
+      // so 'critical' < 'high' < 'low' < 'medium' alphabetically, which is
+      // meaningless — hence the explicit rank expression.
+      .order('priority_rank', { ascending: true })
       .order('status')
       .order('position'),
     supabase

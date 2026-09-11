@@ -1,6 +1,7 @@
 'use server'
 
-import { assertCan } from '@pm/auth/rbac'
+import { assertCan, canCreateWorkspace } from '@pm/auth/rbac'
+import { resolveOrgPolicy } from '@pm/shared/constants'
 import type { ActionResult, Json } from '@pm/shared/types'
 import {
   fieldErrors,
@@ -96,6 +97,54 @@ export async function updateOrganization(
   }
 }
 
+/**
+ * Turn manager workspace-creation on or off.
+ *
+ * Its own action rather than a field on `updateOrganization`, because that one
+ * reads the whole organization form and treats an absent key as "clear this"
+ * (`billing_email: formData.get(...) || null`). Posting a single toggle through
+ * it would blank the billing email and tax id as a side effect.
+ *
+ * Admin-only: this decides who else gets a power, so a manager must not be able
+ * to grant it to themselves.
+ */
+export async function setWorkspaceDelegation(
+  orgSlug: string,
+  enabled: boolean,
+): Promise<ActionResult<null>> {
+  const auth = await requireAuth(orgSlug)
+  if (auth.orgRole !== 'owner' && auth.orgRole !== 'admin') {
+    return { ok: false, code: 'FORBIDDEN', message: 'Only owners and admins can change this.' }
+  }
+
+  const supabase = createClient()
+
+  try {
+    const { data: current } = await supabase
+      .from('organizations')
+      .select('settings')
+      .eq('id', auth.orgId)
+      .maybeSingle()
+
+    const merged: Record<string, Json> = {
+      ...((current?.settings as Record<string, Json> | null) ?? {}),
+      managers_can_create_workspaces: enabled,
+    }
+
+    const { error } = await supabase
+      .from('organizations')
+      .update({ settings: merged })
+      .eq('id', auth.orgId)
+
+    if (error) throw error
+
+    revalidatePath(orgPath(orgSlug))
+    return { ok: true, data: null }
+  } catch (error) {
+    return toActionError(error)
+  }
+}
+
 // --- Workspaces ---------------------------------------------------------------
 
 export async function createWorkspace(
@@ -104,7 +153,29 @@ export async function createWorkspace(
   formData: FormData,
 ): Promise<ActionResult<{ slug: string }>> {
   const auth = await requireAuth(orgSlug)
-  assertCan(auth, 'projects', 'create')
+
+  // Not `projects.create` — that is a manager power, and creating a WORKSPACE
+  // is an admin one unless this organization has delegated it. The same fact
+  // the RLS policy reads (`can_create_workspace`, migration 00045), so the two
+  // cannot disagree; checking it here just turns an RLS error into a sentence.
+  const supabaseForPolicy = createClient()
+  const { data: organization } = await supabaseForPolicy
+    .from('organizations')
+    .select('settings')
+    .eq('id', auth.orgId)
+    .maybeSingle()
+
+  const policy = resolveOrgPolicy(organization?.settings)
+  if (!canCreateWorkspace(auth.orgRole, policy.managersCanCreateWorkspaces)) {
+    return {
+      ok: false,
+      code: 'FORBIDDEN',
+      message:
+        auth.orgRole === 'manager'
+          ? 'Only admins can create workspaces here. An admin can allow managers to in organization settings.'
+          : 'Only admins can create workspaces.',
+    }
+  }
 
   const parsed = workspaceCreateSchema.safeParse({
     name: formData.get('name'),

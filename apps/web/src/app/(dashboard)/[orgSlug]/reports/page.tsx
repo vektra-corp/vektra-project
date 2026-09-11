@@ -1,3 +1,4 @@
+import { ORG_MANAGER_ROLES } from '@pm/auth/constants'
 import {
   DEFAULT_TASK_REPORT_COLUMNS,
   PRIORITIES,
@@ -16,6 +17,7 @@ import { Topbar } from '@/components/layout/topbar'
 import { ReportFilters } from '@/components/reports/report-filters'
 import { DueDate, TaskPriorityIcon, TaskStatusBadge } from '@/components/tasks/task-badges'
 import { requireAuthPage } from '@/lib/auth/context'
+import { forbidden } from '@/lib/forbidden'
 import { createClient } from '@/lib/supabase/server'
 
 interface Member {
@@ -40,6 +42,14 @@ export default async function ReportsPage({
   searchParams: Record<string, string | string[] | undefined>
 }) {
   const auth = await requireAuthPage(params.orgSlug)
+  // Manager and above, matching the nav that offers it. The rows were already
+  // RLS-scoped to what the viewer may see, so an ungated page leaked nothing —
+  // but a link hidden from members while the route stayed open is a policy the
+  // product only half believed, and the half that is not enforced is the one
+  // that gets relied on. This is a cross-project management view; the personal
+  // equivalent is My tasks, which stays open to everyone.
+  if (!(ORG_MANAGER_ROLES as readonly string[]).includes(auth.orgRole)) forbidden()
+
   const locale = await getLocale()
   const supabase = createClient()
 

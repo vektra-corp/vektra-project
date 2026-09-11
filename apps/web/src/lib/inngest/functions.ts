@@ -1,10 +1,11 @@
 import 'server-only'
 
 import { chooseAssignee, ruleFor, type AssignmentRule, type Candidate } from '@pm/db'
-import { isDue, parseSchedule, slotKey } from '@pm/shared/constants'
-import { todayIn } from '@pm/shared/utils'
+import { isDue, parseSchedule, resolveProjectSettings, slotKey } from '@pm/shared/constants'
+import { addDaysToDateString, todayIn } from '@pm/shared/utils'
 import { sendEmail } from '@/lib/email/client'
 import { digestEmail, notificationEmail } from '@/lib/email/templates'
+import { notify } from '@/lib/notifications/deliver'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { inngest } from './client'
 import { dispatchIntegrationEvents } from './integration-dispatch'
@@ -65,13 +66,28 @@ export const deliverNotificationEmails = inngest.createFunction(
       const userIds = [...new Set(pending.map((row) => row.user_id))]
       const orgIds = [...new Set(pending.map((row) => row.organization_id))]
 
-      const [{ data: preferences }, { data: organizations }, { data: users }] = await Promise.all([
+      const [
+        { data: preferences },
+        { data: organizations },
+        { data: users },
+        { data: projectPreferences },
+      ] = await Promise.all([
         db
           .from('notification_preferences')
           .select('user_id, organization_id, preferences, quiet_hours, digest_mode')
           .in('user_id', userIds),
         db.from('organizations').select('id, name, slug').in('id', orgIds),
         db.from('profiles').select('id, full_name').in('id', userIds),
+        // Per-project overrides (migration 00043). Loaded here rather than in
+        // the loop so a backlog of 100 notifications is still one query, and
+        // because notifications written by DATABASE TRIGGERS — assignment,
+        // mentions — arrive through this job and must honour the same project
+        // mute the in-app panel offers. Without this, muting a project would
+        // silence the inbox but keep emailing.
+        db
+          .from('project_notification_preferences')
+          .select('user_id, project_id, preferences, muted')
+          .in('user_id', userIds),
       ])
 
       // auth.users holds the address; profiles does not.
@@ -86,12 +102,17 @@ export const deliverNotificationEmails = inngest.createFunction(
         organizations: organizations ?? [],
         users: users ?? [],
         emails: Object.fromEntries(emails),
+        projectPreferences: projectPreferences ?? [],
       }
     })
 
     const orgById = new Map(context.organizations.map((org) => [org.id, org]))
     const prefsByKey = new Map(
       context.preferences.map((row) => [`${row.user_id}:${row.organization_id}`, row]),
+    )
+
+    const projectPrefsByKey = new Map(
+      context.projectPreferences.map((row) => [`${row.user_id}:${row.project_id}`, row]),
     )
 
     const now = new Date()
@@ -102,9 +123,26 @@ export const deliverNotificationEmails = inngest.createFunction(
       const prefs = prefsByKey.get(`${notification.user_id}:${notification.organization_id}`)
       const preference = preferenceFor(prefs?.preferences, notification.type)
 
+      // The project override wins where it has an opinion. A muted project
+      // stops email outright; otherwise only the channels it names are
+      // replaced, so a project row saying nothing about this type falls back to
+      // the organization answer rather than resetting it.
+      const projectId = (notification.data as { project_id?: string } | null)?.project_id
+      const projectPrefs = projectId
+        ? projectPrefsByKey.get(`${notification.user_id}:${projectId}`)
+        : undefined
+
+      const override = projectPrefs?.preferences
+        ? (projectPrefs.preferences as Record<string, { email?: boolean } | undefined>)[
+            notification.type
+          ]
+        : undefined
+
+      const wantsEmail = projectPrefs?.muted ? false : (override?.email ?? preference.email)
+
       // Not opted in for email on this type: mark handled so it is not
       // reconsidered on every run for the next day.
-      if (!preference.email) {
+      if (!wantsEmail) {
         toDefer.push(notification.id)
         continue
       }
@@ -262,13 +300,20 @@ export const sendDailyDigests = inngest.createFunction(
 )
 
 /**
- * Notify assignees of tasks that have gone overdue.
+ * Due-date reminders: tomorrow, today, and overdue (§19).
  *
- * Runs hourly and evaluates "overdue" in each organization's own timezone, so a
+ * Runs hourly and evaluates the date in each organization's own timezone, so a
  * task is not flagged a day early for a team west of UTC (§21.6).
+ *
+ * The brief was explicit that overdue must not become daily spam. Each of the
+ * three states is therefore notified ONCE per task — the dedupe key names the
+ * task and the state, not the day, so "overdue" fires when a task crosses the
+ * line and then stays quiet however long it sits there. Moving the due date
+ * produces a new state and a new reminder, which is the behaviour people
+ * actually expect.
  */
 export const flagOverdueTasks = inngest.createFunction(
-  { id: 'overdue-task-notifications', retries: 2 },
+  { id: 'due-date-notifications', retries: 2 },
   { cron: '15 * * * *' },
   async ({ step }) => {
     const created = await step.run('scan', async () => {
@@ -276,7 +321,7 @@ export const flagOverdueTasks = inngest.createFunction(
 
       const { data: organizations } = await db
         .from('organizations')
-        .select('id, timezone')
+        .select('id, slug, timezone')
         .eq('status', 'active')
 
       if (!organizations?.length) return 0
@@ -285,50 +330,76 @@ export const flagOverdueTasks = inngest.createFunction(
 
       for (const org of organizations) {
         const today = todayIn(org.timezone)
+        const tomorrow = addDaysToDateString(today, 1)
 
-        const { data: overdue } = await db
+        const { data: due } = await db
           .from('tasks')
-          .select('id, title, project_id, assignee_id, due_date')
+          .select(
+            'id, public_id, title, project_id, assignee_id, assigner_id, due_date, project:projects!tasks_project_id_fkey(public_id, workspace:workspaces!projects_workspace_id_fkey(slug))',
+          )
           .eq('organization_id', org.id)
           .not('assignee_id', 'is', null)
           .not('due_date', 'is', null)
-          .lt('due_date', today)
+          .lte('due_date', tomorrow)
           .not('status', 'in', '(done,cancelled)')
           .limit(500)
 
-        if (!overdue?.length) continue
+        if (!due?.length) continue
 
-        // One notification per task per day: re-notifying every hour would make
-        // the feature a nuisance rather than a reminder.
-        const since = new Date(Date.now() - 20 * 3600_000).toISOString()
-        const { data: recent } = await db
-          .from('notifications')
-          .select('data')
-          .eq('organization_id', org.id)
-          .eq('type', 'task_overdue')
-          .gte('created_at', since)
+        for (const task of due) {
+          const state =
+            task.due_date! < today ? 'overdue' : task.due_date === today ? 'today' : 'tomorrow'
 
-        const alreadyNotified = new Set(
-          (recent ?? [])
-            .map((row) => (row.data as { task_id?: string } | null)?.task_id)
-            .filter(Boolean),
-        )
+          const project = Array.isArray(task.project) ? task.project[0] : task.project
+          const workspace = project
+            ? Array.isArray(project.workspace)
+              ? project.workspace[0]
+              : project.workspace
+            : null
 
-        const rows = overdue
-          .filter((task) => !alreadyNotified.has(task.id))
-          .map((task) => ({
-            organization_id: org.id,
-            user_id: task.assignee_id!,
-            type: 'task_overdue',
-            title: `Overdue: ${task.title}`,
-            body: `This task was due ${task.due_date}.`,
-            data: { task_id: task.id, project_id: task.project_id },
-          }))
+          const url =
+            APP_URL() && workspace?.slug && project?.public_id
+              ? `${APP_URL()}/${org.slug}/${workspace.slug}/projects/${project.public_id}/tasks/${task.public_id}`
+              : null
 
-        if (rows.length === 0) continue
+          const copy = {
+            overdue: {
+              type: 'task_overdue',
+              title: `Overdue: ${task.title}`,
+              body: `This was due ${task.due_date}.`,
+            },
+            today: {
+              type: 'task_due_today',
+              title: `Due today: ${task.title}`,
+              body: null,
+            },
+            tomorrow: {
+              type: 'task_due_tomorrow',
+              title: `Due tomorrow: ${task.title}`,
+              body: `Due ${task.due_date}.`,
+            },
+          }[state]
 
-        const { error } = await db.from('notifications').insert(rows)
-        if (!error) inserted += rows.length
+          await notify({
+            orgId: org.id,
+            orgSlug: org.slug,
+            userId: task.assignee_id!,
+            type: copy.type,
+            title: copy.title,
+            body: copy.body,
+            url,
+            projectId: task.project_id,
+            data: { task_id: task.id },
+            // The due date is part of the key: rescheduling a task genuinely is
+            // a new reminder, while leaving it alone stays silent.
+            dedupeKey: `${task.id}:${state}:${task.due_date}`,
+            // Long enough that a task sitting overdue for a fortnight is
+            // mentioned once, not fourteen times.
+            dedupeWindowHours: 24 * 30,
+          })
+
+          inserted += 1
+        }
       }
 
       return inserted
@@ -425,7 +496,14 @@ export const applyAutoAssignment = inngest.createFunction(
 
         const today = new Date().toISOString().slice(0, 10)
 
-        const [{ data: openCounts }, { data: employees }, { data: leave }] = await Promise.all([
+        const [
+          { data: openCounts },
+          { data: employees },
+          { data: leave },
+          { data: orgMembers },
+          { data: projectMembers },
+          { data: projectRows },
+        ] = await Promise.all([
           db
             .from('tasks')
             .select('assignee_id')
@@ -440,6 +518,23 @@ export const applyAutoAssignment = inngest.createFunction(
             .eq('status', 'approved')
             .lte('start_date', today)
             .gte('end_date', today),
+          // Rank decides members-first; project membership decides eligibility
+          // at all. Both are per-org lookups, so they join the same wave.
+          db.from('org_members').select('user_id, role').eq('organization_id', orgId),
+          db
+            .from('project_members')
+            .select('user_id, project_id')
+            .eq('organization_id', orgId)
+            .in('user_id', poolIds),
+          // The project's own auto-assignment policy.
+          db
+            .from('projects')
+            .select('id, settings')
+            .eq('organization_id', orgId)
+            .in(
+              'id',
+              [...new Set(orgTasks.map((candidate) => candidate.project_id))],
+            ),
         ])
 
         const load = new Map<string, number>()
@@ -462,12 +557,41 @@ export const applyAutoAssignment = inngest.createFunction(
           if (employee?.user_id) away.add(employee.user_id)
         }
 
-        const candidates: Candidate[] = poolIds.map((userId) => ({
-          userId,
-          openTasks: load.get(userId) ?? 0,
-          skills: skills.get(userId) ?? [],
-          onLeave: away.has(userId),
-        }))
+        const roleByUser = new Map(
+          (orgMembers ?? []).map((row) => [row.user_id, row.role as Candidate['orgRole']]),
+        )
+
+        // Keyed by project, because "is this person on the project?" has a
+        // different answer per task.
+        const projectMembership = new Map<string, Set<string>>()
+        for (const row of projectMembers ?? []) {
+          const set = projectMembership.get(row.project_id) ?? new Set<string>()
+          set.add(row.user_id)
+          projectMembership.set(row.project_id, set)
+        }
+
+        const policyByProject = new Map(
+          (projectRows ?? []).map((row) => {
+            const settings = resolveProjectSettings(row.settings)
+            return [
+              row.id,
+              { autoAssign: settings.autoAssign, autoAssignManagers: settings.autoAssignManagers },
+            ]
+          }),
+        )
+
+        // Built per task rather than once, since project membership varies.
+        const candidatesFor = (projectId: string): Candidate[] => {
+          const onProject = projectMembership.get(projectId) ?? new Set<string>()
+          return poolIds.map((userId) => ({
+            userId,
+            openTasks: load.get(userId) ?? 0,
+            skills: skills.get(userId) ?? [],
+            onLeave: away.has(userId),
+            isProjectMember: onProject.has(userId),
+            orgRole: roleByUser.get(userId) ?? 'member',
+          }))
+        }
 
         for (const task of orgTasks) {
           const labelNames = ((task.task_labels ?? []) as { label: { name: string } | null }[])
@@ -485,7 +609,16 @@ export const applyAutoAssignment = inngest.createFunction(
           const rule = ruleFor(orgRules, candidateTask)
           if (!rule) continue
 
-          const decision = chooseAssignee(rule, candidateTask, candidates)
+          // Rebuilt per task: eligibility depends on the project, and the
+          // batch's running load is carried in `load` rather than on these
+          // short-lived objects.
+          const candidates = candidatesFor(task.project_id)
+          const policy = policyByProject.get(task.project_id) ?? {
+            autoAssign: true,
+            autoAssignManagers: true,
+          }
+
+          const decision = chooseAssignee(rule, candidateTask, candidates, Math.random, policy)
           if (!decision) continue
 
           const { error } = await db
@@ -500,10 +633,10 @@ export const applyAutoAssignment = inngest.createFunction(
 
           assigned += 1
 
-          // Keep the in-memory load current so a batch does not hand every
-          // task to the same person.
-          const chosen = candidates.find((c) => c.userId === decision.userId)
-          if (chosen) chosen.openTasks += 1
+          // Keep the running load current so a batch does not hand every task
+          // to the same person. Written to the map, not to the candidate
+          // objects — those are rebuilt for the next task and would lose it.
+          load.set(decision.userId, (load.get(decision.userId) ?? 0) + 1)
 
           if (decision.nextConfig) {
             rule.config = decision.nextConfig

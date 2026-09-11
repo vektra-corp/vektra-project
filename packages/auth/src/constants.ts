@@ -63,6 +63,11 @@ export const PUBLIC_ROUTE_PREFIXES = [
   '/forgot-password',
   '/reset-password',
   '/auth/callback',
+  // The email-link equivalent of /auth/callback. Absent from this list it is
+  // treated as a protected route, and the middleware bounces an invited user to
+  // /login before the handler can verify their token — which is the one thing
+  // they came here to do, and the token is single-use.
+  '/auth/confirm',
   '/api/webhooks',
   '/api/inngest',
   '/403',

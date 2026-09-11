@@ -109,6 +109,14 @@ export function notificationUrl(
     return typeof value === 'string' && /^\d{16}$/.test(value) ? value : null
   }
 
+  // Some notifications carry the destination outright — project access grants
+  // point at a project, not a task. Only a link that already sits under this
+  // deployment's own origin is honoured, so a crafted `data` blob cannot turn a
+  // notification email into an open redirect.
+  if (typeof payload.url === 'string' && appUrl && payload.url.startsWith(`${appUrl}/`)) {
+    return payload.url
+  }
+
   const workspaceSlug = typeof payload.workspace_slug === 'string' ? payload.workspace_slug : null
   const projectId = id('project_public_id')
   const taskId = id('task_public_id')

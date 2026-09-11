@@ -8,8 +8,6 @@ export const DASHBOARD_WIDGETS = [
   'project_progress',
   'recent_activity',
   'team_workload',
-  'my_leave',
-  'pending_approvals',
 ] as const
 
 export type DashboardWidgetType = (typeof DASHBOARD_WIDGETS)[number]
@@ -22,14 +20,11 @@ export type DashboardWidgetType = (typeof DASHBOARD_WIDGETS)[number]
  * a glance which panels are delivery, which are money and which are people,
  * without reading the titles.
  */
-export const WIDGET_CATEGORIES = ['pm', 'revenue', 'timesheet', 'hr', 'workflow'] as const
+export const WIDGET_CATEGORIES = ['pm', 'workflow'] as const
 export type WidgetCategory = (typeof WIDGET_CATEGORIES)[number]
 
 export const WIDGET_CATEGORY_LABELS: Record<WidgetCategory, string> = {
   pm: 'PM',
-  revenue: 'REVENUE',
-  timesheet: 'TIMESHEET',
-  hr: 'HR',
   workflow: 'WORKFLOW',
 }
 
@@ -116,27 +111,6 @@ export const WIDGET_SPECS: Record<DashboardWidgetType, WidgetSpec> = {
     minH: 3,
     managerOnly: true,
   },
-  my_leave: {
-    label: 'My leave',
-    description: 'Your remaining balance per leave type.',
-    category: 'hr',
-    w: 6,
-    h: 4,
-    minW: 3,
-    minH: 3,
-  },
-  pending_approvals: {
-    label: 'Leave approvals',
-    description: 'Requests waiting on your decision.',
-    // Reads leave_requests and badges itself HR; the catalogue filed it under
-    // TIMESHEET, so the same widget appeared in two different modules.
-    category: 'hr',
-    w: 6,
-    h: 4,
-    minW: 3,
-    minH: 3,
-    managerOnly: true,
-  },
 }
 
 export const DASHBOARD_COLUMNS = 12
@@ -156,7 +130,6 @@ export const DEFAULT_DASHBOARD: WidgetPlacement[] = [
   { widget_id: 'w-due', type: 'tasks_due_soon', x: 0, y: 0, w: 3, h: 2 },
   { widget_id: 'w-overdue', type: 'overdue_tasks', x: 3, y: 0, w: 3, h: 2 },
   { widget_id: 'w-projects', type: 'active_projects', x: 6, y: 0, w: 3, h: 2 },
-  { widget_id: 'w-leave', type: 'my_leave', x: 9, y: 0, w: 3, h: 2 },
   { widget_id: 'w-tasks', type: 'my_open_tasks', x: 0, y: 2, w: 6, h: 5 },
   { widget_id: 'w-progress', type: 'project_progress', x: 6, y: 2, w: 6, h: 5 },
   { widget_id: 'w-activity', type: 'recent_activity', x: 0, y: 7, w: 12, h: 4 },

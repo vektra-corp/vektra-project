@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Receipt,
   Split,
+  Users,
   type LucideIcon,
 } from 'lucide-react'
 import type { Metadata } from 'next'
@@ -36,6 +37,7 @@ const KINDS: Record<string, { label: string; icon: LucideIcon }> = {
   due_soon: { label: 'DUE', icon: Bell },
   workflow: { label: 'WORKFLOW', icon: Split },
   billing: { label: 'BILLING', icon: Receipt },
+  project_invite: { label: 'ACCESS', icon: Users },
 }
 
 const FALLBACK = { label: 'UPDATE', icon: Bell } as const

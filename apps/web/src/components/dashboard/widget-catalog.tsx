@@ -11,9 +11,6 @@ import { cn } from '@pm/ui'
 
 const CATEGORY_TONE: Record<WidgetCategory, string> = {
   pm: 'text-primary',
-  revenue: 'text-status-review',
-  timesheet: 'text-status-done',
-  hr: 'text-warning',
   workflow: 'text-muted-foreground',
 }
 

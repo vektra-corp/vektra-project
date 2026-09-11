@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   chooseAssignee,
+  eligiblePool,
   ruleFor,
   ruleMatches,
   type AssignmentRule,
@@ -31,11 +32,15 @@ const task = (over: Partial<CandidateTask> = {}): CandidateTask => ({
   ...over,
 })
 
+// Defaults describe the ordinary case: a member who is on the project. Tests
+// that care about project membership or rank override them explicitly.
 const person = (userId: string, over: Partial<Candidate> = {}): Candidate => ({
   userId,
   openTasks: 0,
   skills: [],
   onLeave: false,
+  isProjectMember: true,
+  orgRole: 'member',
   ...over,
 })
 
@@ -227,5 +232,81 @@ describe('ruleFor', () => {
   it('returns null when nothing matches', () => {
     const rules = [rule({ conditions: { priority: ['critical'] } })]
     expect(ruleFor(rules, task({ priority: 'low' }))).toBeNull()
+  })
+})
+
+describe('eligiblePool — project membership and rank', () => {
+  it('excludes anyone who is not on the project', () => {
+    const pool = [
+      person(ALICE, { isProjectMember: false }),
+      person(BOB, { isProjectMember: true }),
+    ]
+    expect(eligiblePool(pool).map((c) => c.userId)).toEqual([BOB])
+  })
+
+  it('returns nobody when no candidate is on the project', () => {
+    const pool = [person(ALICE, { isProjectMember: false })]
+    expect(eligiblePool(pool)).toEqual([])
+  })
+
+  it('prefers members over managers when both are on the project', () => {
+    const pool = [
+      person(ALICE, { orgRole: 'manager' }),
+      person(BOB, { orgRole: 'member' }),
+    ]
+    expect(eligiblePool(pool).map((c) => c.userId)).toEqual([BOB])
+  })
+
+  it('falls back to managers when the project has no members on it', () => {
+    const pool = [person(ALICE, { orgRole: 'manager' }), person(CARA, { orgRole: 'admin' })]
+    expect(eligiblePool(pool).map((c) => c.userId)).toEqual([ALICE, CARA])
+  })
+
+  it('refuses managers when the project has turned that off', () => {
+    const pool = [person(ALICE, { orgRole: 'manager' })]
+    expect(eligiblePool(pool, { autoAssign: true, autoAssignManagers: false })).toEqual([])
+  })
+
+  it('still prefers members when manager fallback is off', () => {
+    const pool = [
+      person(ALICE, { orgRole: 'manager' }),
+      person(BOB, { orgRole: 'member' }),
+    ]
+    const result = eligiblePool(pool, { autoAssign: true, autoAssignManagers: false })
+    expect(result.map((c) => c.userId)).toEqual([BOB])
+  })
+})
+
+describe('chooseAssignee — project policy', () => {
+  it('assigns nobody when the project has auto-assignment off', () => {
+    const decision = chooseAssignee(rule(), task(), everyone, Math.random, {
+      autoAssign: false,
+      autoAssignManagers: true,
+    })
+    expect(decision).toBeNull()
+  })
+
+  it('skips a pool member who is not on the project', () => {
+    const candidates = [
+      person(ALICE, { isProjectMember: false }),
+      person(BOB),
+      person(CARA),
+    ]
+    const decision = chooseAssignee(rule({ method: 'round_robin' }), task(), candidates)
+    expect(decision?.userId).not.toBe(ALICE)
+  })
+
+  it('load balances only across members, not managers', () => {
+    const candidates = [
+      // The manager is idle and would win on load alone.
+      person(ALICE, { orgRole: 'manager', openTasks: 0 }),
+      person(BOB, { orgRole: 'member', openTasks: 5 }),
+    ]
+    const decision = chooseAssignee(
+      rule({ method: 'load_balanced', assigneePool: [ALICE, BOB] }),
+      task(),
+      candidates,
+    )
+    expect(decision?.userId).toBe(BOB)
   })
 })

@@ -6,7 +6,6 @@ import {
   Alert,
   AlertDescription,
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -21,7 +20,9 @@ import { AlertCircle, UserPlus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useFormState, useFormStatus } from 'react-dom'
+import { AccessPicker, type PickerProject, type PickerWorkspace } from './access-picker'
 import { inviteMember } from './actions'
+import { InviteLinkNotice } from './invite-link-notice'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -37,38 +38,62 @@ function SubmitButton() {
  *
  * The role list is narrowed to what the inviter may actually grant, so the form
  * cannot offer a choice the server will reject.
+ *
+ * Access is part of the invitation rather than a follow-up step. An invite that
+ * grants an organization membership and nothing else produces a member who signs
+ * in to an empty app and has to be chased twice — so the projects they should be
+ * working on are chosen here, and the email that goes out names them.
  */
 export function InviteDialog({
   orgSlug,
   actorRole,
   workspaces,
+  projects,
+  trigger = 'default',
 }: {
   orgSlug: string
   actorRole: OrgRole
-  workspaces: { id: string; name: string }[]
+  workspaces: PickerWorkspace[]
+  projects: PickerProject[]
+  /** `compact` is the topbar's icon button; `default` is the page header's. */
+  trigger?: 'default' | 'compact'
 }) {
   const [open, setOpen] = useState(false)
   const [role, setRole] = useState<OrgRole>('member')
+  const [selectedWorkspaces, setSelectedWorkspaces] = useState<Set<string>>(new Set())
+  const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set())
   const [state, formAction] = useFormState(inviteMember.bind(null, orgSlug), null)
+  const [fallbackLink, setFallbackLink] = useState<{ email: string; url: string } | null>(null)
   const router = useRouter()
 
   useEffect(() => {
-    if (state?.ok) {
-      setOpen(false)
+    if (!state?.ok) return
+
+    setOpen(false)
+    setSelectedWorkspaces(new Set())
+    setSelectedProjects(new Set())
+
+    if (state.data.emailed) {
+      const where =
+        state.data.projectNames.length > 0
+          ? `${state.data.email} · ${state.data.projectNames.join(', ')}`
+          : state.data.email
+      toast({ title: 'Invite sent', description: where })
+    } else {
       // Say what actually happened. The membership is created either way, so
-      // reporting "invite sent" when no mail went out would leave someone
-      // waiting for an email that is not coming.
-      toast(
-        state.data.emailed
-          ? { title: 'Invite sent', description: state.data.email }
-          : {
-              variant: 'destructive',
-              title: 'Added, but not emailed',
-              description: `${state.data.email} now has access. Send them the link yourself — email delivery is not configured or the address was rejected.`,
-            },
-      )
-      router.refresh()
+      // reporting "invite sent" would leave someone waiting for an email that
+      // is not coming.
+      toast({
+        variant: 'destructive',
+        title: 'Added, but not emailed',
+        description: state.data.emailError ?? 'Email could not be delivered.',
+      })
+      if (state.data.acceptUrl) {
+        setFallbackLink({ email: state.data.email, url: state.data.acceptUrl })
+      }
     }
+
+    router.refresh()
   }, [state, router])
 
   const grantable = ASSIGNABLE_ORG_ROLES.filter((candidate) =>
@@ -81,12 +106,26 @@ export function InviteDialog({
   const fieldError = (field: string) =>
     state && !state.ok ? state.fieldErrors?.[field]?.[0] : undefined
 
+  function toggle(set: Set<string>, id: string) {
+    const next = new Set(set)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return next
+  }
+
   return (
     <>
-      <Button size="sm" onClick={() => setOpen(true)}>
-        <UserPlus className="h-3.5 w-3.5" aria-hidden />
-        Invite member
-      </Button>
+      {trigger === 'compact' ? (
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+          <UserPlus className="h-3.5 w-3.5" aria-hidden />
+          Invite
+        </Button>
+      ) : (
+        <Button size="sm" onClick={() => setOpen(true)}>
+          <UserPlus className="h-3.5 w-3.5" aria-hidden />
+          Invite member
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
@@ -125,7 +164,7 @@ export function InviteDialog({
               {grantable.map((candidate) => (
                 <label
                   key={candidate}
-                  className="flex cursor-pointer gap-3 rounded-md border border-border-subtle p-3 transition-colors hover:border-border has-[:checked]:border-primary/60 has-[:checked]:bg-primary/5"
+                  className="border-border-subtle hover:border-border has-[:checked]:border-primary/60 has-[:checked]:bg-primary/5 flex cursor-pointer gap-3 rounded-md border p-3 transition-colors"
                 >
                   <input
                     type="radio"
@@ -139,7 +178,7 @@ export function InviteDialog({
                     <span className="block text-base font-medium">
                       {ORG_ROLE_LABELS[candidate]}
                     </span>
-                    <span className="block pt-0.5 text-nav leading-relaxed text-muted-foreground">
+                    <span className="text-muted-foreground block pt-0.5 text-nav leading-relaxed">
                       {ORG_ROLE_DESCRIPTIONS[candidate]}
                     </span>
                   </span>
@@ -147,25 +186,34 @@ export function InviteDialog({
               ))}
             </fieldset>
 
-            {workspaces.length > 0 ? (
-              <fieldset className="space-y-2">
-                <legend className="pb-1 text-ui font-medium">Add to workspaces</legend>
-                <div className="space-y-1.5">
-                  {workspaces.map((workspace) => (
-                    <label
-                      key={workspace.id}
-                      className="flex cursor-pointer items-center gap-2.5 text-base"
-                    >
-                      <Checkbox name="workspace_ids" value={workspace.id} size="sm" />
-                      {workspace.name}
-                    </label>
-                  ))}
-                </div>
-                <p className="text-nav text-faint">
-                  Without a workspace they can sign in but will not see any projects.
-                </p>
-              </fieldset>
-            ) : null}
+            <fieldset className="space-y-2">
+              <legend className="pb-1 text-ui font-medium">Access</legend>
+              <AccessPicker
+                workspaces={workspaces}
+                projects={projects}
+                selectedWorkspaces={selectedWorkspaces}
+                selectedProjects={selectedProjects}
+                onToggleWorkspace={(id) => setSelectedWorkspaces((set) => toggle(set, id))}
+                onToggleProject={(id) => setSelectedProjects((set) => toggle(set, id))}
+              />
+              <p className="text-nav text-faint">
+                Ticking a project adds its workspace too. Without at least one project they can
+                sign in but will not see any work.
+              </p>
+            </fieldset>
+
+            {/*
+              The selections are hidden inputs rather than component state read
+              at submit time, so the form is a plain form: it posts the same
+              payload whether it is submitted by the button, by Enter, or by a
+              browser restoring it.
+            */}
+            {[...selectedWorkspaces].map((id) => (
+              <input key={id} type="hidden" name="workspace_ids" value={id} />
+            ))}
+            {[...selectedProjects].map((id) => (
+              <input key={id} type="hidden" name="project_ids" value={id} />
+            ))}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
@@ -176,6 +224,11 @@ export function InviteDialog({
           </form>
         </DialogContent>
       </Dialog>
+
+      <InviteLinkNotice
+        invite={fallbackLink}
+        onClose={() => setFallbackLink(null)}
+      />
     </>
   )
 }

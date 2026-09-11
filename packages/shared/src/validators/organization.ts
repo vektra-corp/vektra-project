@@ -21,6 +21,13 @@ export const orgSettingsSchema = z.object({
   session_idle_timeout_minutes: z.number().int().min(5).max(1440).optional(),
   max_concurrent_sessions: z.number().int().min(1).max(50).nullable().optional(),
   public_holidays: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional(),
+  /**
+   * Delegate workspace creation to managers.
+   *
+   * Read by `can_create_workspace()` (migration 00045) as well as by the UI, so
+   * the database and the button agree on who may.
+   */
+  managers_can_create_workspaces: z.boolean().optional(),
 })
 
 export const organizationCreateSchema = z.object({

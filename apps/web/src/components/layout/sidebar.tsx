@@ -81,19 +81,6 @@ export async function Sidebar({
     current: index === 0,
   }))
 
-  // Commercial lives inside a workspace, so its links need one. A member with
-  // no workspace sees the rows inert rather than pointing at a 404.
-  const commercialHref = (segment: string) =>
-    primaryWorkspace && atLeast('manager')
-      ? `/${orgSlug}/${primaryWorkspace.slug}/commercial/${segment}`
-      : undefined
-
-  const commercial: NavItem[] = [
-    { key: 'quotations', label: t('quotations'), icon: 'quotation', href: commercialHref('quotations') },
-    { key: 'contacts', label: t('contacts'), icon: 'salesOrder', href: commercialHref('contacts') },
-    { key: 'templates', label: t('pdfTemplates'), icon: 'purchaseOrder', href: commercialHref('templates') },
-  ]
-
   // The design's project views, in its sidebar order: Documents and Settings
   // belong to the project rather than to its task views, so they sit here.
   const projectViews: NavItem[] = [
@@ -216,47 +203,18 @@ export async function Sidebar({
           />
         </SidebarSection>
 
-        <SidebarSection title={t('commercial')}>
-          {commercial.map((item) => (
-            <SidebarItem key={item.key} item={item} />
-          ))}
-        </SidebarSection>
-
-        <SidebarSection title={t('people')}>
-          <SidebarItem
-            item={{
-              key: 'team',
-              label: t('team'),
-              icon: 'team',
-              href: `/${orgSlug}/team`,
-              exact: true,
-            }}
-          />
-          {atLeast('manager') ? (
+        {atLeast('manager') ? (
+          <SidebarSection title={t('people')}>
             <SidebarItem
               item={{ key: 'members', label: t('members'), icon: 'members', href: `/${orgSlug}/members` }}
             />
-          ) : null}
-          <SidebarItem
-            item={{ key: 'leave', label: t('leave'), icon: 'leave', href: `/${orgSlug}/team/leave` }}
-          />
-          <SidebarItem
-            item={{
-              key: 'timesheets',
-              label: t('timesheets'),
-              icon: 'timesheet',
-              href: `/${orgSlug}/timesheets`,
-            }}
-          />
-        </SidebarSection>
+          </SidebarSection>
+        ) : null}
 
         {atLeast('manager') ? (
           <SidebarSection title={t('insights')}>
             <SidebarItem
               item={{ key: 'reports', label: t('reports'), icon: 'reports', href: `/${orgSlug}/reports` }}
-            />
-            <SidebarItem
-              item={{ key: 'revenue', label: t('revenue'), icon: 'revenue', href: `/${orgSlug}/revenue` }}
             />
           </SidebarSection>
         ) : null}

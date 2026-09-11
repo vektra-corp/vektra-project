@@ -118,8 +118,10 @@ export const COLUMNS = {
   profileSummary: 'id, full_name, avatar_url',
   taskCard:
     'id, title, status, priority, due_date, position, task_number, assignee_id, is_milestone, kanban_column_id, updated_at',
+  // `public_id` is what a URL addresses a task by (migration 00034), so any
+  // caller that needs to link to the task it just wrote needs it here.
   taskDetail:
-    'id, organization_id, project_id, kanban_column_id, title, description, status, priority, assignee_id, assigner_id, start_date, due_date, estimated_hours, actual_hours, position, task_number, is_milestone, started_at, completed_at, created_by, created_at, updated_at',
+    'id, public_id, organization_id, project_id, kanban_column_id, title, description, status, priority, assignee_id, assigner_id, start_date, due_date, estimated_hours, actual_hours, position, task_number, is_milestone, started_at, completed_at, created_by, created_at, updated_at',
   projectListItem:
     'id, name, description, status, priority, start_date, end_date, visibility, workspace_id, updated_at',
   workspaceListItem: 'id, name, slug, description, color, icon',

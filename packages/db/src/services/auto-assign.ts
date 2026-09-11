@@ -35,6 +35,58 @@ export interface Candidate {
   skills: string[]
   /** True when approved leave covers today. */
   onLeave: boolean
+  /**
+   * Whether they are actually on the project the task belongs to.
+   *
+   * A rule's pool is a list of people, written once; projects change under it.
+   * Assigning work to someone who cannot open the task is worse than leaving it
+   * unassigned, because it looks handled.
+   */
+  isProjectMember: boolean
+  /** Org rank, so members can be preferred over managers. */
+  orgRole: 'owner' | 'admin' | 'manager' | 'member'
+}
+
+/** The project's own auto-assignment policy (`projects.settings`). */
+export interface AssignmentPolicy {
+  autoAssign: boolean
+  autoAssignManagers: boolean
+}
+
+export const DEFAULT_ASSIGNMENT_POLICY: AssignmentPolicy = {
+  autoAssign: true,
+  autoAssignManagers: true,
+}
+
+/** Everyone above `member` runs projects rather than working tickets on them. */
+function isManagerRole(candidate: Candidate): boolean {
+  return candidate.orgRole !== 'member'
+}
+
+/**
+ * Narrow a pool to who may actually take this task, in preference order.
+ *
+ * Two rules, in this order:
+ *
+ *   1. Project membership is a hard filter. Not a preference — someone who is
+ *      not on the project cannot see the task, so assigning it to them silently
+ *      strands the work.
+ *   2. Members come first. Managers are a fallback, used only when no member is
+ *      available, and only when the project allows it at all. A project run by
+ *      managers still assigns; a project with members stops handing work to the
+ *      people meant to be directing it.
+ */
+export function eligiblePool(
+  pool: Candidate[],
+  policy: AssignmentPolicy = DEFAULT_ASSIGNMENT_POLICY,
+): Candidate[] {
+  const onProject = pool.filter((candidate) => candidate.isProjectMember)
+  if (onProject.length === 0) return []
+
+  const members = onProject.filter((candidate) => !isManagerRole(candidate))
+  if (members.length > 0) return members
+
+  return policy.autoAssignManagers ? onProject : []
 }
 
 function asStringArray(value: unknown): string[] {
@@ -83,11 +135,19 @@ export function chooseAssignee(
   task: CandidateTask,
   candidates: Candidate[],
   random: () => number = Math.random,
+  policy: AssignmentPolicy = DEFAULT_ASSIGNMENT_POLICY,
 ): AssignmentDecision | null {
-  // The pool is the rule's list, narrowed to people the caller could resolve.
-  const pool = rule.assigneePool
+  // A project can switch auto-assignment off entirely without anyone having to
+  // find and disable every rule that might reach it.
+  if (!policy.autoAssign) return null
+
+  // The pool is the rule's list, narrowed to people the caller could resolve,
+  // then to who may actually take work on this project.
+  const resolved = rule.assigneePool
     .map((userId) => candidates.find((candidate) => candidate.userId === userId))
     .filter((candidate): candidate is Candidate => candidate !== undefined)
+
+  const pool = eligiblePool(resolved, policy)
 
   if (pool.length === 0) return null
 
@@ -106,6 +166,9 @@ export function chooseAssignee(
       for (let step = 1; step <= rule.assigneePool.length; step += 1) {
         const index = (lastIndex + step) % rule.assigneePool.length
         const userId = rule.assigneePool[index]!
+        // `eligible` is already narrowed to project members and, where members
+        // exist, to members only — so the rotation skips anyone the project
+        // rules exclude rather than stalling on them.
         if (eligible.some((candidate) => candidate.userId === userId)) {
           return { userId, nextConfig: { ...rule.config, last_index: index } }
         }
@@ -154,7 +217,7 @@ export function chooseAssignee(
 
       const fallback = rule.config.fallback
       if (fallback === 'round_robin' || fallback === 'load_balanced' || fallback === 'random') {
-        return chooseAssignee({ ...rule, method: fallback }, task, candidates, random)
+        return chooseAssignee({ ...rule, method: fallback }, task, candidates, random, policy)
       }
       return null
     }
