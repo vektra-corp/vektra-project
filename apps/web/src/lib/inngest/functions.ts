@@ -163,7 +163,26 @@ export const deliverNotificationEmails = inngest.createFunction(
         const notification = pending.find((row) => row.id === id)!
         const org = orgById.get(notification.organization_id)
         const to = (context.emails as Record<string, string>)[notification.user_id]
-        if (!org || !to) continue
+
+        /*
+         * No address, or no organization: there is nothing to send and nothing
+         * that will change on the next run either — a user whose auth record
+         * cannot be read will not start resolving in five minutes.
+         *
+         * `continue` alone left the row unstamped, so every subsequent run
+         * re-selected it, re-queried the auth API for it, and skipped it again,
+         * forever. Observed doing exactly that: sixteen consecutive runs on one
+         * unresolvable user. Stamping it retires the row the same way an opted
+         * -out notification is retired — the in-app copy is unaffected and is
+         * still the durable record.
+         */
+        if (!org || !to) {
+          await db
+            .from('notifications')
+            .update({ emailed_at: new Date().toISOString() })
+            .eq('id', id)
+          continue
+        }
 
         const content = notificationEmail({
           title: notification.title,
@@ -319,10 +338,21 @@ export const flagOverdueTasks = inngest.createFunction(
     const created = await step.run('scan', async () => {
       const db = createAdminClient()
 
+      /*
+       * Every organization still entitled to reminders — which is not the same
+       * as `status = 'active'`.
+       *
+       * A TRIAL org is a customer using the product right now, and the old
+       * filter silently excluded them: every trial team got zero due-date
+       * reminders, with nothing to show for it because a notification that is
+       * never written leaves no trace. Only suspended and churned tenants
+       * should go quiet, so the filter names those rather than allow-listing
+       * one status and forgetting the rest exist.
+       */
       const { data: organizations } = await db
         .from('organizations')
         .select('id, slug, timezone')
-        .eq('status', 'active')
+        .not('status', 'in', '(suspended,churned)')
 
       if (!organizations?.length) return 0
 
