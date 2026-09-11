@@ -8,8 +8,14 @@ import { sendEmail } from '@/lib/email/client'
 import { digestEmail, notificationEmail } from '@/lib/email/templates'
 import { notify } from '@/lib/notifications/deliver'
 import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  closeSupersededTrials,
+  syncPendingPriceChanges,
+  sweepTrialsAndGrace,
+} from './billing'
 import { inngest } from './client'
 import { dispatchIntegrationEvents } from './integration-dispatch'
+import { issueInvoices } from './invoices'
 import {
   digestModeOf,
   inQuietHours,
@@ -838,4 +844,8 @@ export const functions = [
   runScheduledWorkflows,
   executeWorkflow,
   dispatchIntegrationEvents,
+  sweepTrialsAndGrace,
+  syncPendingPriceChanges,
+  closeSupersededTrials,
+  issueInvoices,
 ]

@@ -30,14 +30,16 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://js.stripe.com https://challenges.cloudflare.com`,
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://checkout.razorpay.com https://challenges.cloudflare.com`,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://*.supabase.co",
+      "img-src 'self' data: blob: https://*.supabase.co https://cdn.razorpay.com",
       "font-src 'self'",
       // ws: in development is the hot-reload socket; without it the dev server
       // reconnects in a loop and the browser console fills with failures.
-      `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io${isDev ? ' ws: http://localhost:* http://127.0.0.1:*' : ''}`,
-      "frame-src https://js.stripe.com https://challenges.cloudflare.com",
+      `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://lumberjack.razorpay.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io${isDev ? ' ws: http://localhost:* http://127.0.0.1:*' : ''}`,
+      // Checkout renders the payment sheet in an iframe and hands off to
+      // api.razorpay.com for bank and UPI redirects.
+      "frame-src https://api.razorpay.com https://checkout.razorpay.com https://challenges.cloudflare.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",

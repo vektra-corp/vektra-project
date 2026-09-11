@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { GSTIN_PATTERN, isBillingCountry, isGstStateCode } from '../constants/billing-geography'
 import { DATE_FORMATS, SUPPORTED_LOCALES, TIME_FORMATS } from '../constants/locales'
 import { ORG_ROLES, WORKSPACE_ROLES } from '../constants/statuses'
 import { isValidSlug } from '../utils/slug'
@@ -97,6 +98,89 @@ export const workspaceMemberSchema = z.object({
   user_id: uuidSchema,
   role: z.enum(WORKSPACE_ROLES).default('member'),
 })
+
+
+/**
+ * The billing profile: country, Indian state, and GSTIN.
+ *
+ * Validated here to the same rules the database enforces as CHECKs, so a bad
+ * value is a field error on a form rather than a 23514 the user cannot read.
+ * The three cross-field rules are the ones that actually change money:
+ *
+ *  - An Indian org must name its state, because without one the place of supply
+ *    falls back to the seller's and every invoice silently becomes intra-state.
+ *  - A GSTIN's first two digits ARE a state code, so a GSTIN disagreeing with
+ *    the selected state is the exact input that flips CGST+SGST into IGST.
+ *  - A GSTIN outside India is meaningless and is refused rather than ignored.
+ */
+export const billingProfileSchema = z
+  .object({
+    billing_country: z.string().refine(isBillingCountry, 'Select a billing country'),
+    billing_state: z
+      .string()
+      .trim()
+      .nullable()
+      .optional()
+      .transform((v) => v || null),
+    gstin: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .nullable()
+      .optional()
+      .transform((v) => v || null),
+  })
+  .superRefine((value, ctx) => {
+    const isIndia = value.billing_country === 'IN'
+
+    if (isIndia && !value.billing_state) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['billing_state'],
+        message: 'Select your state — it decides the GST split on your invoices',
+      })
+    }
+
+    if (value.billing_state && !isGstStateCode(value.billing_state)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['billing_state'],
+        message: 'Not a valid GST state code',
+      })
+    }
+
+    if (!isIndia && value.billing_state) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['billing_state'],
+        message: 'A GST state applies to Indian billing only',
+      })
+    }
+
+    if (value.gstin) {
+      if (!isIndia) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['gstin'],
+          message: 'A GSTIN applies to Indian billing only',
+        })
+      } else if (!GSTIN_PATTERN.test(value.gstin)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['gstin'],
+          message: 'That is not a valid GSTIN',
+        })
+      } else if (value.billing_state && value.gstin.slice(0, 2) !== value.billing_state) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['gstin'],
+          message: 'This GSTIN belongs to a different state than the one selected',
+        })
+      }
+    }
+  })
+
+export type BillingProfileInput = z.infer<typeof billingProfileSchema>
 
 export type OrganizationCreateInput = z.infer<typeof organizationCreateSchema>
 export type OrganizationUpdateInput = z.infer<typeof organizationUpdateSchema>
