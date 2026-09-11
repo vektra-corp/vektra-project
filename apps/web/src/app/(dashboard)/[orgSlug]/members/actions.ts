@@ -12,6 +12,7 @@ import {
 import { revalidatePath } from 'next/cache'
 import { grantProjectAccess } from '@/lib/access/project-access'
 import { toActionError } from '@/lib/action-error'
+import { appUrl, appUrlProblem } from '@/lib/app-url'
 import { requireAuth } from '@/lib/auth/context'
 import { sendEmail } from '@/lib/email/client'
 import { addedToOrgEmail, inviteEmail } from '@/lib/email/templates'
@@ -93,8 +94,20 @@ export async function inviteMember(
     }
   }
 
+  // Refuse before creating anything. An invitation whose link cannot be opened
+  // is worse than no invitation: it creates the membership, consumes the one
+  // token, and leaves the recipient stuck — with the sender believing it worked.
+  const urlProblem = appUrlProblem()
+  if (urlProblem) {
+    return {
+      ok: false,
+      code: 'INTERNAL_ERROR',
+      message: `This deployment is misconfigured: ${urlProblem} Ask an administrator to set it before inviting anyone.`,
+    }
+  }
+
   const admin = createAdminClient()
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const origin = appUrl()
 
   try {
     // Reuse an existing account when the person already has one, so inviting a
@@ -128,7 +141,7 @@ export async function inviteMember(
       // The link lands on /accept-invite, which is where they set a password —
       // without that step the account has none and they could never sign in
       // again after this one link expires.
-      const link = await mintAcceptLink(admin, parsed.data.email, orgSlug, appUrl, Boolean(userId))
+      const link = await mintAcceptLink(admin, parsed.data.email, orgSlug, origin, Boolean(userId))
 
       if (!link.ok) {
         return { ok: false, code: 'INTERNAL_ERROR', message: link.message }
@@ -224,7 +237,7 @@ export async function inviteMember(
       actorId: auth.userId,
       actorName: inviterName,
       orgName,
-      appUrl,
+      appUrl: origin,
       notify: false,
     })
 
@@ -247,7 +260,7 @@ export async function inviteMember(
           orgName,
           inviterName,
           role: parsed.data.role,
-          orgUrl: granted[0]?.url ?? `${appUrl}/${orgSlug}/dashboard`,
+          orgUrl: granted[0]?.url ?? `${origin}/${orgSlug}/dashboard`,
           projectNames,
         })
 
@@ -525,7 +538,7 @@ export async function updateMemberAccess(
       actorId: auth.userId,
       actorName: actor?.full_name ?? null,
       orgName: organization?.name ?? 'your team',
-      appUrl: process.env.NEXT_PUBLIC_APP_URL ?? '',
+      appUrl: appUrl(),
     })
 
     revalidatePath(membersPath(orgSlug))
@@ -552,9 +565,18 @@ export async function resendInvite(
     return { ok: false, code: 'FORBIDDEN', message: 'You cannot send invitations.' }
   }
 
+  const urlProblem = appUrlProblem()
+  if (urlProblem) {
+    return {
+      ok: false,
+      code: 'INTERNAL_ERROR',
+      message: `This deployment is misconfigured: ${urlProblem} Ask an administrator to set it before resending.`,
+    }
+  }
+
   const supabase = createClient()
   const admin = createAdminClient()
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const origin = appUrl()
 
   try {
     const { data: directory } = await supabase.rpc('org_member_directory')
@@ -571,7 +593,7 @@ export async function resendInvite(
 
     // The account already exists — they were invited and never finished — so
     // this asks for a magic link first and only falls back to `invite`.
-    const link = await mintAcceptLink(admin, entry.email, orgSlug, appUrl, true)
+    const link = await mintAcceptLink(admin, entry.email, orgSlug, origin, true)
 
     if (!link.ok || !link.acceptUrl) {
       return {

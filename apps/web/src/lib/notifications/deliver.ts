@@ -2,6 +2,7 @@ import 'server-only'
 
 import type { Database } from '@pm/db/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { appUrl } from '@/lib/app-url'
 import { sendEmail } from '@/lib/email/client'
 import { notificationEmail } from '@/lib/email/templates'
 import { digestModeOf, inQuietHours, preferenceFor } from '@/lib/inngest/notifications'
@@ -202,7 +203,7 @@ async function orgName(admin: Db, orgId: string): Promise<string> {
 }
 
 function preferencesUrl(input: NotifyInput): string | null {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL
-  if (!appUrl) return null
-  return `${appUrl}/${input.orgSlug}/settings/profile`
+  const origin = appUrl()
+  if (!origin) return null
+  return `${origin}/${input.orgSlug}/settings/profile`
 }

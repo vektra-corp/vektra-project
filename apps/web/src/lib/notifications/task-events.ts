@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { publicIdToString } from '@pm/shared/utils'
+import { appUrl } from '@/lib/app-url'
 import { notifyEach } from './deliver'
 
 /**
@@ -42,10 +43,12 @@ interface Context {
 
 /** The task's own page, so a notification lands on the thing it is about. */
 function taskUrl(context: Context, task: TaskRow, projectPublicId?: string | null): string | null {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  const origin = appUrl()
   const taskPublicId = publicIdToString(task.public_id ?? null)
-  if (!appUrl || !taskPublicId || !projectPublicId) return null
-  return `${appUrl}/${context.orgSlug}/${context.workspaceSlug}/projects/${projectPublicId}/tasks/${taskPublicId}`
+  // No origin means no followable link; a notification with no button is still
+  // useful, one with a broken button is not.
+  if (!origin || !taskPublicId || !projectPublicId) return null
+  return `${origin}/${context.orgSlug}/${context.workspaceSlug}/projects/${projectPublicId}/tasks/${taskPublicId}`
 }
 
 const PRIORITY_LABELS: Record<string, string> = {

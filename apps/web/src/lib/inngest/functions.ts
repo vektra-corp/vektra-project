@@ -3,6 +3,7 @@ import 'server-only'
 import { chooseAssignee, ruleFor, type AssignmentRule, type Candidate } from '@pm/db'
 import { isDue, parseSchedule, resolveProjectSettings, slotKey } from '@pm/shared/constants'
 import { addDaysToDateString, todayIn } from '@pm/shared/utils'
+import { appUrl } from '@/lib/app-url'
 import { sendEmail } from '@/lib/email/client'
 import { digestEmail, notificationEmail } from '@/lib/email/templates'
 import { notify } from '@/lib/notifications/deliver'
@@ -26,7 +27,7 @@ import { triggerMatches } from './workflow-runner'
  * untrusted caller; they read the rows they are about to act on.
  */
 
-const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? ''
+
 
 /** How far back the mailer will look. Older unsent notifications are abandoned
  *  rather than delivered late, which is what a reader would expect. */
@@ -187,9 +188,9 @@ export const deliverNotificationEmails = inngest.createFunction(
         const content = notificationEmail({
           title: notification.title,
           body: notification.body,
-          actionUrl: notificationUrl(APP_URL(), org.slug, notification.data),
+          actionUrl: notificationUrl(appUrl(), org.slug, notification.data),
           orgName: org.name,
-          preferencesUrl: APP_URL() ? `${APP_URL()}/${org.slug}/settings/profile` : null,
+          preferencesUrl: appUrl() ? `${appUrl()}/${org.slug}/settings/profile` : null,
         })
 
         const result = await sendEmail({ to, ...content })
@@ -295,9 +296,9 @@ export const sendDailyDigests = inngest.createFunction(
           items: batch.items.map((item) => ({
             title: item.title,
             body: item.body,
-            url: notificationUrl(APP_URL(), org.slug, item.data),
+            url: notificationUrl(appUrl(), org.slug, item.data),
           })),
-          inboxUrl: APP_URL() ? `${APP_URL()}/${org.slug}/notifications` : null,
+          inboxUrl: appUrl() ? `${appUrl()}/${org.slug}/notifications` : null,
         })
 
         const result = await sendEmail({ to, ...content })
@@ -388,8 +389,8 @@ export const flagOverdueTasks = inngest.createFunction(
             : null
 
           const url =
-            APP_URL() && workspace?.slug && project?.public_id
-              ? `${APP_URL()}/${org.slug}/${workspace.slug}/projects/${project.public_id}/tasks/${task.public_id}`
+            appUrl() && workspace?.slug && project?.public_id
+              ? `${appUrl()}/${org.slug}/${workspace.slug}/projects/${project.public_id}/tasks/${task.public_id}`
               : null
 
           const copy = {
@@ -436,30 +437,6 @@ export const flagOverdueTasks = inngest.createFunction(
     })
 
     return { created }
-  },
-)
-
-/**
- * Refresh the revenue rollup.
- *
- * `revenue_summary` is a materialized view, so it is stale until refreshed.
- * Hourly rather than on every commercial write: the dashboard tolerates an hour
- * of lag, and rebuilding on each invoice edit would make a bulk import
- * quadratic. REFRESH CONCURRENTLY means readers are never blocked.
- */
-export const refreshRevenueSummary = inngest.createFunction(
-  { id: 'revenue-summary-refresh', retries: 2 },
-  { cron: '25 * * * *' },
-  async ({ step }) => {
-    await step.run('refresh', async () => {
-      const db = createAdminClient()
-      // SECURITY DEFINER and granted to service_role only — an end-user session
-      // cannot trigger a full rebuild.
-      const { error } = await db.rpc('refresh_revenue_summary')
-      if (error) throw error
-    })
-
-    return { refreshed: true }
   },
 )
 
@@ -856,7 +833,6 @@ export const functions = [
   deliverNotificationEmails,
   sendDailyDigests,
   flagOverdueTasks,
-  refreshRevenueSummary,
   applyAutoAssignment,
   dispatchWorkflows,
   runScheduledWorkflows,
