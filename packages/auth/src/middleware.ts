@@ -81,7 +81,7 @@ export function isAllowedOrigin(
    *
    * An `Origin` header is scheme://host[:port] and never carries a path, but
    * the values configured here are app URLs that may — the admin console lives
-   * at `https://admin.vektracorp.in/project`, because that subdomain is shared
+   * at `https://admin.vektracorp.in/projects`, because that subdomain is shared
    * between products. A plain string comparison against that never matches, so
    * every state-changing request from the admin app would be rejected as a
    * CSRF violation with nothing in the logs to explain why.

@@ -10,7 +10,7 @@
 ## The console is served at `/project`
 
 `next.config.mjs` sets `basePath: '/project'`, so the app answers on
-`admin.vektracorp.in/project/...` and its bare root redirects there.
+`admin.vektracorp.in/projects/...` and its bare root redirects there.
 
 `admin.vektracorp.in` is meant to hold the admin console for every Vektra
 product. A Vercel domain belongs to exactly one project, so for now this app

@@ -211,11 +211,11 @@ describe('safeNextPath', () => {
 })
 
 describe('isAllowedOrigin — configured URLs that carry a path', () => {
-  // The admin console is served at admin.vektracorp.in/project, because that
+  // The admin console is served at admin.vektracorp.in/projects, because that
   // subdomain is shared across products. An Origin header never has a path, so
   // a string comparison against the configured URL would never match and every
   // admin mutation would be refused as CSRF.
-  const configured = ['https://projects.vektracorp.in', 'https://admin.vektracorp.in/project']
+  const configured = ['https://projects.vektracorp.in', 'https://admin.vektracorp.in/projects']
 
   it('matches an origin against a configured URL that has a path', () => {
     expect(isAllowedOrigin('https://admin.vektracorp.in', configured)).toBe(true)

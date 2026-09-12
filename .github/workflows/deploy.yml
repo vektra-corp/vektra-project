@@ -195,7 +195,7 @@ jobs:
           set -euo pipefail
           for url in \
             "https://projects.vektracorp.in/login" \
-            "https://admin.vektracorp.in/project/login"; do
+            "https://admin.vektracorp.in/projects/login"; do
             code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 --retry 5 --retry-delay 5 "$url")
             echo "$url -> $code"
             if [ "$code" != "200" ]; then

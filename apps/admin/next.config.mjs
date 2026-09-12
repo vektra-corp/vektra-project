@@ -51,7 +51,7 @@ const securityHeaders = [
  * `basePath` is applied automatically to `<Link>`, `redirect()` and asset URLs.
  * It is NOT applied to a URL built by hand — see the note in `middleware.ts`.
  */
-const BASE_PATH = process.env.NEXT_PUBLIC_ADMIN_BASE_PATH ?? '/project'
+const BASE_PATH = process.env.NEXT_PUBLIC_ADMIN_BASE_PATH ?? '/projects'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

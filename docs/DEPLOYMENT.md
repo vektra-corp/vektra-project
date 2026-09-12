@@ -5,7 +5,7 @@ One repository, two Vercel projects, two subdomains of `vektracorp.in`.
 | App | Vercel root directory | URL |
 |---|---|---|
 | `apps/web` | `apps/web` | `https://projects.vektracorp.in` |
-| `apps/admin` | `apps/admin` | `https://admin.vektracorp.in/project` |
+| `apps/admin` | `apps/admin` | `https://admin.vektracorp.in/projects` |
 
 The admin console is mounted at a **path** because `admin.vektracorp.in` is
 intended to host the console for every Vektra product. See
@@ -73,7 +73,7 @@ Set the environment variables from `.env.example` on both, for Production and
 Preview. Note especially:
 
 - `NEXT_PUBLIC_APP_URL=https://projects.vektracorp.in`
-- `NEXT_PUBLIC_ADMIN_URL=https://admin.vektracorp.in/project`
+- `NEXT_PUBLIC_ADMIN_URL=https://admin.vektracorp.in/projects`
 - `INNGEST_SIGNING_KEY` — **currently empty.** It is the only thing
   authenticating `/api/inngest`, which is excluded from auth middleware because
   Inngest calls it machine-to-machine. Do not deploy the background jobs without
