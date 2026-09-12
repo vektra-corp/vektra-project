@@ -4,6 +4,7 @@ import {
   featureEnabled,
   limitFor,
   providerForCountry,
+  needsUpgrade,
   resolveEntitlements,
   STARTER_ENTITLEMENTS,
 } from '../billing'
@@ -140,5 +141,36 @@ describe('limitFor', () => {
   it('honours a custom plan that raises a tier ceiling', () => {
     const e = resolveEntitlements({ plan_tier: 'starter', plan_limits: { projects: 500 } })
     expect(limitFor(e, 'projects')).toBe(500)
+  })
+})
+
+describe('needsUpgrade', () => {
+  const at = (source: string) =>
+    ({ ...STARTER_ENTITLEMENTS, source }) as Parameters<typeof needsUpgrade>[0]
+
+  it('offers an upgrade on a trial', () => {
+    expect(needsUpgrade(at('trial'))).toBe(true)
+  })
+
+  it('offers an upgrade on the free fallback', () => {
+    // Covers both "never subscribed" and "lapsed off a paid plan": the sidebar
+    // should offer a plan in either case.
+    expect(needsUpgrade(at('starter_default'))).toBe(true)
+  })
+
+  it('does not pester an organization that is already paying', () => {
+    expect(needsUpgrade(at('paid'))).toBe(false)
+  })
+
+  it('does not offer an upgrade on an operator grant', () => {
+    // A comped or early-access org has been given its plan deliberately;
+    // prompting them to buy it would be wrong.
+    expect(needsUpgrade(at('comp'))).toBe(false)
+    expect(needsUpgrade(at('early_access'))).toBe(false)
+  })
+
+  it('is false when entitlements are absent rather than assuming the worst', () => {
+    expect(needsUpgrade(null)).toBe(false)
+    expect(needsUpgrade(undefined)).toBe(false)
   })
 })

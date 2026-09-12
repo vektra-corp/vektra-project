@@ -366,3 +366,88 @@ export async function updateBillingProfile(
     return toActionError(error)
   }
 }
+
+
+export interface UpgradeOption {
+  planId: string
+  tier: string
+  displayName: string
+  /** Tax-exclusive, per seat, per month, in minor units. */
+  unitAmountMinor: number
+  currency: string
+}
+
+export interface UpgradeOptions {
+  plans: UpgradeOption[]
+  seats: number
+  currency: string
+  /** False when billing_country is unset — checkout cannot run until it is. */
+  billingReady: boolean
+  /** False for members: only owners and admins may pay. */
+  canManage: boolean
+  currentTier: string
+}
+
+/**
+ * The plans an organization could move to, for the upgrade dialog.
+ *
+ * Fetched on demand rather than passed down through the layout: the sidebar is
+ * rendered on every authenticated page, and adding two billing queries to all of
+ * them to populate a dialog most people never open is a poor trade.
+ *
+ * Reads go through the user's client so RLS decides what is buyable — the public
+ * catalogue plus any plan custom-built for this tenant.
+ */
+export async function listUpgradeOptions(orgSlug: string): Promise<ActionResult<UpgradeOptions>> {
+  try {
+    const auth = await requireAuth(orgSlug)
+    const supabase = createClient()
+
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('billing_country')
+      .eq('id', auth.orgId)
+      .single()
+
+    const currency = currencyForCountry(org?.billing_country)
+
+    const [{ data: priceRows }, { data: seatsValue }] = await Promise.all([
+      supabase
+        .from('plan_prices')
+        .select(
+          'unit_amount_minor, currency, plan:plans(id, tier, display_name, sort_order, organization_id)',
+        )
+        .eq('currency', currency)
+        .eq('billing_interval', 'monthly')
+        .eq('is_active', true),
+      supabase.rpc('billable_seats', { p_org: auth.orgId }),
+    ])
+
+    const plans: UpgradeOption[] = (priceRows ?? [])
+      .flatMap((row) => (row.plan ? [{ row, plan: row.plan }] : []))
+      // The free tier is what an upgrade moves away from, so it is not an option.
+      .filter(({ plan }) => plan.tier !== 'starter')
+      .sort((a, b) => (a.plan.sort_order ?? 0) - (b.plan.sort_order ?? 0))
+      .map(({ row, plan }) => ({
+        planId: plan.id,
+        tier: plan.tier,
+        displayName: plan.display_name,
+        unitAmountMinor: row.unit_amount_minor,
+        currency: row.currency,
+      }))
+
+    return {
+      ok: true,
+      data: {
+        plans,
+        seats: typeof seatsValue === 'number' && seatsValue >= 1 ? seatsValue : 1,
+        currency,
+        billingReady: Boolean(org?.billing_country),
+        canManage: auth.orgRole === 'owner' || auth.orgRole === 'admin',
+        currentTier: auth.entitlements.planTier,
+      },
+    }
+  } catch (error) {
+    return toActionError(error)
+  }
+}

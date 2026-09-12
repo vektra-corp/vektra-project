@@ -1,5 +1,7 @@
+import { needsUpgrade } from '@pm/shared/billing'
 import { publicIdToString } from '@pm/shared/utils'
 import { notFound } from 'next/navigation'
+import { getLocale } from 'next-intl/server'
 import type { ReactNode } from 'react'
 import { CommandPalette } from '@/components/layout/command-palette'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -87,10 +89,23 @@ export default async function OrgLayout({
     })
     .filter((project): project is NonNullable<typeof project> => project !== null)
 
+  const locale = await getLocale()
+
+  // On a trial the org IS on the trialled plan, so the plan name is still the
+  // honest answer — the suffix is what makes the deadline visible from wherever
+  // someone happens to be looking.
+  const planLabel =
+    auth.entitlements.source === 'trial'
+      ? `${auth.entitlements.planDisplayName} trial`
+      : auth.entitlements.planDisplayName
+
   return (
     <div className="bg-background flex h-screen overflow-hidden">
       <Sidebar
         orgSlug={params.orgSlug}
+        planLabel={planLabel}
+        showUpgrade={needsUpgrade(auth.entitlements)}
+        locale={locale}
         orgName={organization.name}
         orgRole={auth.orgRole}
         workspaces={workspaces ?? []}

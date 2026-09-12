@@ -55,6 +55,9 @@ export async function Sidebar({
   profile,
   inboxCount,
   myTaskCount,
+  planLabel,
+  showUpgrade,
+  locale,
 }: {
   orgSlug: string
   orgName: string
@@ -64,6 +67,11 @@ export async function Sidebar({
   profile: { id: string; full_name: string; avatar_url: string | null }
   inboxCount: number
   myTaskCount: number
+  /** Short plan name for the identity row, e.g. "Growth" or "Trial". */
+  planLabel: string
+  /** True on a trial or the free fallback. */
+  showUpgrade: boolean
+  locale: string
 }) {
   const t = await getTranslations('nav')
   const rank: Record<OrgRole, number> = { owner: 4, admin: 3, manager: 2, member: 1 }
@@ -231,7 +239,14 @@ export async function Sidebar({
             }}
           />
         </ul>
-        <SidebarUser orgSlug={orgSlug} orgRole={orgRole} profile={profile} />
+        <SidebarUser
+          orgSlug={orgSlug}
+          orgRole={orgRole}
+          profile={profile}
+          planLabel={planLabel}
+          showUpgrade={showUpgrade}
+          locale={locale}
+        />
       </div>
     </aside>
   )

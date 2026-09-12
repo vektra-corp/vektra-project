@@ -4,6 +4,7 @@ import { formatCurrency } from '@pm/shared/utils'
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, toast } from '@pm/ui'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
+import { openRazorpayCheckout } from '@/lib/payments/checkout-client'
 import { startCheckout } from './actions'
 
 /**
@@ -17,44 +18,11 @@ import { startCheckout } from './actions'
  * tells us the customer got through the sheet, so we can show a pending state
  * and refresh; entitlement is granted by the webhook, from Razorpay's own
  * servers, because anything the browser reports is attacker-controlled.
+ *
+ * The handoff itself lives in `lib/payments/checkout-client` and is shared with
+ * the sidebar upgrade dialog — two copies would drift, and the half that drifts
+ * is the half that decides whether a customer thinks they paid.
  */
-
-const CHECKOUT_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js'
-
-interface RazorpayInstance {
-  open: () => void
-  on: (event: string, handler: (payload: unknown) => void) => void
-}
-
-declare global {
-  interface Window {
-    Razorpay?: new (options: Record<string, unknown>) => RazorpayInstance
-  }
-}
-
-/** Load Checkout once, and resolve immediately if it is already present. */
-function loadCheckoutScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === 'undefined') return reject(new Error('No window'))
-    if (window.Razorpay) return resolve()
-
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${CHECKOUT_SCRIPT}"]`)
-    if (existing) {
-      existing.addEventListener('load', () => resolve())
-      existing.addEventListener('error', () => reject(new Error('Checkout failed to load')))
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = CHECKOUT_SCRIPT
-    script.async = true
-    script.onload = () => resolve()
-    // Almost always a blocked request rather than a network failure — a CSP
-    // without checkout.razorpay.com in script-src fails exactly here, silently.
-    script.onerror = () => reject(new Error('Checkout failed to load'))
-    document.body.appendChild(script)
-  })
-}
 
 export interface PlanOption {
   planId: string
@@ -94,16 +62,9 @@ export function PlanOptions({
         return
       }
 
-      await loadCheckoutScript()
-      if (!window.Razorpay) throw new Error('Checkout failed to load')
-
-      const checkout = new window.Razorpay({
-        key: result.data.keyId,
-        subscription_id: result.data.providerSubscriptionId,
-        name: 'Vektra Projects',
+      await openRazorpayCheckout(result.data, {
         description: `${plan.displayName} — ${result.data.seats} ${result.data.seats === 1 ? 'seat' : 'seats'}`,
-        theme: { color: '#111827' },
-        handler: () => {
+        onPaid: () => {
           // The mandate is registered. The subscription is still 'pending' here
           // and becomes active when the webhook arrives, which is usually
           // seconds but is not guaranteed to be before this refresh lands.
@@ -113,25 +74,20 @@ export function PlanOptions({
           })
           startTransition(() => router.refresh())
         },
-        modal: {
-          ondismiss: () => {
-            // Abandoned. The pending subscription row stays until it expires,
-            // which is what stops a second checkout racing the first.
-            toast({ title: 'Checkout cancelled' })
-            startTransition(() => router.refresh())
-          },
+        onDismiss: () => {
+          // Abandoned. The pending subscription row stays until it expires,
+          // which is what stops a second checkout racing the first.
+          toast({ title: 'Checkout cancelled' })
+          startTransition(() => router.refresh())
+        },
+        onFailed: () => {
+          toast({
+            title: 'Payment failed',
+            description: 'Your bank declined the mandate. Nothing has been charged.',
+            variant: 'destructive',
+          })
         },
       })
-
-      checkout.on('payment.failed', () => {
-        toast({
-          title: 'Payment failed',
-          description: 'Your bank declined the mandate. Nothing has been charged.',
-          variant: 'destructive',
-        })
-      })
-
-      checkout.open()
     } catch (error) {
       toast({
         title: 'Could not start checkout',

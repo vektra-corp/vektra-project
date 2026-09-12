@@ -125,3 +125,15 @@ export function limitFor(
 export function isDowngraded(entitlements: Entitlements | null | undefined): boolean {
   return entitlements?.source === 'starter_default' && entitlements.subscriptionStatus !== 'none'
 }
+
+/**
+ * True when there is something worth upgrading from.
+ *
+ * A trial is time-limited and a `starter_default` is the free fallback — whether
+ * the org never subscribed or lapsed off a paid plan. Both are states where
+ * offering a paid plan is useful rather than noise; an org already paying is not.
+ */
+export function needsUpgrade(entitlements: Entitlements | null | undefined): boolean {
+  if (!entitlements) return false
+  return entitlements.source === 'trial' || entitlements.source === 'starter_default'
+}
