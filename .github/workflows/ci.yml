@@ -150,7 +150,7 @@ jobs:
       # The trace is the whole point of a failed run: it replays the browser.
       - name: Upload the report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |
