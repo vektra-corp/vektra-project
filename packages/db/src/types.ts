@@ -2351,6 +2351,9 @@ export interface Database {
           billing_state: string | null
           gstin: string | null
           payment_provider: string | null
+          status_reason: string | null
+          status_changed_at: string | null
+          status_changed_by_admin_id: string | null
         }
         Insert: {
           id?: string
@@ -2374,6 +2377,9 @@ export interface Database {
           billing_state?: string | null
           gstin?: string | null
           payment_provider?: string | null
+          status_reason?: string | null
+          status_changed_at?: string | null
+          status_changed_by_admin_id?: string | null
         }
         Update: {
           id?: string
@@ -2397,6 +2403,9 @@ export interface Database {
           billing_state?: string | null
           gstin?: string | null
           payment_provider?: string | null
+          status_reason?: string | null
+          status_changed_at?: string | null
+          status_changed_by_admin_id?: string | null
         }
         Relationships: [
           {
@@ -2404,6 +2413,13 @@ export interface Database {
             columns: ['plan_id']
             isOneToOne: false
             referencedRelation: 'plans'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'organizations_status_changed_by_admin_id_fkey'
+            columns: ['status_changed_by_admin_id']
+            isOneToOne: false
+            referencedRelation: 'admin_users'
             referencedColumns: ['id']
           },
         ]
@@ -2803,6 +2819,56 @@ export interface Database {
             columns: ['organization_id']
             isOneToOne: false
             referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      platform_expenses: {
+        Row: {
+          id: string
+          category: string
+          description: string
+          amount_minor: number
+          currency: string
+          incurred_on: string
+          notes: string | null
+          recorded_by_admin_id: string | null
+          recorded_by_email: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          category: string
+          description: string
+          amount_minor: number
+          currency: string
+          incurred_on: string
+          notes?: string | null
+          recorded_by_admin_id?: string | null
+          recorded_by_email: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          category?: string
+          description?: string
+          amount_minor?: number
+          currency?: string
+          incurred_on?: string
+          notes?: string | null
+          recorded_by_admin_id?: string | null
+          recorded_by_email?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'platform_expenses_recorded_by_admin_id_fkey'
+            columns: ['recorded_by_admin_id']
+            isOneToOne: false
+            referencedRelation: 'admin_users'
             referencedColumns: ['id']
           },
         ]
@@ -3405,6 +3471,7 @@ export interface Database {
           checkout_expires_at: string | null
           created_at: string
           updated_at: string
+          past_due_since: string | null
         }
         Insert: {
           id?: string
@@ -3444,6 +3511,7 @@ export interface Database {
           checkout_expires_at?: string | null
           created_at?: string
           updated_at?: string
+          past_due_since?: string | null
         }
         Update: {
           id?: string
@@ -3483,6 +3551,7 @@ export interface Database {
           checkout_expires_at?: string | null
           created_at?: string
           updated_at?: string
+          past_due_since?: string | null
         }
         Relationships: [
           {
@@ -4619,6 +4688,12 @@ export interface Database {
         }
         Returns: Database['public']['Tables']['system_notices']['Row'][]
       }
+      apply_pending_change: {
+        Args: {
+          p_subscription_id: string
+        }
+        Returns: boolean
+      }
       apply_plan_limits: {
         Args: {
           p_org: string
@@ -4702,6 +4777,10 @@ export interface Database {
         }
         Returns: string
       }
+      expire_trials_and_lapse_overdue: {
+        Args: Record<PropertyKey, never>
+        Returns: unknown
+      }
       feature_enabled: {
         Args: {
           flag_key: string
@@ -4717,6 +4796,10 @@ export interface Database {
         }
         Returns: undefined
       }
+      grace_period_days: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       grant_columns_except: {
         Args: {
           p_table: string
@@ -4725,6 +4808,12 @@ export interface Database {
           p_role: string
         }
         Returns: undefined
+      }
+      grant_trial: {
+        Args: {
+          p_org: string
+        }
+        Returns: string
       }
       has_org_role: {
         Args: {
@@ -4830,11 +4919,21 @@ export interface Database {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      org_is_blocked: {
+        Args: {
+          p_status: string
+        }
+        Returns: boolean
+      }
       org_member_directory: {
         Args: Record<PropertyKey, never>
         // Hand-written: the generator emits `unknown` for a function that
         // RETURNS TABLE(...), because it reads proc signatures rather than
         // expanding the row type. Keep in step with migrations 00042/00046.
+        //
+        // NOTE: `pnpm db:types` / `db:types:offline` OVERWRITE this block. After
+        // regenerating, re-apply it — `grep -n 'Returns: unknown' types.ts` finds
+        // the RETURNS TABLE functions that lost their shape.
         Returns: {
           user_id: string
           email: string
@@ -4912,6 +5011,13 @@ export interface Database {
         }
         Returns: string
       }
+      schedule_price_change: {
+        Args: {
+          p_price_id: string
+          p_reason?: string
+        }
+        Returns: number
+      }
       set_billing_profile: {
         Args: {
           p_country: string
@@ -4938,6 +5044,10 @@ export interface Database {
           org: string
         }
         Returns: boolean
+      }
+      trial_period_days: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       usage_actual: {
         Args: {

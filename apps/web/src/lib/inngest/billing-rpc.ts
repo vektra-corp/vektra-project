@@ -32,7 +32,12 @@ type RpcCaller = (
 ) => Promise<{ data: unknown; error: { message: string } | null }>
 
 function rpcOf(db: ReturnType<typeof createAdminClient>): RpcCaller {
-  return db.rpc as unknown as RpcCaller
+  // .bind(db) is load-bearing. `db.rpc` detached from its client loses `this`,
+  // and the method reaches for `this.rest` internally — so every call through
+  // here failed with "Cannot read properties of undefined (reading 'rest')"
+  // before the error was ever sent. The failure was invisible because callers
+  // report `error.message` from the RESPONSE, and there was no response.
+  return db.rpc.bind(db) as unknown as RpcCaller
 }
 
 /** `expire_trials_and_lapse_overdue()` — 00047. */

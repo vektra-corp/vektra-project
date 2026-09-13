@@ -8,7 +8,15 @@ import { createClient } from '@/lib/supabase/server'
 export type AdminRole = 'superadmin' | 'billing' | 'support' | 'readonly'
 
 export interface AdminContext {
+  /** auth.users id — who signed in. */
   userId: string
+  /**
+   * admin_users row id. NOT the same value as `userId`, and the one every
+   * `*_admin_id` foreign key points at. Conflating the two writes a key that
+   * cannot resolve: platform_audit_logs.admin_user_id silently rejected every
+   * row until this was separated out.
+   */
+  adminUserId: string
   email: string
   fullName: string
   role: AdminRole
@@ -55,6 +63,7 @@ export const getAdminContext = cache(async (): Promise<AdminContext | null> => {
 
   return {
     userId: user.id,
+    adminUserId: adminUser.id,
     email: adminUser.email,
     fullName: adminUser.full_name,
     role: adminUser.role as AdminRole,

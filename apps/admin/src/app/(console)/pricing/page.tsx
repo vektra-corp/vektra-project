@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { AdminBody, AdminHeader } from '@/components/admin-shell'
 import { canWrite, requireAdmin } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { NewPlanForm, NewPriceForm } from './catalogue-forms'
 import { PriceEditor } from './price-editor'
 
 export const metadata: Metadata = { title: 'Pricing' }
@@ -25,11 +26,20 @@ export default async function PricingPage() {
   const readOnly = !canWrite(admin.role)
   const supabase = createAdminClient()
 
-  const [{ data: prices }, { data: liveCounts }] = await Promise.all([
+  const [{ data: plansRows }, { data: prices }, { data: liveCounts }] = await Promise.all([
+    // Plans are fetched in their own right, not inferred from the prices that
+    // reference them. Deriving the list from plan_prices meant a plan with no
+    // price yet did not render at all — so a newly created plan was invisible,
+    // and the only place to add its first price was on the row that was missing.
+    supabase
+      .from('plans')
+      .select('id, tier, display_name, sort_order, organization_id, is_active')
+      .is('organization_id', null)
+      .order('sort_order'),
     supabase
       .from('plan_prices')
       .select(
-        'id, currency, billing_interval, unit_amount_minor, is_active, plan:plans(id, tier, display_name, sort_order, organization_id)',
+        'id, plan_id, currency, billing_interval, unit_amount_minor, is_active, plan:plans(id, tier, display_name, sort_order, organization_id)',
       )
       .order('currency'),
     // Subscriber counts per price, so an operator can see the blast radius of a
@@ -52,16 +62,19 @@ export default async function PricingPage() {
   const catalogue = (prices ?? []).filter((row) => row.plan && !row.plan.organization_id)
 
   const byPlan = new Map<string, { name: string; tier: string; sort: number; rows: typeof catalogue }>()
+  // Seed from the plan list so a priceless plan still gets a section.
+  for (const plan of plansRows ?? []) {
+    byPlan.set(plan.id, {
+      name: plan.display_name,
+      tier: plan.tier ?? '—',
+      sort: plan.sort_order ?? 0,
+      rows: [] as typeof catalogue,
+    })
+  }
   for (const row of catalogue) {
     if (!row.plan) continue
-    const entry = byPlan.get(row.plan.id) ?? {
-      name: row.plan.display_name,
-      tier: row.plan.tier,
-      sort: row.plan.sort_order ?? 0,
-      rows: [] as typeof catalogue,
-    }
-    entry.rows.push(row)
-    byPlan.set(row.plan.id, entry)
+    const entry = byPlan.get(row.plan.id)
+    if (entry) entry.rows.push(row)
   }
 
   const plans = [...byPlan.entries()].sort((a, b) => a[1].sort - b[1].sort)
@@ -75,9 +88,11 @@ export default async function PricingPage() {
 
       <AdminBody>
         <div className="max-w-3xl space-y-4">
+          {readOnly ? null : <NewPlanForm />}
+
           {plans.length === 0 ? (
             <p className="text-muted-foreground rounded-lg border border-border bg-surface px-4 py-10 text-center text-sm shadow-card">
-              No catalogue plans found. Run the seed.
+              No catalogue plans with a price yet. Create a plan, then add a price to it.
             </p>
           ) : (
             plans.map(([planId, plan]) => (
@@ -91,24 +106,41 @@ export default async function PricingPage() {
                 </header>
 
                 <div className="divide-y divide-border-subtle">
-                  {plan.rows
-                    .filter((row) => row.billing_interval === 'monthly')
-                    .map((row) => (
-                      <PriceEditor
-                        key={row.id}
-                        priceId={row.id}
-                        currency={row.currency}
-                        unitAmountMinor={row.unit_amount_minor}
-                        grossMinor={
-                          row.currency === 'INR'
-                            ? grossFromNet(row.unit_amount_minor, GST_RATE_BP)
-                            : row.unit_amount_minor
-                        }
-                        isActive={row.is_active}
-                        activeSubscriptions={subscribersByPrice.get(row.id) ?? 0}
-                        readOnly={readOnly}
-                      />
-                    ))}
+                  {/*
+                    Both intervals. Annual prices were previously filtered out
+                    here, so a plan could have one in the database that no
+                    operator could see or edit.
+                  */}
+                  {(['monthly', 'annual'] as const).map((interval) => {
+                    const rows = plan.rows.filter((row) => row.billing_interval === interval)
+                    if (rows.length === 0) return null
+                    return (
+                      <div key={interval} className="py-1">
+                        <p className="label-meta text-faint pt-2">{interval}</p>
+                        {rows.map((row) => (
+                          <PriceEditor
+                            key={row.id}
+                            priceId={row.id}
+                            currency={row.currency}
+                            unitAmountMinor={row.unit_amount_minor}
+                            grossMinor={
+                              row.currency === 'INR'
+                                ? grossFromNet(row.unit_amount_minor, GST_RATE_BP)
+                                : row.unit_amount_minor
+                            }
+                            isActive={row.is_active}
+                            activeSubscriptions={subscribersByPrice.get(row.id) ?? 0}
+                            readOnly={readOnly}
+                          />
+                        ))}
+                      </div>
+                    )
+                  })}
+                  {readOnly ? null : (
+                    <div>
+                      <NewPriceForm planId={planId} planName={plan.name} />
+                    </div>
+                  )}
                 </div>
               </section>
             ))

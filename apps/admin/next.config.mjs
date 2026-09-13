@@ -5,12 +5,21 @@
  * third-party embeds, and the whole app is noindex. It is an internal tool that
  * can read every tenant, so its blast radius deserves the stricter policy.
  */
+/*
+ * `next dev` compiles with React Refresh, whose runtime evaluates a string —
+ * so under the production policy every page in development threw
+ * "EvalError: ... 'unsafe-eval' is not an allowed source of script" and Fast
+ * Refresh silently did not work. The relaxation is scoped to the dev server and
+ * can never reach a deployed build.
+ */
+const isDev = process.env.NODE_ENV === 'development'
+
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co",
       "font-src 'self'",

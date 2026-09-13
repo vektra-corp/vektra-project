@@ -23,7 +23,13 @@ export function AdminNav({ items }: { items: AdminNavItem[] }) {
             {items
               .filter((item) => item.group === group)
               .map((item) => {
-                const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
+                // '/' is a prefix of every path, so the root entry matches only
+                // exactly. Without this the Overview link reads as active on
+                // every page in the console.
+                const active =
+                  item.href === '/'
+                    ? pathname === '/'
+                    : pathname === item.href || pathname.startsWith(`${item.href}/`)
                 return (
                   <li key={item.href}>
                     <Link

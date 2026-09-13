@@ -41,6 +41,9 @@ const NON_TENANT_SEGMENTS = [
   // organization is a query parameter, because the person is being sent there
   // rather than already being in it.
   'accept-invite',
+  // The suspended/banned screen. Top-level so it renders without the tenant
+  // shell, and listed here so it is never mistaken for an organization slug.
+  'blocked',
 ]
 
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/

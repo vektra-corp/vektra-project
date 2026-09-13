@@ -82,13 +82,41 @@ export async function middleware(request: NextRequest) {
   if (orgSlug) {
     const { data: membership } = await supabase
       .from('org_members')
-      .select('organization_id, organizations!inner(slug)')
+      .select('organization_id, organizations!inner(slug, status)')
       .eq('user_id', user.id)
       .eq('organizations.slug', orgSlug)
       .maybeSingle()
 
     if (!membership) {
       return NextResponse.redirect(new URL('/403', request.url))
+    }
+
+    /*
+     * A suspended or banned tenant is locked out here, at the same gate that
+     * proves membership (org_is_blocked, 00048).
+     *
+     * This is enforcement, not decoration: before it existed the admin console
+     * could set the status and nothing in the product changed — every user of a
+     * "suspended" organization carried on working. The check is deliberately in
+     * middleware rather than in a layout, so it covers server actions and API
+     * routes under the org path too, not just rendered pages.
+     */
+    const organization = Array.isArray(membership.organizations)
+      ? membership.organizations[0]
+      : membership.organizations
+
+    if (organization && (organization.status === 'suspended' || organization.status === 'banned')) {
+      /*
+       * Deliberately a top-level route, not `/{orgSlug}/blocked`. Anything under
+       * the org segment inherits the dashboard layout, which renders the full
+       * sidebar and loads the tenant's workspaces — showing someone the product
+       * chrome while telling them they have no access, and doing tenant work to
+       * say so. `/blocked` is in NON_TENANT_SEGMENTS, so this redirect target
+       * never re-enters the branch that produced it.
+       */
+      const blockedUrl = new URL('/blocked', request.url)
+      blockedUrl.searchParams.set('org', orgSlug)
+      return NextResponse.redirect(blockedUrl)
     }
   }
 

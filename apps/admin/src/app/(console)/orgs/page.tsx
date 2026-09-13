@@ -3,8 +3,9 @@ import { Badge, DataTable, type DataTableColumn } from '@pm/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { AdminBody, AdminHeader } from '@/components/admin-shell'
-import { requireAdmin } from '@/lib/auth'
+import { canWrite, requireAdmin } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { OrgRowMenu } from './org-row-menu'
 
 export const metadata: Metadata = { title: 'Organizations' }
 
@@ -18,10 +19,11 @@ interface Row {
   planName: string
 }
 
-const STATUS_VARIANT: Record<string, 'success' | 'outline' | 'destructive' | 'secondary'> = {
+const STATUS_VARIANT: Record<string, 'success' | 'outline' | 'destructive' | 'secondary' | 'warning'> = {
   active: 'success',
   trial: 'outline',
-  suspended: 'destructive',
+  suspended: 'warning',
+  banned: 'destructive',
   churned: 'secondary',
 }
 
@@ -32,7 +34,8 @@ const STATUS_VARIANT: Record<string, 'success' | 'outline' | 'destructive' | 'se
  * operational columns an operator needs — never customer content.
  */
 export default async function OrgsPage() {
-  await requireAdmin()
+  const admin = await requireAdmin()
+  const readOnly = !canWrite(admin.role)
   const supabase = createAdminClient()
 
   const { data: organizations } = await supabase
@@ -106,13 +109,21 @@ export default async function OrgsPage() {
         </span>
       ),
     },
+    {
+      key: 'actions',
+      header: '',
+      headClassName: 'w-10',
+      cell: (row) => (
+        <OrgRowMenu orgId={row.id} orgName={row.name} status={row.status} readOnly={readOnly} />
+      ),
+    },
   ]
 
   return (
     <>
       <AdminHeader
         title="Organizations"
-        description={`${rows.length} tenants, newest first.`}
+        description={`${rows.length} tenants, newest first. Right-click a row — or use the \u22ef button — to suspend, ban or open it.`}
       />
       <AdminBody>
         <DataTable columns={columns} rows={rows} rowKey={(row) => row.id} empty="No tenants yet." />

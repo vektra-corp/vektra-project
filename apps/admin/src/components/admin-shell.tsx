@@ -19,10 +19,12 @@ export function AdminShell({
   children: React.ReactNode
 }) {
   const items: AdminNavItem[] = [
+    { href: '/', label: 'Overview', group: 'Platform' },
     { href: '/orgs', label: 'Organizations', group: 'Tenants' },
     { href: '/users', label: 'Users', group: 'Tenants' },
     { href: '/subscriptions', label: 'Subscriptions', group: 'Revenue' },
     { href: '/pricing', label: 'Pricing', group: 'Revenue' },
+    { href: '/expenses', label: 'Expenses', group: 'Revenue' },
     { href: '/notices', label: 'System notices', group: 'Messaging' },
     { href: '/feature-flags', label: 'Feature flags', group: 'Messaging' },
     { href: '/audit-logs', label: 'Audit logs', group: 'Support' },
