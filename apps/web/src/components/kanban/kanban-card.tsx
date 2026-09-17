@@ -7,8 +7,11 @@ import { initials } from '@pm/shared/utils'
 import { cn } from '@pm/ui'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useTransition } from 'react'
-import { setTaskDone } from '@/app/(dashboard)/[orgSlug]/[workspaceSlug]/projects/[projectId]/actions'
+import { useState, useTransition } from 'react'
+import {
+  setTaskDone,
+  toggleSubtask,
+} from '@/app/(dashboard)/[orgSlug]/[workspaceSlug]/projects/[projectId]/actions'
 import { DueDate, PRIORITY_STRIPE, priorityLabel } from '@/components/tasks/task-badges'
 import type { KanbanCardData, KanbanScope } from './types'
 
@@ -59,6 +62,10 @@ export function KanbanCard({
     data: { type: 'card', card },
   })
   const [pending, startTransition] = useTransition()
+  // The checklist folds out of the card in place. It is per-card local state
+  // rather than lifted: nothing outside the card reacts to it, and keeping it
+  // here means opening one card cannot re-render the whole column.
+  const [subtasksOpen, setSubtasksOpen] = useState(false)
   const router = useRouter()
 
   const style = {
@@ -84,6 +91,14 @@ export function KanbanCard({
     if (!scope) return
     startTransition(async () => {
       await setTaskDone(scope, card.id, next)
+      router.refresh()
+    })
+  }
+
+  function toggleSubtaskDone(subtaskId: string, next: boolean) {
+    if (!scope) return
+    startTransition(async () => {
+      await toggleSubtask(scope, subtaskId, next)
       router.refresh()
     })
   }
@@ -125,14 +140,25 @@ export function KanbanCard({
         </div>
       ) : null}
 
+      {/*
+        * `draggable={false}` matters more than it looks: an anchor is natively
+        * draggable, so without it a drag starting on the title handed the
+        * browser a link drag — you got the task's URL as a drag payload
+        * instead of the card moving. Turning the native behaviour off lets the
+        * pointer events reach the sortable listeners on the card.
+        *
+        * The listeners are reached precisely BECAUSE this no longer stops
+        * propagation on pointer down. A plain click still navigates: the
+        * sensor is distance-constrained, so it never activates without 6px of
+        * travel, and dnd-kit only starts swallowing clicks once it has.
+        */}
       <Link
         href={href}
+        draggable={false}
         className={cn(
           'hover:text-primary block text-task leading-[1.35] transition-colors',
           closed ? 'text-faint line-through' : 'text-foreground',
         )}
-        // Let a click through to the link without the drag sensor stealing it.
-        onPointerDown={(event) => event.stopPropagation()}
       >
         {card.title}
       </Link>
@@ -163,6 +189,89 @@ export function KanbanCard({
             {card.subtask_done}/{card.subtask_total}
           </span>
         </div>
+      ) : null}
+
+      {/*
+        * The subtask chip, and the checklist it unfolds.
+        *
+        * Unlike the progress bar above it, this is NOT gated on the view's card
+        * fields: the design shows the chip on any card that has subtasks, in
+        * every card mode, because it is the card's way into work that would
+        * otherwise need the task opened. The bar summarises; this acts.
+        */}
+      {card.subtask_total > 0 ? (
+        <>
+          <button
+            type="button"
+            title="Show subtasks"
+            aria-expanded={subtasksOpen}
+            onClick={() => setSubtasksOpen((open) => !open)}
+            // Same guard the title link uses: without it the 6px drag sensor
+            // swallows the click and the chip never opens.
+            onPointerDown={(event) => event.stopPropagation()}
+            className="bg-chip text-faint hover:text-foreground flex items-center gap-1.5 self-start rounded-[6px] px-2 py-[3px] font-mono text-[9px] uppercase leading-none tracking-[0.08em] tabular-nums transition-colors"
+          >
+            <span aria-hidden className="text-[7px]">
+              {subtasksOpen ? '\u25BC' : '\u25B6'}
+            </span>
+            {card.subtask_done}/{card.subtask_total} SUBTASKS
+          </button>
+
+          {subtasksOpen ? (
+            <ul className="border-border flex flex-col gap-0.5 border-t pt-px">
+              {card.subtasks.map((subtask) => {
+                const subtaskDone = subtask.status === 'done' || subtask.status === 'cancelled'
+                return (
+                  <li key={subtask.id} className="flex items-center gap-[7px] py-1">
+                    <label
+                      className={cn('inline-flex shrink-0', scope ? 'cursor-pointer' : 'pointer-events-none')}
+                      onPointerDown={(event) => event.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        className="peer sr-only"
+                        checked={subtaskDone}
+                        disabled={!scope || pending}
+                        onChange={(event) => toggleSubtaskDone(subtask.id, event.target.checked)}
+                      />
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'grid h-3 w-3 place-items-center rounded-[4px] border-[1.5px] text-[7.5px] transition-colors',
+                          subtaskDone
+                            ? 'border-primary bg-primary text-[#04120F]'
+                            : 'border-input text-transparent',
+                          'peer-focus-visible:ring-ring/60 peer-focus-visible:ring-2',
+                        )}
+                      >
+                        ✓
+                      </span>
+                      <span className="sr-only">
+                        {subtaskDone ? 'Mark as not done' : 'Mark as done'}: {subtask.title}
+                      </span>
+                    </label>
+
+                    <span
+                      className={cn(
+                        'truncate text-micro',
+                        subtaskDone ? 'text-subtle line-through' : 'text-muted-foreground',
+                      )}
+                    >
+                      {subtask.title}
+                    </span>
+
+                    <span
+                      className="text-subtle ms-auto shrink-0 font-mono text-[8.5px] uppercase"
+                      title={subtask.assignee_name ?? 'Unassigned'}
+                    >
+                      {subtask.assignee_name ? initials(subtask.assignee_name) : '\u2014'}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : null}
+        </>
       ) : null}
 
       <div className="flex items-center gap-2">

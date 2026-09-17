@@ -8,7 +8,11 @@ import { BoardToolbar } from '@/components/board/board-toolbar'
 import { CaptureBar } from '@/components/board/capture-bar'
 import { BoardFilterBar } from '@/components/board/filter-bar'
 import { KanbanBoard } from '@/components/kanban/kanban-board'
-import type { KanbanCardData, KanbanColumnData } from '@/components/kanban/types'
+import type {
+  KanbanCardData,
+  KanbanCardSubtask,
+  KanbanColumnData,
+} from '@/components/kanban/types'
 import { requireAuthPage } from '@/lib/auth/context'
 import { resolveProject } from '@/lib/route-ids'
 import { createClient } from '@/lib/supabase/server'
@@ -84,9 +88,27 @@ export default async function BoardPage({
   const taskIds = (tasks ?? []).map((task) => task.id)
 
   const [{ data: subtasks }, { data: comments }, { data: dependencies }] = await Promise.all([
+    // Titles and assignees come back with the counts because the card's
+    // subtask chip unfolds the list in place (§19.8 card fields) — fetching
+    // them on expand would put a request behind the first click on every card.
     taskIds.length
-      ? supabase.from('subtasks').select('task_id, status').in('task_id', taskIds)
-      : Promise.resolve({ data: [] as { task_id: string; status: string }[] }),
+      ? supabase
+          .from('subtasks')
+          .select(
+            'id, task_id, title, status, position, assignee:profiles!subtasks_assignee_id_fkey(full_name)',
+          )
+          .in('task_id', taskIds)
+          .order('position')
+      : Promise.resolve({
+          data: [] as {
+            id: string
+            task_id: string
+            title: string
+            status: string
+            position: number
+            assignee: { full_name: string } | { full_name: string }[] | null
+          }[],
+        }),
     taskIds.length
       ? supabase.from('comments').select('task_id').in('task_id', taskIds)
       : Promise.resolve({ data: [] as { task_id: string | null }[] }),
@@ -103,11 +125,23 @@ export default async function BoardPage({
   ])
 
   const subtaskStats = new Map<string, { total: number; done: number }>()
+  const subtasksByTask = new Map<string, KanbanCardSubtask[]>()
   for (const subtask of subtasks ?? []) {
     const entry = subtaskStats.get(subtask.task_id) ?? { total: 0, done: 0 }
     entry.total += 1
     if (subtask.status === 'done' || subtask.status === 'cancelled') entry.done += 1
     subtaskStats.set(subtask.task_id, entry)
+
+    // Same to-one embed normalisation as the task assignee above.
+    const person = Array.isArray(subtask.assignee) ? subtask.assignee[0] : subtask.assignee
+    const list = subtasksByTask.get(subtask.task_id) ?? []
+    list.push({
+      id: subtask.id,
+      title: subtask.title,
+      status: subtask.status as KanbanCardSubtask['status'],
+      assignee_name: person?.full_name ?? null,
+    })
+    subtasksByTask.set(subtask.task_id, list)
   }
 
   const commentCounts = new Map<string, number>()
@@ -152,6 +186,7 @@ export default async function BoardPage({
         .filter((label): label is { id: string; name: string; color: string } => Boolean(label)),
       subtask_total: stats.total,
       subtask_done: stats.done,
+      subtasks: subtasksByTask.get(task.id) ?? [],
       comment_count: commentCounts.get(task.id) ?? 0,
     }
   })

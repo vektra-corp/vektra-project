@@ -9,6 +9,7 @@ import {
   fieldErrors,
   subtaskCreateSchema,
   subtaskMoveSchema,
+  subtaskUpdateSchema,
   taskCreateSchema,
   taskMoveSchema,
   taskUpdateSchema,
@@ -411,6 +412,66 @@ export async function moveSubtask(
   } catch (error) {
     return toActionError(error)
   }
+}
+
+/**
+ * Edit one subtask field from the list's subtask row.
+ *
+ * The task-level sibling of this is `patchTask`; this is deliberately a
+ * separate action rather than a shared generic one, because the two write to
+ * different tables and `assertCan` has to be evaluated against the row that is
+ * actually being changed.
+ *
+ * Status is written directly here. Unlike a task — where §18 rule 3 makes the
+ * Kanban column the source of truth — a subtask row in the list has no column
+ * to move, so there is nothing for the two to disagree about.
+ */
+export async function patchSubtask(
+  scope: Scope,
+  subtaskId: string,
+  patch: {
+    title?: string
+    status?: string
+    priority?: string
+    assignee_id?: string | null
+    due_date?: string | null
+  },
+): Promise<ActionResult<null>> {
+  const auth = await requireAuth(scope.orgSlug)
+  assertCan(auth, 'tasks', 'update')
+
+  // Only the keys actually sent are validated, so a partial cannot be widened
+  // into a full overwrite by a caller that omits half of them.
+  const parsed = subtaskUpdateSchema.safeParse({
+    ...(patch.title !== undefined ? { title: patch.title } : {}),
+    ...(patch.status !== undefined ? { status: patch.status } : {}),
+    ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
+    ...(patch.assignee_id !== undefined ? { assignee_id: patch.assignee_id } : {}),
+    ...(patch.due_date !== undefined ? { due_date: patch.due_date } : {}),
+  })
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'VALIDATION_ERROR',
+      fieldErrors: fieldErrors(parsed.error),
+    }
+  }
+
+  // `description` is in the schema for the subtask form's sake; nothing here
+  // can set it, so it is dropped rather than passed through untyped.
+  const { description: _description, ...fields } = parsed.data
+
+  const supabase = createClient()
+
+  // RLS scopes the row to the caller's organization, so a subtask id from
+  // another tenant matches nothing rather than updating it.
+  const { error } = await supabase.from('subtasks').update(fields).eq('id', subtaskId)
+  if (error) return toActionError(error)
+
+  revalidatePath(projectPath(scope.orgSlug, scope.workspaceSlug, scope.projectId))
+  return { ok: true, data: null }
 }
 
 export async function toggleSubtask(scope: Scope, subtaskId: string, done: boolean) {

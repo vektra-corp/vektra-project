@@ -64,6 +64,11 @@ export function GanttChart({
     start: string
     due: string
   } | null>(null)
+  // Whether the pointer actually shifted the bar during the gesture just
+  // finished. The bar is both a link and a drag handle, so a click has to be
+  // told apart from the click the browser fires at the end of a drag —
+  // otherwise moving a bar would also navigate away from the chart.
+  const movedRef = useRef(false)
 
   const columnWidth = COLUMN_WIDTH[zoom]
 
@@ -110,6 +115,7 @@ export function GanttChart({
     event.stopPropagation()
     ;(event.target as Element).setPointerCapture(event.pointerId)
 
+    movedRef.current = false
     const current = draft[entry.task.id]
     dragRef.current = {
       taskId: entry.task.id,
@@ -126,6 +132,7 @@ export function GanttChart({
 
     const deltaDays = Math.round((event.clientX - drag.originX) / columnWidth)
     if (deltaDays === 0) return
+    movedRef.current = true
 
     const start = parseDate(drag.start)
     const due = parseDate(drag.due)
@@ -291,6 +298,7 @@ export function GanttChart({
                     scope={scope}
                     canEdit={canEdit}
                     onDragStart={beginDrag}
+                    didDrag={() => movedRef.current}
                   />
                 ))}
               </div>
@@ -328,12 +336,15 @@ function GanttBar({
   scope,
   canEdit,
   onDragStart,
+  didDrag,
 }: {
   entry: Placed
   columnWidth: number
   scope: GanttScope
   canEdit: boolean
   onDragStart: (event: React.PointerEvent, entry: Placed, mode: DragMode) => void
+  /** True when the gesture that just ended actually moved the bar. */
+  didDrag: () => boolean
 }) {
   const { task, row, from, span } = entry
   const done = task.status === 'done'
@@ -385,9 +396,26 @@ function GanttBar({
         style={done ? undefined : { backgroundColor: `${PRIORITY_STRIPE[task.priority]}` }}
         title={`${task.title} · ${entry.task.startDate ?? '?'} → ${entry.task.dueDate ?? '?'}`}
       >
+        {/*
+          * This label covers the whole bar, so it decides whether the bar can
+          * be dragged at all.
+          *
+          * It used to stop propagation on pointer down, which meant the move
+          * gesture never reached the bar's own handler — and because an anchor
+          * is natively draggable, the browser started a link drag instead. The
+          * bar could only be resized by its edges, never moved.
+          *
+          * Now the event is left to bubble to the bar, `draggable={false}`
+          * takes the native link drag out of the way, and navigation is
+          * suppressed only when the gesture actually moved something — so a
+          * plain click still opens the task.
+          */}
         <a
           href={href}
-          onPointerDown={(event) => event.stopPropagation()}
+          draggable={false}
+          onClick={(event) => {
+            if (didDrag()) event.preventDefault()
+          }}
           className="absolute inset-0 flex items-center overflow-hidden px-1.5"
         >
           <span

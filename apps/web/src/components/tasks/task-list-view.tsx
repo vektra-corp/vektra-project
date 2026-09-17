@@ -272,6 +272,7 @@ export function TaskListView({
           scope={scope}
           projectKey={projectKey}
           groups={groups}
+          groupMode={groupMode}
           people={people}
           today={today}
           base={base}

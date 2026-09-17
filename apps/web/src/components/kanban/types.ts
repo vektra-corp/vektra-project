@@ -21,7 +21,25 @@ export interface KanbanCardData {
   labels: { id: string; name: string; color: string }[]
   subtask_total: number
   subtask_done: number
+  /**
+   * The card's subtasks, in board order.
+   *
+   * The card shows a "n/m SUBTASKS" chip that unfolds this checklist in place,
+   * so the titles have to travel with the card rather than being fetched when
+   * the chip is opened — a per-card request on expand would make the first
+   * click on every card wait on the network.
+   */
+  subtasks: KanbanCardSubtask[]
   comment_count: number
+}
+
+/** One line of a card's inline subtask checklist. */
+export interface KanbanCardSubtask {
+  id: string
+  title: string
+  status: TaskStatus
+  /** Initials source for the trailing avatar; null reads as unassigned. */
+  assignee_name: string | null
 }
 
 export interface KanbanColumnData {
