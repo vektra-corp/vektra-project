@@ -2354,6 +2354,7 @@ export interface Database {
           status_reason: string | null
           status_changed_at: string | null
           status_changed_by_admin_id: string | null
+          billing_legal_name: string | null
         }
         Insert: {
           id?: string
@@ -2380,6 +2381,7 @@ export interface Database {
           status_reason?: string | null
           status_changed_at?: string | null
           status_changed_by_admin_id?: string | null
+          billing_legal_name?: string | null
         }
         Update: {
           id?: string
@@ -2406,6 +2408,7 @@ export interface Database {
           status_reason?: string | null
           status_changed_at?: string | null
           status_changed_by_admin_id?: string | null
+          billing_legal_name?: string | null
         }
         Relationships: [
           {
@@ -5023,6 +5026,7 @@ export interface Database {
           p_country: string
           p_state?: string
           p_gstin?: string
+          p_legal_name?: string
         }
         Returns: undefined
       }

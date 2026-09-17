@@ -37,7 +37,7 @@ export default async function OrgDetailPage({ params }: { params: { orgId: strin
   const { data: organization } = await supabase
     .from('organizations')
     .select(
-      'id, name, slug, status, status_reason, status_changed_at, created_at, trial_ends_at, billing_email, currency, timezone, billing_country, gstin, payment_provider',
+      'id, name, slug, status, status_reason, status_changed_at, created_at, trial_ends_at, billing_email, currency, timezone, billing_country, billing_legal_name, gstin, payment_provider',
     )
     .eq('id', params.orgId)
     .maybeSingle()
@@ -116,6 +116,8 @@ export default async function OrgDetailPage({ params }: { params: { orgId: strin
 
   const facts: [string, string][] = [
     ['Slug', organization.slug],
+    // The entity invoices are made out to, which is often not the workspace name.
+    ['Company name', organization.billing_legal_name ?? `${organization.name} (workspace name)`],
     ['Billing email', organization.billing_email ?? '—'],
     ['Billing country', organization.billing_country ? (COUNTRY_LABEL[organization.billing_country] ?? organization.billing_country) : 'Not set'],
     ['GSTIN', organization.gstin ?? '—'],

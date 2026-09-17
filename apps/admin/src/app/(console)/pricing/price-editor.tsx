@@ -7,34 +7,44 @@ import { setPlanPriceActive, updatePlanPrice } from './actions'
 /**
  * One editable price row.
  *
- * The amount is entered in major units because that is how an operator thinks
- * about a price; the action converts once and stores minor units. The
- * GST-inclusive figure is shown alongside for Indian currency so nobody has to
- * do 18% in their head to know what the customer will actually be debited.
+ * The amount entered IS the amount charged. GST is contained within it and is
+ * shown broken out underneath, rather than added on top — previously an
+ * operator who typed 499 produced a ₹588.82 debit, which is not what anybody
+ * means by setting a price to 499.
  */
 export function PriceEditor({
   priceId,
   currency,
   unitAmountMinor,
-  grossMinor,
+  taxWithinMinor,
   isActive,
   activeSubscriptions,
   readOnly,
+  /** Set on an annual row: what twelve months at the monthly price would cost. */
+  annualBaselineMinor,
 }: {
   priceId: string
   currency: string
   unitAmountMinor: number
-  grossMinor: number
+  taxWithinMinor: number
   isActive: boolean
   activeSubscriptions: number
   readOnly: boolean
+  annualBaselineMinor?: number
 }) {
   const [amount, setAmount] = useState((unitAmountMinor / 100).toFixed(2))
   const [message, setMessage] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   const [pending, startTransition] = useTransition()
 
-  const dirty = Math.round(Number(amount) * 100) !== unitAmountMinor
+  const entered = Math.round(Number(amount) * 100)
+  const dirty = Number.isFinite(entered) && entered !== unitAmountMinor
+
+  // Recomputed from what is typed, so the saving stays live while editing.
+  const discountPct =
+    annualBaselineMinor && annualBaselineMinor > 0 && Number.isFinite(entered)
+      ? Math.round(((annualBaselineMinor - entered) / annualBaselineMinor) * 1000) / 10
+      : null
 
   function save() {
     const form = new FormData()
@@ -74,12 +84,12 @@ export function PriceEditor({
         />
       </div>
 
-      <div className="min-w-32 pb-2 text-sm">
+      <div className="min-w-36 pb-2 text-sm">
         <p className="text-muted-foreground tabular-nums">
           {currency === 'INR' ? (
-            <>incl. GST {(grossMinor / 100).toFixed(2)}</>
+            <>includes GST {(taxWithinMinor / 100).toFixed(2)}</>
           ) : (
-            <>ex-tax</>
+            <>no GST — export</>
           )}
         </p>
         <p className="text-faint text-xs">
@@ -88,6 +98,23 @@ export function PriceEditor({
             : `${activeSubscriptions} subscriber${activeSubscriptions === 1 ? '' : 's'}`}
         </p>
       </div>
+
+      {annualBaselineMinor ? (
+        <div className="min-w-40 pb-2 text-sm">
+          {discountPct === null ? null : discountPct > 0 ? (
+            <p className="text-success tabular-nums">{discountPct}% off monthly</p>
+          ) : discountPct < 0 ? (
+            <p className="text-destructive tabular-nums">
+              {Math.abs(discountPct)}% MORE than monthly
+            </p>
+          ) : (
+            <p className="text-muted-foreground">same as 12 × monthly</p>
+          )}
+          <p className="text-faint text-xs tabular-nums">
+            12 × monthly = {(annualBaselineMinor / 100).toFixed(2)}
+          </p>
+        </div>
+      ) : null}
 
       <div className="flex items-center gap-2 pb-1">
         <Button size="sm" disabled={readOnly || pending || !dirty} onClick={save}>

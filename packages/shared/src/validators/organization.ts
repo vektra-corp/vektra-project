@@ -115,6 +115,18 @@ export const workspaceMemberSchema = z.object({
  */
 export const billingProfileSchema = z
   .object({
+    /**
+     * The registered entity name for tax invoices. Optional: many customers
+     * bill under the workspace name they already entered, and demanding a
+     * second one would be a field most people retype identically.
+     */
+    billing_legal_name: z
+      .string()
+      .trim()
+      .max(200, 'Company name is too long')
+      .nullable()
+      .optional()
+      .transform((v) => v || null),
     billing_country: z.string().refine(isBillingCountry, 'Select a billing country'),
     billing_state: z
       .string()

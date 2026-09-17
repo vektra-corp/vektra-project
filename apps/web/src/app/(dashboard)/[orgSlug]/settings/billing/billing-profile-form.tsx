@@ -20,6 +20,7 @@ import { updateBillingProfile } from './actions'
  */
 export function BillingProfileForm({
   orgSlug,
+  billingLegalName,
   billingCountry,
   billingState,
   gstin,
@@ -27,6 +28,7 @@ export function BillingProfileForm({
   frozen,
 }: {
   orgSlug: string
+  billingLegalName: string | null
   billingCountry: string | null
   billingState: string | null
   gstin: string | null
@@ -49,6 +51,21 @@ export function BillingProfileForm({
       }
       submitLabel="Save billing details"
     >
+      <Field
+        id="billing_legal_name"
+        label="Company name (optional)"
+        hint="The registered entity to name on invoices, if it differs from your workspace name."
+      >
+        <Input
+          id="billing_legal_name"
+          name="billing_legal_name"
+          defaultValue={billingLegalName ?? ''}
+          disabled={!canEdit}
+          maxLength={200}
+          placeholder="Acme Technology Private Limited"
+        />
+      </Field>
+
       <Field
         id="billing_country"
         label="Billing country"

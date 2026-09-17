@@ -6,7 +6,7 @@ import {
   grossFromNet,
   placeOfSupply,
   splitCgstSgst,
-  subscriptionNetMinor,
+  subscriptionGrossMinor,
   taxOnNet,
 } from '../billing'
 
@@ -101,8 +101,11 @@ describe('placeOfSupply', () => {
 })
 
 describe('computeTax', () => {
+  // Tax-INCLUSIVE. 118_000 backs out to exactly 100_000 taxable + 18_000 tax,
+  // so the component figures below are unchanged from the exclusive era — only
+  // the input means something different now.
   const base = {
-    netMinor: 100_000,
+    grossMinor: 118_000,
     sellerState: SELLER_STATE,
     lutArn: null as string | null,
   }
@@ -153,7 +156,9 @@ describe('computeTax', () => {
       lutArn: 'AD330124000123X',
     })
     expect(r.treatment).toBe('export_lut')
-    expect(r.totalMinor).toBe(100_000)
+    // Zero-rated, so the whole charge is the taxable base and nothing is added.
+    expect(r.totalMinor).toBe(118_000)
+    expect(r.taxableMinor).toBe(118_000)
     expect(r.igstMinor).toBe(0)
     expect(r.requiresOperatorAttention).toBe(false)
     assertBalances(r)
@@ -163,13 +168,18 @@ describe('computeTax', () => {
     const r = computeTax({ ...base, buyerCountry: 'US', buyerGstin: null, buyerState: null })
     expect(r.treatment).toBe('export_with_igst')
     expect(r.igstMinor).toBe(18_000)
+    // Comes OUT of the quoted figure rather than being added to it.
+    expect(r.totalMinor).toBe(118_000)
     // Absorbing 18% silently would be a real loss, not a rounding difference.
     expect(r.requiresOperatorAttention).toBe(true)
     assertBalances(r)
   })
 
   it('balances for every treatment across awkward amounts', () => {
-    for (const netMinor of [0, 1, 3, 7, 99, 101, 12_345, 999_999, 1_234_567]) {
+    // 115 is the value that motivated defining tax as the remainder: backing it
+    // out gives 97, and 18% of 97 rounds to 17 — which would total 114 if the
+    // tax were recomputed from the base instead of taken as what is left.
+    for (const grossMinor of [0, 1, 3, 7, 99, 101, 115, 118, 12_345, 999_999, 1_234_567]) {
       for (const [country, state] of [
         ['IN', '33'],
         ['IN', '29'],
@@ -177,7 +187,7 @@ describe('computeTax', () => {
       ] as const) {
         assertBalances(
           computeTax({
-            netMinor,
+            grossMinor,
             sellerState: SELLER_STATE,
             buyerCountry: country,
             buyerGstin: null,
@@ -189,22 +199,45 @@ describe('computeTax', () => {
     }
   })
 
+  it('never charges more than the quoted figure', () => {
+    // The whole point of inclusive pricing: whatever the treatment, the customer
+    // pays the catalogue price and not a paisa more.
+    for (const grossMinor of [1, 115, 499_00, 53_176, 1_234_567]) {
+      for (const [country, state, lut] of [
+        ['IN', '33', null],
+        ['IN', '29', null],
+        ['US', null, null],
+        ['US', null, 'AD330124000123X'],
+      ] as const) {
+        const r = computeTax({
+          grossMinor,
+          sellerState: SELLER_STATE,
+          buyerCountry: country,
+          buyerGstin: null,
+          buyerState: state,
+          lutArn: lut,
+        })
+        expect(r.totalMinor).toBe(grossMinor)
+      }
+    }
+  })
+
   it('refuses a non-integer or negative base', () => {
     const bad = { ...base, buyerCountry: 'IN', buyerGstin: null, buyerState: '33' }
-    expect(() => computeTax({ ...bad, netMinor: -1 })).toThrow()
-    expect(() => computeTax({ ...bad, netMinor: 1.5 })).toThrow()
+    expect(() => computeTax({ ...bad, grossMinor: -1 })).toThrow()
+    expect(() => computeTax({ ...bad, grossMinor: 1.5 })).toThrow()
   })
 })
 
-describe('subscriptionNetMinor', () => {
+describe('subscriptionGrossMinor', () => {
   it('multiplies the per-seat price by the seat count', () => {
-    expect(subscriptionNetMinor(49_900, 7)).toBe(349_300)
+    expect(subscriptionGrossMinor(49_900, 7)).toBe(349_300)
   })
 
   it('refuses a seat count or price that could not have come from the server', () => {
-    expect(() => subscriptionNetMinor(49_900, 0)).toThrow()
-    expect(() => subscriptionNetMinor(49_900, 1.5)).toThrow()
-    expect(() => subscriptionNetMinor(-1, 3)).toThrow()
+    expect(() => subscriptionGrossMinor(49_900, 0)).toThrow()
+    expect(() => subscriptionGrossMinor(49_900, 1.5)).toThrow()
+    expect(() => subscriptionGrossMinor(-1, 3)).toThrow()
   })
 })
 

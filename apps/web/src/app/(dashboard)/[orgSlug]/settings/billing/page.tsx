@@ -59,7 +59,7 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
       .eq('organization_id', auth.orgId),
     supabase
       .from('organizations')
-      .select('billing_country, billing_state, gstin')
+      .select('billing_country, billing_state, gstin, billing_legal_name')
       .eq('id', auth.orgId)
       .single(),
     // A live subscription freezes the billing country: set_billing_profile()
@@ -218,6 +218,7 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
 
         <BillingProfileForm
           orgSlug={params.orgSlug}
+          billingLegalName={org?.billing_legal_name ?? null}
           billingCountry={billingCountry}
           billingState={org?.billing_state ?? null}
           gstin={org?.gstin ?? null}

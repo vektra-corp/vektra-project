@@ -1,4 +1,4 @@
-import { GST_RATE_BP, grossFromNet } from '@pm/shared/billing'
+import { GST_RATE_BP, taxWithinGross } from '@pm/shared/billing'
 import type { Metadata } from 'next'
 import { AdminBody, AdminHeader } from '@/components/admin-shell'
 import { canWrite, requireAdmin } from '@/lib/auth'
@@ -77,13 +77,21 @@ export default async function PricingPage() {
     if (entry) entry.rows.push(row)
   }
 
+  // Monthly price per (plan, currency), so an annual row can state what it
+  // saves against twelve months at the monthly rate.
+  const monthlyByPlanCurrency = new Map<string, number>()
+  for (const row of catalogue) {
+    if (row.billing_interval !== 'monthly' || !row.plan) continue
+    monthlyByPlanCurrency.set(`${row.plan.id}:${row.currency}`, row.unit_amount_minor)
+  }
+
   const plans = [...byPlan.entries()].sort((a, b) => a[1].sort - b[1].sort)
 
   return (
     <>
       <AdminHeader
         title="Pricing"
-        description="Per-seat, tax-exclusive. A change takes effect for existing subscribers at their next renewal, never immediately."
+        description="Per-seat, tax-inclusive — the price entered is the price charged. A change takes effect for existing subscribers at their next renewal, never immediately."
       />
 
       <AdminBody>
@@ -123,14 +131,21 @@ export default async function PricingPage() {
                             priceId={row.id}
                             currency={row.currency}
                             unitAmountMinor={row.unit_amount_minor}
-                            grossMinor={
+                            // The price IS the charge; this is the GST already
+                            // inside it, not an amount added to it.
+                            taxWithinMinor={
                               row.currency === 'INR'
-                                ? grossFromNet(row.unit_amount_minor, GST_RATE_BP)
-                                : row.unit_amount_minor
+                                ? taxWithinGross(row.unit_amount_minor, GST_RATE_BP)
+                                : 0
                             }
                             isActive={row.is_active}
                             activeSubscriptions={subscribersByPrice.get(row.id) ?? 0}
                             readOnly={readOnly}
+                            annualBaselineMinor={
+                              interval === 'annual'
+                                ? (monthlyByPlanCurrency.get(`${planId}:${row.currency}`) ?? 0) * 12
+                                : undefined
+                            }
                           />
                         ))}
                       </div>
@@ -138,7 +153,15 @@ export default async function PricingPage() {
                   })}
                   {readOnly ? null : (
                     <div>
-                      <NewPriceForm planId={planId} planName={plan.name} />
+                      <NewPriceForm
+                        planId={planId}
+                        planName={plan.name}
+                        monthlyByCurrency={Object.fromEntries(
+                          plan.rows
+                            .filter((row) => row.billing_interval === 'monthly')
+                            .map((row) => [row.currency, row.unit_amount_minor]),
+                        )}
+                      />
                     </div>
                   )}
                 </div>
@@ -147,9 +170,9 @@ export default async function PricingPage() {
           )}
 
           <p className="text-muted-foreground text-xs">
-            Amounts are tax-exclusive. Indian customers are charged the GST-inclusive figure shown
-            beside each price; customers outside India are charged the ex-tax amount, zero-rated as
-            an export.
+            Amounts are tax-INCLUSIVE: the figure entered here is exactly what the customer is
+            charged. For Indian customers the GST shown beside each price is contained within that
+            amount, not added to it; sales outside India are zero-rated exports and carry no GST.
           </p>
         </div>
       </AdminBody>

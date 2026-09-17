@@ -1,4 +1,4 @@
-import { GST_RATE_BP, splitCgstSgst, taxOnNet } from './amounts'
+import { GST_RATE_BP, netFromGross, splitCgstSgst } from './amounts'
 import type { TaxTreatment } from './types'
 
 /**
@@ -18,8 +18,12 @@ import type { TaxTreatment } from './types'
 export const PLACE_OF_SUPPLY_OTHER_TERRITORY = '96'
 
 export interface TaxInput {
-  /** Tax-exclusive base, in minor units. */
-  netMinor: number
+  /**
+   * TAX-INCLUSIVE amount, in minor units — what the customer is actually
+   * charged. Tax is contained within this figure and is never added on top, so
+   * `result.totalMinor === grossMinor` for every treatment.
+   */
+  grossMinor: number
   /** ISO 3166-1 alpha-2. */
   buyerCountry: string | null | undefined
   buyerGstin: string | null | undefined
@@ -79,12 +83,20 @@ export function placeOfSupply(input: {
   return input.buyerState || input.sellerState
 }
 
+/**
+ * Decompose a tax-inclusive charge into its taxable base and tax components.
+ *
+ * The total is PINNED to what was quoted: every branch returns
+ * `totalMinor === grossMinor`. Tax is the remainder after backing out the base,
+ * never a separate figure added on, so the customer is charged exactly the
+ * catalogue price and the invoice still reconciles to the paisa.
+ */
 export function computeTax(input: TaxInput): TaxResult {
-  const { netMinor, sellerState, lutArn } = input
+  const { grossMinor, sellerState, lutArn } = input
   const rateBp = input.rateBp ?? GST_RATE_BP
 
-  if (!Number.isInteger(netMinor) || netMinor < 0) {
-    throw new Error('netMinor must be a non-negative integer')
+  if (!Number.isInteger(grossMinor) || grossMinor < 0) {
+    throw new Error('grossMinor must be a non-negative integer')
   }
 
   const pos = placeOfSupply(input)
@@ -92,35 +104,39 @@ export function computeTax(input: TaxInput): TaxResult {
 
   // --- Export of services --------------------------------------------------
   if (isExport) {
-    // With a valid LUT the supply is zero-rated and nothing is collected.
+    // With a valid LUT the supply is zero-rated: nothing is collected, so the
+    // whole charge is the taxable base.
     if (lutArn) {
       return {
         treatment: 'export_lut',
         placeOfSupply: PLACE_OF_SUPPLY_OTHER_TERRITORY,
-        taxableMinor: netMinor,
+        taxableMinor: grossMinor,
         ...ZERO,
-        totalMinor: netMinor,
+        totalMinor: grossMinor,
         requiresOperatorAttention: false,
       }
     }
 
     // Without one, the lawful treatment is to charge IGST and claim it back.
     // Flagged, because quietly eating 18% is a real loss rather than a rounding.
-    const tax = taxOnNet(netMinor, rateBp)
+    // Inclusive pricing means it comes OUT of the quoted figure rather than
+    // being added to it — the customer still pays what they were shown.
+    const taxable = netFromGross(grossMinor, rateBp)
     return {
       treatment: 'export_with_igst',
       placeOfSupply: PLACE_OF_SUPPLY_OTHER_TERRITORY,
-      taxableMinor: netMinor,
+      taxableMinor: taxable,
       ...ZERO,
       igstRateBp: rateBp,
-      igstMinor: tax,
-      totalMinor: netMinor + tax,
+      igstMinor: grossMinor - taxable,
+      totalMinor: grossMinor,
       requiresOperatorAttention: true,
     }
   }
 
   // --- Domestic supply -----------------------------------------------------
-  const tax = taxOnNet(netMinor, rateBp)
+  const taxable = netFromGross(grossMinor, rateBp)
+  const tax = grossMinor - taxable
 
   if (pos === sellerState) {
     const { cgstMinor, sgstMinor } = splitCgstSgst(tax)
@@ -128,13 +144,13 @@ export function computeTax(input: TaxInput): TaxResult {
     return {
       treatment: 'intra_state',
       placeOfSupply: pos,
-      taxableMinor: netMinor,
+      taxableMinor: taxable,
       ...ZERO,
       cgstRateBp: half,
       sgstRateBp: half,
       cgstMinor,
       sgstMinor,
-      totalMinor: netMinor + tax,
+      totalMinor: grossMinor,
       requiresOperatorAttention: false,
     }
   }
@@ -142,11 +158,11 @@ export function computeTax(input: TaxInput): TaxResult {
   return {
     treatment: 'inter_state',
     placeOfSupply: pos,
-    taxableMinor: netMinor,
+    taxableMinor: taxable,
     ...ZERO,
     igstRateBp: rateBp,
     igstMinor: tax,
-    totalMinor: netMinor + tax,
+    totalMinor: grossMinor,
     requiresOperatorAttention: false,
   }
 }

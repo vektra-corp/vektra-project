@@ -4,7 +4,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import {
   computeTax,
   currencyForCountry,
-  subscriptionNetMinor,
+  subscriptionGrossMinor,
   type BillingInterval,
 } from '@pm/shared/billing'
 import type { ActionResult } from '@pm/shared/types'
@@ -113,9 +113,11 @@ export async function startCheckout(
     const seats = typeof seatsValue === 'number' && seatsValue >= 1 ? seatsValue : 1
 
     const seller = sellerProfile()
-    const netMinor = subscriptionNetMinor(price.unit_amount_minor, seats)
+    // The catalogue price is tax-inclusive, so this IS the charge — tax is
+    // decomposed out of it below, never added to it.
+    const grossMinor = subscriptionGrossMinor(price.unit_amount_minor, seats)
     const tax = computeTax({
-      netMinor,
+      grossMinor,
       buyerCountry: org.billing_country,
       buyerGstin: org.gstin,
       buyerState: org.billing_state,
@@ -123,7 +125,8 @@ export async function startCheckout(
       lutArn: seller.lutArn,
     })
 
-    // The gateway charges one inclusive figure; the invoice decomposes it later.
+    // Equal to grossMinor by construction: computeTax pins the total to what
+    // was quoted. Read from the result so the two can never drift apart.
     const amountMinor = tax.totalMinor
 
     const db = createAdminClient()
@@ -324,6 +327,7 @@ export async function updateBillingProfile(
     }
 
     const parsed = billingProfileSchema.safeParse({
+      billing_legal_name: formData.get('billing_legal_name'),
       billing_country: formData.get('billing_country'),
       billing_state: formData.get('billing_state'),
       gstin: formData.get('gstin'),
@@ -345,6 +349,7 @@ export async function updateBillingProfile(
       // argument, so an explicit null is not assignable — omit instead.
       p_state: parsed.data.billing_state ?? undefined,
       p_gstin: parsed.data.gstin ?? undefined,
+      p_legal_name: parsed.data.billing_legal_name ?? undefined,
     })
 
     if (error) {

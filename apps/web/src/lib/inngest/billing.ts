@@ -102,13 +102,13 @@ export const syncPendingPriceChanges = inngest.createFunction(
           .eq('id', subscription.organization_id)
           .single()
 
-        const { computeTax, subscriptionNetMinor } = await import('@pm/shared/billing')
+        const { computeTax, subscriptionGrossMinor } = await import('@pm/shared/billing')
         const { sellerProfile } = await import('@/lib/payments/select')
         const seller = sellerProfile()
 
-        const netMinor = subscriptionNetMinor(price.unit_amount_minor, subscription.seats)
+        const grossMinor = subscriptionGrossMinor(price.unit_amount_minor, subscription.seats)
         const tax = computeTax({
-          netMinor,
+          grossMinor,
           buyerCountry: org?.billing_country,
           buyerGstin: org?.gstin,
           buyerState: org?.billing_state,

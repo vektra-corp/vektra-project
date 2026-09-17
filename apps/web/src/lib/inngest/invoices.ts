@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { computeTax, subscriptionNetMinor } from '@pm/shared/billing'
+import { computeTax, subscriptionGrossMinor } from '@pm/shared/billing'
 import { gstStateName } from '@pm/shared/constants'
 import { formatCurrency } from '@pm/shared/utils'
 import { sellerProfile } from '@/lib/payments/select'
@@ -65,7 +65,7 @@ export const issueInvoices = inngest.createFunction(
 
         const { data: org } = await db
           .from('organizations')
-          .select('name, billing_email, billing_country, billing_state, gstin, address')
+          .select('name, billing_legal_name, billing_email, billing_country, billing_state, gstin, address')
           .eq('id', payment.organization_id)
           .single()
         if (!org?.billing_country) return 'skipped' as const
@@ -91,9 +91,9 @@ export const issueInvoices = inngest.createFunction(
         // captured total: dividing a gross amount back down re-introduces the
         // rounding the pricing path already resolved, and the invoice's taxable
         // line has to match what was actually quoted.
-        const netMinor = subscriptionNetMinor(unit, seats)
+        const grossMinor = subscriptionGrossMinor(unit, seats)
         const tax = computeTax({
-          netMinor,
+          grossMinor,
           buyerCountry: org.billing_country,
           buyerGstin: org.gstin,
           buyerState: org.billing_state,
@@ -143,7 +143,10 @@ export const issueInvoices = inngest.createFunction(
             seller_state: seller.state,
             lut_arn: tax.treatment === 'export_lut' ? seller.lutArn : null,
             buyer_snapshot: {
-              name: org.name,
+              // The registered entity, not the workspace name someone typed at
+              // signup — a tax invoice has to name the legal buyer. Falls back
+              // to the workspace name when no billing profile names one.
+              name: org.billing_legal_name || org.name,
               email: org.billing_email,
               address: org.address,
             } as never,
@@ -215,7 +218,9 @@ export const issueInvoices = inngest.createFunction(
             stateName: gstStateName(seller.state),
           },
           buyer: {
-            name: org.name,
+            // Same entity as buyer_snapshot above — the rendered PDF and the
+            // stored record must not disagree about who was billed.
+            name: org.billing_legal_name || org.name,
             gstin: org.gstin,
             country: org.billing_country,
             email: org.billing_email,

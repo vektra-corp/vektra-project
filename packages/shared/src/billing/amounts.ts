@@ -16,11 +16,41 @@ const BP = 10_000
 /**
  * Add tax to a tax-exclusive amount.
  *
- * `plan_prices.unit_amount_minor` is stored tax-exclusive, but a gateway plan
- * charges one inclusive figure, so this is what the gateway plan is created at.
+ * RETAINED FOR EXCLUSIVE-PRICED FIGURES ONLY. Catalogue prices are now stored
+ * TAX-INCLUSIVE (see `netFromGross`), so this is no longer part of the
+ * subscription pricing path. It stays because an exclusive base is still the
+ * right input wherever a figure is quoted ex-tax.
  */
 export function grossFromNet(netMinor: number, rateBp: number): number {
   return netMinor + taxOnNet(netMinor, rateBp)
+}
+
+/**
+ * Back out the taxable base from a TAX-INCLUSIVE amount.
+ *
+ * Catalogue prices are the figure the customer is actually charged — tax is
+ * contained within them, never added on top. The taxable base is therefore
+ * derived, and the tax is whatever remains:
+ *
+ *     taxable = round(gross * 10000 / (10000 + rateBp))
+ *     tax     = gross - taxable
+ *
+ * Defining tax as the REMAINDER rather than recomputing it from the base is
+ * load-bearing. Recomputing drifts: at 18%, a gross of 115 paise backs out to a
+ * base of 97, and 18% of 97 rounds to 17 — which totals 114, a paisa less than
+ * the customer was quoted. Taking the remainder makes `taxable + tax == gross`
+ * true for every input by construction, which is what an invoice has to show.
+ */
+export function netFromGross(grossMinor: number, rateBp: number): number {
+  if (!Number.isInteger(grossMinor) || grossMinor < 0) {
+    throw new Error('grossMinor must be a non-negative integer')
+  }
+  return Math.round((grossMinor * BP) / (BP + rateBp))
+}
+
+/** The tax contained WITHIN a tax-inclusive amount. Always `gross - taxable`. */
+export function taxWithinGross(grossMinor: number, rateBp: number): number {
+  return grossMinor - netFromGross(grossMinor, rateBp)
 }
 
 /** The tax component of a tax-exclusive amount. Rounded half away from zero. */
@@ -41,12 +71,15 @@ export function splitCgstSgst(taxMinor: number): { cgstMinor: number; sgstMinor:
 }
 
 /**
- * What a subscription costs per cycle, before tax.
+ * What a subscription costs per cycle.
+ *
+ * The unit amount is TAX-INCLUSIVE, so this is the figure the customer is
+ * charged, not a base to add tax to.
  *
  * Seats are counted server-side from `org_members`; nothing here ever accepts a
  * quantity from a client.
  */
-export function subscriptionNetMinor(unitAmountMinor: number, seats: number): number {
+export function subscriptionGrossMinor(unitAmountMinor: number, seats: number): number {
   if (!Number.isInteger(unitAmountMinor) || unitAmountMinor < 0) {
     throw new Error('unitAmountMinor must be a non-negative integer')
   }

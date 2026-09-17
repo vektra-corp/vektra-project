@@ -92,10 +92,44 @@ export function NewPlanForm() {
   )
 }
 
-export function NewPriceForm({ planId, planName }: { planId: string; planName: string }) {
+export function NewPriceForm({
+  planId,
+  planName,
+  monthlyByCurrency,
+}: {
+  planId: string
+  planName: string
+  /** Existing monthly price per currency, in minor units. Drives the annual default. */
+  monthlyByCurrency: Record<string, number>
+}) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [open, setOpen] = useState(false)
+  const [currency, setCurrency] = useState('INR')
+  const [interval, setInterval] = useState<'monthly' | 'annual'>('monthly')
+  const [amount, setAmount] = useState('')
+  /** False once the operator types, so their figure is never overwritten. */
+  const [autofilled, setAutofilled] = useState(true)
+
+  const monthlyMinor = monthlyByCurrency[currency.toUpperCase()] ?? 0
+  const baselineMinor = monthlyMinor * 12
+
+  /*
+   * An annual price starts at twelve months of the monthly one and stays fully
+   * editable — the default is the no-discount case, so any saving is a
+   * deliberate decision rather than an accident of arithmetic.
+   */
+  function retarget(nextInterval: 'monthly' | 'annual', nextCurrency: string) {
+    const monthly = monthlyByCurrency[nextCurrency.toUpperCase()] ?? 0
+    if (!autofilled) return
+    setAmount(nextInterval === 'annual' && monthly > 0 ? ((monthly * 12) / 100).toFixed(2) : '')
+  }
+
+  const entered = Math.round(Number(amount) * 100)
+  const discountPct =
+    interval === 'annual' && baselineMinor > 0 && Number.isFinite(entered) && amount !== ''
+      ? Math.round(((baselineMinor - entered) / baselineMinor) * 1000) / 10
+      : null
 
   if (!open) {
     return (
@@ -107,7 +141,7 @@ export function NewPriceForm({ planId, planName }: { planId: string; planName: s
 
   return (
     <form
-      className="flex flex-wrap items-end gap-2 py-3"
+      className="space-y-2 py-3"
       action={(formData) =>
         startTransition(async () => {
           formData.set('plan_id', planId)
@@ -115,6 +149,8 @@ export function NewPriceForm({ planId, planName }: { planId: string; planName: s
           if (result.ok) {
             toast({ title: `Price added to ${planName}` })
             setOpen(false)
+            setAmount('')
+            setAutofilled(true)
             router.refresh()
           } else {
             toast({ variant: 'destructive', title: 'Failed', description: result.message })
@@ -122,30 +158,97 @@ export function NewPriceForm({ planId, planName }: { planId: string; planName: s
         })
       }
     >
-      <label className="w-24 space-y-1">
-        <span className="label-meta text-faint block">Currency</span>
-        <Input name="currency" required maxLength={3} defaultValue="INR" className="uppercase" />
-      </label>
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="w-24 space-y-1">
+          <span className="label-meta text-faint block">Currency</span>
+          <Input
+            name="currency"
+            required
+            maxLength={3}
+            value={currency}
+            className="uppercase"
+            onChange={(e) => {
+              setCurrency(e.target.value)
+              retarget(interval, e.target.value)
+            }}
+          />
+        </label>
 
-      <label className="w-28 space-y-1">
-        <span className="label-meta text-faint block">Interval</span>
-        <select name="billing_interval" className={selectCls} defaultValue="monthly">
-          <option value="monthly">Monthly</option>
-          <option value="annual">Annual</option>
-        </select>
-      </label>
+        <label className="w-28 space-y-1">
+          <span className="label-meta text-faint block">Interval</span>
+          <select
+            name="billing_interval"
+            className={selectCls}
+            value={interval}
+            onChange={(e) => {
+              const next = e.target.value as 'monthly' | 'annual'
+              setInterval(next)
+              retarget(next, currency)
+            }}
+          >
+            <option value="monthly">Monthly</option>
+            <option value="annual">Annual</option>
+          </select>
+        </label>
 
-      <label className="w-28 space-y-1">
-        <span className="label-meta text-faint block">Per seat</span>
-        <Input name="unit_amount_major" required inputMode="decimal" placeholder="499.00" />
-      </label>
+        <label className="w-28 space-y-1">
+          <span className="label-meta text-faint block">Per seat</span>
+          <Input
+            name="unit_amount_major"
+            required
+            inputMode="decimal"
+            placeholder="499.00"
+            value={amount}
+            onChange={(e) => {
+              setAmount(e.target.value)
+              setAutofilled(false)
+            }}
+          />
+        </label>
 
-      <Button type="submit" size="sm" loading={pending}>
-        Add
-      </Button>
-      <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
-        Cancel
-      </Button>
+        <Button type="submit" size="sm" loading={pending}>
+          Add
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={() => {
+            setOpen(false)
+            setAutofilled(true)
+          }}
+        >
+          Cancel
+        </Button>
+      </div>
+
+      {interval === 'annual' ? (
+        baselineMinor > 0 ? (
+          <p className="text-xs tabular-nums">
+            <span className="text-faint">12 × monthly = {(baselineMinor / 100).toFixed(2)} · </span>
+            {discountPct === null ? (
+              <span className="text-muted-foreground">enter an amount</span>
+            ) : discountPct > 0 ? (
+              <span className="text-success">{discountPct}% off</span>
+            ) : discountPct < 0 ? (
+              <span className="text-destructive">
+                {Math.abs(discountPct)}% MORE than paying monthly
+              </span>
+            ) : (
+              <span className="text-muted-foreground">no discount</span>
+            )}
+          </p>
+        ) : (
+          <p className="text-faint text-xs">
+            No monthly {currency.toUpperCase()} price to compare against — add one first and the
+            annual figure will default to twelve months of it.
+          </p>
+        )
+      ) : null}
+
+      <p className="text-faint text-xs">
+        Tax-inclusive: this is what the customer is charged.
+      </p>
     </form>
   )
 }
