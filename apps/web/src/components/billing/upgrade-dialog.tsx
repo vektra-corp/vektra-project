@@ -121,7 +121,7 @@ export function UpgradeDialog({
           <DialogTitle>Choose a plan</DialogTitle>
           <DialogDescription>
             {options
-              ? `Billed per seat, per month. You have ${options.seats} ${options.seats === 1 ? 'seat' : 'seats'}; tax is added at checkout.`
+              ? `Billed per seat, per month. You have ${options.seats} ${options.seats === 1 ? 'seat' : 'seats'}; prices include GST.`
               : 'Loading your options…'}
           </DialogDescription>
         </DialogHeader>
@@ -175,7 +175,7 @@ export function UpgradeDialog({
                           plan.currency,
                           locale,
                         )}{' '}
-                        for {options.seats} {options.seats === 1 ? 'seat' : 'seats'}, before tax
+                        for {options.seats} {options.seats === 1 ? 'seat' : 'seats'}, GST included
                       </p>
                     </div>
                     <Button

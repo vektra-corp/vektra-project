@@ -377,7 +377,7 @@ export interface UpgradeOption {
   planId: string
   tier: string
   displayName: string
-  /** Tax-exclusive, per seat, per month, in minor units. */
+  /** TAX-INCLUSIVE, per seat, per month, in minor units. */
   unitAmountMinor: number
   currency: string
 }

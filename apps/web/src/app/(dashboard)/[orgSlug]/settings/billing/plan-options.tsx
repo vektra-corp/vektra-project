@@ -28,9 +28,11 @@ export interface PlanOption {
   planId: string
   tier: string
   displayName: string
-  /** Tax-exclusive, per seat, in minor units. */
-  unitAmountMinor: number
+  sortOrder: number
   currency: string
+  /** TAX-INCLUSIVE per-seat price, in minor units. Null when not sold on that interval. */
+  monthlyMinor: number | null
+  annualMinor: number | null
 }
 
 export function PlanOptions({
@@ -52,10 +54,22 @@ export function PlanOptions({
   const [pending, startTransition] = useTransition()
   const [busyPlanId, setBusyPlanId] = useState<string | null>(null)
 
+  // Default to whichever interval the catalogue actually offers. Starting on
+  // monthly when nothing is sold monthly showed an empty card.
+  const [interval, setInterval] = useState<'monthly' | 'annual'>(() =>
+    plans.some((p) => p.monthlyMinor !== null) ? 'monthly' : 'annual',
+  )
+
+  const priceOf = (plan: PlanOption) =>
+    interval === 'monthly' ? plan.monthlyMinor : plan.annualMinor
+
+  const money = (minor: number, currency: string) =>
+    formatCurrency(minor / 100, currency, locale)
+
   async function choose(plan: PlanOption) {
     setBusyPlanId(plan.planId)
     try {
-      const result = await startCheckout(orgSlug, { planId: plan.planId, interval: 'monthly' })
+      const result = await startCheckout(orgSlug, { planId: plan.planId, interval })
 
       if (!result.ok) {
         toast({ title: 'Could not start checkout', description: result.message, variant: 'destructive' })
@@ -63,7 +77,7 @@ export function PlanOptions({
       }
 
       await openRazorpayCheckout(result.data, {
-        description: `${plan.displayName} — ${result.data.seats} ${result.data.seats === 1 ? 'seat' : 'seats'}`,
+        description: `${plan.displayName} (${interval}) — ${result.data.seats} ${result.data.seats === 1 ? 'seat' : 'seats'}`,
         onPaid: () => {
           // The mandate is registered. The subscription is still 'pending' here
           // and becomes active when the webhook arrives, which is usually
@@ -99,45 +113,123 @@ export function PlanOptions({
     }
   }
 
+  const hasMonthly = plans.some((p) => p.monthlyMinor !== null)
+  const hasAnnual = plans.some((p) => p.annualMinor !== null)
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Change plan</CardTitle>
-        <CardDescription>
-          Billed per seat, per month. You have {seats} {seats === 1 ? 'seat' : 'seats'}; tax is
-          added at checkout.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {plans.map((plan) => {
-            const isCurrent = plan.tier === currentTier
-            return (
-              <div key={plan.planId} className="rounded-lg border p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium">{plan.displayName}</p>
-                  {isCurrent ? <Badge variant="secondary">Current</Badge> : null}
-                </div>
-                <p className="mt-1 text-ui tabular-nums">
-                  {formatCurrency(plan.unitAmountMinor / 100, plan.currency, locale)}
-                  <span className="text-muted-foreground"> / seat / month</span>
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs tabular-nums">
-                  {formatCurrency((plan.unitAmountMinor * seats) / 100, plan.currency, locale)} for{' '}
-                  {seats} {seats === 1 ? 'seat' : 'seats'}, before tax
-                </p>
-                <Button
-                  className="mt-3 w-full"
-                  variant={isCurrent ? 'outline' : 'default'}
-                  disabled={!canManage || isCurrent || pending || busyPlanId !== null}
-                  onClick={() => void choose(plan)}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-base">Change plan</CardTitle>
+            <CardDescription>
+              Per seat, {interval === 'annual' ? 'billed yearly' : 'billed monthly'}. You have{' '}
+              {seats} {seats === 1 ? 'seat' : 'seats'}; prices include GST.
+            </CardDescription>
+          </div>
+
+          {hasMonthly && hasAnnual ? (
+            <div
+              role="group"
+              aria-label="Billing interval"
+              className="border-border bg-surface flex shrink-0 rounded-md border p-0.5"
+            >
+              {(['monthly', 'annual'] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={interval === value}
+                  onClick={() => setInterval(value)}
+                  className={`rounded px-3 py-1 text-xs capitalize transition-colors ${
+                    interval === value
+                      ? 'bg-surface-hover text-foreground font-medium'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
                 >
-                  {busyPlanId === plan.planId ? 'Opening…' : isCurrent ? 'Current plan' : 'Choose'}
-                </Button>
-              </div>
-            )
-          })}
+                  {value}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
+      </CardHeader>
+
+      <CardContent>
+        {plans.length === 0 ? (
+          <p className="text-muted-foreground text-ui">
+            No plans are currently available for purchase in {plans[0]?.currency ?? 'your currency'}
+            . Contact support and we will sort it out.
+          </p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {plans.map((plan) => {
+              const isCurrent = plan.tier === currentTier
+              const priceMinor = priceOf(plan)
+              const unavailable = priceMinor === null
+
+              // What twelve months at the monthly rate would cost, so an annual
+              // price states its own saving rather than leaving the arithmetic
+              // to the customer.
+              const baseline = plan.monthlyMinor !== null ? plan.monthlyMinor * 12 : null
+              const savingPct =
+                interval === 'annual' && baseline && priceMinor !== null && baseline > 0
+                  ? Math.round(((baseline - priceMinor) / baseline) * 100)
+                  : null
+
+              return (
+                <div key={plan.planId} className="rounded-lg border p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium">{plan.displayName}</p>
+                    {isCurrent ? <Badge variant="secondary">Current</Badge> : null}
+                  </div>
+
+                  {unavailable ? (
+                    <p className="text-muted-foreground mt-1 text-ui">
+                      Not sold {interval === 'annual' ? 'annually' : 'monthly'}
+                    </p>
+                  ) : (
+                    <>
+                      <p className="mt-1 text-ui tabular-nums">
+                        {money(priceMinor, plan.currency)}
+                        <span className="text-muted-foreground">
+                          {' '}
+                          / seat / {interval === 'annual' ? 'year' : 'month'}
+                        </span>
+                      </p>
+                      <p className="text-muted-foreground mt-1 text-xs tabular-nums">
+                        {money(priceMinor * seats, plan.currency)} for {seats}{' '}
+                        {seats === 1 ? 'seat' : 'seats'}, GST included
+                      </p>
+                      {savingPct && savingPct > 0 ? (
+                        <p className="text-success mt-1 text-xs tabular-nums">
+                          Save {savingPct}% vs monthly
+                        </p>
+                      ) : null}
+                    </>
+                  )}
+
+                  <Button
+                    className="mt-3 w-full"
+                    variant={isCurrent ? 'outline' : 'default'}
+                    disabled={
+                      !canManage || isCurrent || unavailable || pending || busyPlanId !== null
+                    }
+                    onClick={() => void choose(plan)}
+                  >
+                    {busyPlanId === plan.planId
+                      ? 'Opening…'
+                      : isCurrent
+                        ? 'Current plan'
+                        : unavailable
+                          ? 'Unavailable'
+                          : 'Choose'}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
         {!canManage ? (
           <p className="text-muted-foreground mt-3 text-xs">
             Only owners and admins can change the plan.

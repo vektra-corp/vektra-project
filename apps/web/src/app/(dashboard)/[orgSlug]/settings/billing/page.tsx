@@ -84,27 +84,44 @@ export default async function BillingPage({ params }: { params: { orgSlug: strin
       .eq('organization_id', auth.orgId)
       .eq('status', 'issued'),
     // RLS shows the public catalogue plus any plan custom-built for this tenant.
+    //
+    // BOTH intervals. This used to filter to 'monthly', so an annual price was
+    // unreachable no matter what the catalogue held — and when the monthly
+    // price of a plan was withdrawn, that plan vanished from the page entirely
+    // rather than remaining available on its annual terms.
     supabase
       .from('plan_prices')
-      .select('plan_id, unit_amount_minor, currency, plan:plans(id, tier, display_name, sort_order)')
+      .select(
+        'plan_id, unit_amount_minor, currency, billing_interval, plan:plans(id, tier, display_name, sort_order)',
+      )
       .eq('currency', billingCurrency)
-      .eq('billing_interval', 'monthly')
       .eq('is_active', true),
     ])
 
   const { entitlements } = auth
   const seats = seatCount.count ?? 0
 
-  const plans: PlanOption[] = (priceRows ?? [])
-    .flatMap((row) => (row.plan ? [{ row, plan: row.plan }] : []))
-    .sort((a, b) => (a.plan.sort_order ?? 0) - (b.plan.sort_order ?? 0))
-    .map(({ row, plan }) => ({
+  // One entry per plan, carrying whichever intervals it is actually sold on.
+  // A plan priced only annually is still offered; it simply has no monthly
+  // option to choose.
+  const planMap = new Map<string, PlanOption>()
+  for (const row of priceRows ?? []) {
+    const plan = Array.isArray(row.plan) ? row.plan[0] : row.plan
+    if (!plan) continue
+    const entry = planMap.get(plan.id) ?? {
       planId: plan.id,
       tier: plan.tier,
       displayName: plan.display_name,
-      unitAmountMinor: row.unit_amount_minor,
+      sortOrder: plan.sort_order ?? 0,
       currency: row.currency,
-    }))
+      monthlyMinor: null,
+      annualMinor: null,
+    }
+    if (row.billing_interval === 'monthly') entry.monthlyMinor = row.unit_amount_minor
+    if (row.billing_interval === 'annual') entry.annualMinor = row.unit_amount_minor
+    planMap.set(plan.id, entry)
+  }
+  const plans: PlanOption[] = [...planMap.values()].sort((a, b) => a.sortOrder - b.sortOrder)
 
   const invoiceByPayment = new Map(
     (invoiceRows ?? [])

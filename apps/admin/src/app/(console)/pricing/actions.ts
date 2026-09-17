@@ -64,10 +64,10 @@ async function schedulePriceChange(
 /**
  * Change a plan's per-seat price.
  *
- * The amount is entered tax-exclusive, because that is what `plan_prices` stores
- * and what an operator is actually deciding. The GST-inclusive figure shown back
- * is derived, never stored — storing it would make the invoice's own taxable
- * line unreconstructable without re-deriving a rate.
+ * The amount is entered TAX-INCLUSIVE: it is the figure the customer is charged,
+ * which is what an operator is actually deciding. The GST contained within it is
+ * derived for display, never stored — the invoice recomputes it as the remainder
+ * after backing out the taxable base, so the two can never disagree.
  */
 export async function updatePlanPrice(formData: FormData): Promise<PricingResult> {
   const admin = await requireAdmin()
@@ -302,7 +302,7 @@ export async function createPlan(formData: FormData): Promise<PricingResult> {
  *
  * One row per (plan, currency, interval) — the table's UNIQUE — so adding an
  * annual price beside a monthly one is an insert, not an edit. Entered
- * tax-exclusive, matching what the column stores.
+ * tax-inclusive, matching what the column stores.
  */
 export async function createPlanPrice(formData: FormData): Promise<PricingResult> {
   const admin = await requireAdmin()
